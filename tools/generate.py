@@ -272,7 +272,7 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    generated = ROOT / "generated"
+    generated = PRODUCT_ROOT / "generated"
     issues = generated / "issues"
     issues.mkdir(parents=True, exist_ok=True)
     graph_output = generated / "work-graph.json"
