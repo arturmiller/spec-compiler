@@ -1,0 +1,23 @@
+@prefix ex: <https://example.org/catalog/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Rein fachlich: Was ist ein gültiger Artikel?
+ex:ArticleShape
+    a sh:NodeShape ;
+    sh:targetClass ex:Article ;
+    sh:property [
+        sh:path ex:description ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minLength 1 ;
+    ] ;
+    sh:property [
+        sh:path ex:price ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:minExclusive 0 ;
+        sh:maxExclusive 1000000 ;
+    ] .

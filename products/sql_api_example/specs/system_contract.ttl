@@ -1,0 +1,13 @@
+@prefix ex: <https://example.org/catalog/> .
+
+# Technisch: Wo wird ein Artikel ausgegeben und gespeichert?
+ex:GetArticleEndpoint
+    a ex:GetEndpoint ;
+    ex:path "/articles/{id}" ;
+    ex:returns ex:ArticleShape .
+
+ex:ArticlesTable
+    a ex:SqlTable ;
+    ex:tableName "articles" ;
+    ex:idColumn "id" ;
+    ex:stores ex:ArticleShape .

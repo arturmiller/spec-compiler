@@ -1,0 +1,29 @@
+[project]
+name = "shacl-contract-prototype"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "httpx>=0.27,<1",
+  "pyshacl>=0.30,<1",
+  "rdflib>=7.1,<8",
+]
+
+[project.optional-dependencies]
+dev = [
+  "poethepoet>=0.37,<1",
+  "pytest>=8,<9",
+]
+
+[tool.poe.tasks]
+generate = { cmd = "python tools/generate.py", help = "Generate contract tests and work items" }
+test = { cmd = "pytest -q", help = "Run the test suite" }
+run = { sequence = ["generate", "test"], help = "Generate all artifacts and run the tests" }
+
+[tool.pytest.ini_options]
+testpaths = ["products/sql_api_example/tests"]
+pythonpath = ["."]
+filterwarnings = [
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+  "ignore:Dataset.default_context is deprecated:DeprecationWarning",
+]

@@ -1,0 +1,40 @@
+{
+  "generator": "tools/generate.py",
+  "work_items": [
+    {
+      "id": "article.storage.schema",
+      "title": "Provide the `articles` storage schema",
+      "goal": "Make the contracted article shape persistable in SQLite.",
+      "depends_on": [],
+      "obligations": [
+        "The SQLite table `articles` exists.",
+        "The identifier column `id` exists.",
+        "The column `description` has SQL type `TEXT` and does not allow NULL.",
+        "The column `price` has SQL type `DECIMAL` and does not allow NULL."
+      ],
+      "test": "products/sql_api_example/tests/test_contract.py::test_sql_table_matches_contract",
+      "excluded": [
+        "HTTP endpoint behavior"
+      ]
+    },
+    {
+      "id": "article.query.by-id",
+      "title": "Provide GET /articles/{id}",
+      "goal": "Return a stored article through the contracted GET endpoint.",
+      "depends_on": [
+        "article.storage.schema"
+      ],
+      "obligations": [
+        "The endpoint `GET /articles/{id}` is available.",
+        "A stored article is returned with status `200`.",
+        "The response contains exactly the fields `description`, `price`.",
+        "The response values equal the stored values.",
+        "The response conforms to the contracted SHACL shape."
+      ],
+      "test": "products/sql_api_example/tests/test_contract.py::test_get_endpoint_returns_shape_conformant_article",
+      "excluded": [
+        "Behavior for unknown article identifiers"
+      ]
+    }
+  ]
+}
