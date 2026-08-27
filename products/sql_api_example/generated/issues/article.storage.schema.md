@@ -4,27 +4,36 @@
 
 ## Goal
 
-Make the contracted article shape persistable in SQLite.
+Make the contracted Article shape persistable in SQLite.
 
 ## Dependencies
 
-- None
+- `article.runtime`
 
 ## Obligations
 
 - The SQLite table `articles` exists.
-- The identifier column `id` exists.
+- The identifier column `id` has SQL type `INTEGER` and is the primary key.
+- The `id` value is generated when omitted.
 - The column `description` has SQL type `TEXT` and does not allow NULL.
 - The column `price` has SQL type `DECIMAL` and does not allow NULL.
 
 ## Verification
 
-```powershell
+```console
 uv run --extra dev pytest -q products/sql_api_example/tests/test_contract.py::test_sql_table_matches_contract
 ```
 
+## Sources
+
+- `specs/`: SQLite engine, table and identifier
+- `specs/`: stored Shape, fields and constraints
+- Runtime protocol v1: database path and readiness
+- Compiler conventions v1: XSD-to-SQL mapping
+
 ## Boundaries
 
-- Do not edit the product's `specs/` directory or generated tests.
+- Do not edit the product's `specs/`, `tests/`, or `generated/` directories.
 - Implement product behavior under `products/sql_api_example/`.
+- Do not add implementation requirements that are absent from the specs or the documented runtime protocol.
 - Out of scope: HTTP endpoint behavior.

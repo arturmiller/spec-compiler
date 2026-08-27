@@ -1,16 +1,69 @@
 {
   "generator": "tools/generate.py",
+  "compiler_conventions_version": 1,
+  "runtime_protocol_version": 1,
   "work_items": [
+    {
+      "id": "article.runtime",
+      "title": "Provide the product runtime interface",
+      "goal": "Make the product startable through runtime protocol v1.",
+      "depends_on": [],
+      "obligations": [
+        "The product can be started through its `product.toml` manifest.",
+        "It listens on the host and port supplied by the runner.",
+        "It publishes a self-contained OpenAPI 3.1 document as JSON at the manifest path."
+      ],
+      "sources": [
+        "Runtime protocol v1: process start, network address and OpenAPI readiness"
+      ],
+      "test": "products/sql_api_example/tests/test_contract.py::test_product_runtime",
+      "excluded": [
+        "A particular implementation language or web framework",
+        "The contracted endpoint behavior"
+      ]
+    },
+    {
+      "id": "article.api.contract",
+      "title": "Publish the contract for GET /articles/{id}",
+      "goal": "Expose an OpenAPI description compatible with the HTTP contract.",
+      "depends_on": [
+        "article.runtime"
+      ],
+      "obligations": [
+        "The document declares `GET /articles/{id}`.",
+        "The path parameter `id` has OpenAPI type `integer`.",
+        "Response `200` uses `application/json` and the contracted response schema."
+      ],
+      "sources": [
+        "`specs/`: endpoint, path parameter, status and media type",
+        "`specs/`: response Shape, fields and constraints",
+        "Runtime protocol v1: `product.toml` and OpenAPI discovery"
+      ],
+      "test": "products/sql_api_example/tests/test_contract.py::test_openapi_matches_contract",
+      "excluded": [
+        "A particular implementation language or web framework",
+        "Runtime behavior beyond publishing the declared contract"
+      ]
+    },
     {
       "id": "article.storage.schema",
       "title": "Provide the `articles` storage schema",
-      "goal": "Make the contracted article shape persistable in SQLite.",
-      "depends_on": [],
+      "goal": "Make the contracted Article shape persistable in SQLite.",
+      "depends_on": [
+        "article.runtime"
+      ],
       "obligations": [
         "The SQLite table `articles` exists.",
-        "The identifier column `id` exists.",
+        "The identifier column `id` has SQL type `INTEGER` and is the primary key.",
+        "The `id` value is generated when omitted.",
         "The column `description` has SQL type `TEXT` and does not allow NULL.",
         "The column `price` has SQL type `DECIMAL` and does not allow NULL."
+      ],
+      "sources": [
+        "`specs/`: SQLite engine, table and identifier",
+        "`specs/`: stored Shape, fields and constraints",
+        "Runtime protocol v1: database path and readiness",
+        "Compiler conventions v1: XSD-to-SQL mapping"
       ],
       "test": "products/sql_api_example/tests/test_contract.py::test_sql_table_matches_contract",
       "excluded": [
@@ -20,20 +73,27 @@
     {
       "id": "article.query.by-id",
       "title": "Provide GET /articles/{id}",
-      "goal": "Return a stored article through the contracted GET endpoint.",
+      "goal": "Return a stored Article through the contracted GET endpoint.",
       "depends_on": [
+        "article.runtime",
+        "article.api.contract",
         "article.storage.schema"
       ],
       "obligations": [
         "The endpoint `GET /articles/{id}` is available.",
-        "A stored article is returned with status `200`.",
+        "A stored Article is returned with status `200` and media type `application/json`.",
         "The response contains exactly the fields `description`, `price`.",
         "The response values equal the stored values.",
         "The response conforms to the contracted SHACL shape."
       ],
-      "test": "products/sql_api_example/tests/test_contract.py::test_get_endpoint_returns_shape_conformant_article",
+      "sources": [
+        "`specs/`: endpoint-to-table relation and HTTP result",
+        "`specs/`: response Shape",
+        "Compiler conventions v1: SHACL-to-JSON mapping"
+      ],
+      "test": "products/sql_api_example/tests/test_contract.py::test_get_endpoint_returns_shape_conformant_resource",
       "excluded": [
-        "Behavior for unknown article identifiers"
+        "Behavior for unknown Article identifiers"
       ]
     }
   ]

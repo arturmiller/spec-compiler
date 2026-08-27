@@ -4,28 +4,37 @@
 
 ## Goal
 
-Return a stored article through the contracted GET endpoint.
+Return a stored Article through the contracted GET endpoint.
 
 ## Dependencies
 
+- `article.runtime`
+- `article.api.contract`
 - `article.storage.schema`
 
 ## Obligations
 
 - The endpoint `GET /articles/{id}` is available.
-- A stored article is returned with status `200`.
+- A stored Article is returned with status `200` and media type `application/json`.
 - The response contains exactly the fields `description`, `price`.
 - The response values equal the stored values.
 - The response conforms to the contracted SHACL shape.
 
 ## Verification
 
-```powershell
-uv run --extra dev pytest -q products/sql_api_example/tests/test_contract.py::test_get_endpoint_returns_shape_conformant_article
+```console
+uv run --extra dev pytest -q products/sql_api_example/tests/test_contract.py::test_get_endpoint_returns_shape_conformant_resource
 ```
+
+## Sources
+
+- `specs/`: endpoint-to-table relation and HTTP result
+- `specs/`: response Shape
+- Compiler conventions v1: SHACL-to-JSON mapping
 
 ## Boundaries
 
-- Do not edit the product's `specs/` directory or generated tests.
+- Do not edit the product's `specs/`, `tests/`, or `generated/` directories.
 - Implement product behavior under `products/sql_api_example/`.
-- Out of scope: Behavior for unknown article identifiers.
+- Do not add implementation requirements that are absent from the specs or the documented runtime protocol.
+- Out of scope: Behavior for unknown Article identifiers.
