@@ -16,13 +16,16 @@ dev = [
 ]
 
 [tool.poe.tasks]
-generate = { cmd = "python tools/generate.py --product products/sql_api_example", help = "Generate contract tests and work items" }
+generate-sql-api = { cmd = "python tools/generate.py --product products/sql_api_example", help = "Generate the SQL API contract" }
+generate-toolchain = { cmd = "python tools/generate.py --product products/shacl_contract_toolchain", help = "Generate the toolchain compiler contract" }
+generate = { sequence = ["generate-sql-api", "generate-toolchain"], help = "Generate all contract tests and work items" }
 test = { cmd = "pytest -q", help = "Run the test suite" }
 run = { sequence = ["generate", "test"], help = "Generate all artifacts and run the tests" }
 
 [tool.pytest.ini_options]
-testpaths = ["tools/tests", "products/sql_api_example/tests"]
+testpaths = ["tools/tests", "products/sql_api_example/tests", "products/shacl_contract_toolchain/tests"]
 pythonpath = ["."]
+addopts = ["--import-mode=importlib"]
 filterwarnings = [
   "ignore:Dataset.default_context is deprecated:DeprecationWarning",
 ]

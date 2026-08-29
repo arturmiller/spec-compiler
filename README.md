@@ -27,6 +27,9 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
 - `products/sql_api_example/`: versioniertes Referenzprodukt mit Produktcode,
   `specs/`, Laufzeitmanifest, deterministisch erzeugten `tests/`, erwarteter
   OpenAPI-Spezifikation und `generated/`-Arbeitsaufträgen.
+- `products/shacl_contract_toolchain/`: Self-Description Bundle, dessen Specs
+  die allgemeine Softwareanwendung, ihre Konformität zu Compiler Protocol v1
+  und ihren separat austauschbaren Transformationsvertrag beschreiben.
 - `docs/generation-principles.md`: Regeln gegen erfundene
   Implementierungsanforderungen.
 
@@ -35,6 +38,14 @@ den aktuellen Vertrag entstehen immer `description="x"` und `price=0.01`.
 Danach prüft der generierte Test SQLite-Schema, die vom laufenden Produkt
 veröffentlichte OpenAPI-Spezifikation, den echten GET-Endpunkt und die
 SHACL-Konformität der Antwort.
+
+Die Toolchain wird außerdem über ihr externes Compilerverhalten beschrieben.
+Der vorhandene Generator dient als expliziter Bootstrap-Compiler `G0` und
+erzeugt Tests, die eine weitere Compilerinvokation `G1` auf einem isolierten
+Product Bundle zweimal ausführen. Beide Läufe müssen byte-identische generierte
+Dateien erreichen. Das prüft Selbstbeschreibung und Reproduzierbarkeit, ist
+aber noch keine unabhängige Korrektheitsprüfung oder vollständige Erzeugung
+einer neuen Compilerimplementierung.
 
 `generated/expected-openapi.json` beschreibt den aus den Specs erwarteten
 HTTP-Vertrag. Der OpenAPI-Test ruft das Dokument der laufenden Implementierung

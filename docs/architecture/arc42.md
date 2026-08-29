@@ -24,6 +24,8 @@ The toolchain must:
   architecture outside the generated requirements;
 - start a product through Runtime Protocol v1 and verify its externally visible
   OpenAPI, HTTP, SHACL, and explicitly contracted SQLite boundaries;
+- invoke compiler products through Compiler Protocol v1 and verify declared
+  artifacts, failure behavior, and deterministic fixpoints as black boxes;
 - produce identical files for identical specs and compiler versions.
 
 The prototype is not a complete SHACL, SQL, or OpenAPI compiler, a production
@@ -76,7 +78,8 @@ Detailed quality scenarios are in section 10.
 | Shape values | Scalar properties with `sh:minCount` 0 or 1 and `sh:maxCount` 1 |
 | Datatypes | `xsd:string`, `xsd:decimal`, and `xsd:integer` mappings; fixture synthesis currently covers Shape fields of string and decimal |
 | OpenAPI profile | Self-contained OpenAPI 3.1 JSON, local `$ref`, direct schemas, no schema composition |
-| Orchestration | `uv run --extra dev poe run` on a local or CI host |
+| Orchestration | `uv run --extra dev poe run` on a local or CI host; pytest importlib mode isolates identically named generated test modules between Product Bundles |
+| Compiler product | One `schema:SoftwareApplication` conforming to `ex:CompilerProtocolV1` and linked to one `ex:TransformationContract` with declared input pattern, fixture, artifact patterns, missing-spec behavior, and determinism |
 | Version control | Generated products are ignored except the versioned `sql_api_example` reference bundle |
 
 Python and pytest constrain the toolchain. FastAPI, Pydantic, and Uvicorn are
@@ -103,6 +106,7 @@ the Work Graph, issue Markdown, and tests are a file-based handoff.
 | Spec author | Turtle files in `products/<name>/specs/` | Compiler diagnostics |
 | Product developer or coding agent | Reads Work Graph, issues, expected OpenAPI, and tests | Writes implementation-owned files in the Product Bundle |
 | Generated Product | `product.toml`, OpenAPI 3.1 JSON, HTTP, contracted SQLite file | Process state, HTTP responses, data-store state |
+| Compiler Product | Compiler Protocol v1 manifest and an input Product Bundle | Exit status, combined process output, generated files |
 | Operating system | Process, loopback network, temporary files | Exit status and cleanup behavior |
 | Reviewer or CI | Poe/uv commands | Generated artifacts and pytest result |
 
@@ -125,6 +129,7 @@ implementation; the directory itself is not an executable system.
 | Behavioral verification | Seed the contracted SQLite store, call the real HTTP endpoint, and validate returned RDF against SHACL. |
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
+| Toolchain bootstrap | Generate proofs from the Toolchain Self-Description Bundle with trusted `G0`, then exercise `G1` twice and compare its outputs. |
 
 See the accepted decisions in section 9 for rationale and consequences.
 
@@ -141,6 +146,7 @@ views for this section.
 | SHACL Contract Toolchain | Deterministically compile specs and verify a running product. | Product Bundle files, Runtime Protocol v1, HTTP, SQLite |
 | Product Bundle | Hold all authored and generated artifacts for one product. It is an artifact boundary, not a runtime process. | `specs/`, `generated/`, `tests/`, `product.toml`, implementation files |
 | Generated Product | Implement the contract using technology selected by its implementer. | Product Runtime process, OpenAPI/HTTP, contracted store |
+| Toolchain Self-Description Bundle | Describe a replaceable Software Application, its Compiler Protocol conformance, and its separately versioned Transformation Contract while keeping the bootstrap trust boundary explicit. | Specs, Compiler Protocol v1 manifest, generated proofs and work |
 
 ### 5.2 Contract Compiler CLI
 
@@ -163,6 +169,7 @@ data, not an independently deployable building block.
 | --- | --- | --- |
 | Generated Contract Test Suite | `products/<name>/tests/test_contract.py` | Define Runtime, OpenAPI, SQLite, HTTP, and SHACL proofs. |
 | Product Runtime Adapter | `tools/contract_runtime.py` | Read the manifest, substitute values, start the process, detect readiness, and clean up the tree. |
+| Compiler Runtime Adapter | `tools/compiler_runtime.py` | Invoke a compiler manifest as a separate bounded process and capture its observable result. |
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
 | HTTP/SHACL Behavior Verifier | Generated behavior test | Call the live endpoint, compare values, and validate the response Shape. |
@@ -231,6 +238,31 @@ sequenceDiagram
 4. The named pytest node decides whether the Work Item is complete.
 5. The full test suite remains the final integration proof.
 
+### 6.4 Bootstrap and verify the compiler product
+
+```mermaid
+sequenceDiagram
+    actor Operator as Reviewer / CI
+    participant G0 as Bootstrap Contract Compiler G0
+    participant Self as Toolchain Self-Description Bundle
+    participant Harness as Contract Verification Harness
+    participant G1 as Compiler Product G1
+    participant Fixture as Temporary Product Bundle
+
+    Operator->>G0: Compile self-description specs
+    G0->>Self: Generate compiler proofs and Work Graph
+    Operator->>Harness: Run generated compiler proofs
+    Harness->>G1: Compile isolated fixture through Compiler Protocol v1
+    G1->>Fixture: Write declared artifacts A1
+    Harness->>G1: Compile the same fixture again
+    G1->>Fixture: Write declared artifacts A2
+    Harness->>Harness: Require A1 and A2 byte-identical
+```
+
+`G0` and `G1` currently execute the same checked-in implementation. The
+sequence establishes self-description and a deterministic fixpoint, not an
+independent proof of compiler correctness.
+
 ## 7. Deployment view
 
 The prototype runs on one Windows or Linux development/CI host. There is no
@@ -278,6 +310,8 @@ compiler error. The normative details are in
 - No LLM or external service participates in compilation.
 - `COMPILER_CONVENTIONS_VERSION` and `RUNTIME_PROTOCOL_VERSION` expose semantic
   compatibility versions in the Work Graph.
+- Compiler-product Work Graphs expose `compiler_protocol_version`; generated
+  proofs compare consecutive output snapshots byte for byte.
 
 ### 8.3 Product isolation
 
@@ -301,8 +335,9 @@ Changes are made at the source and regenerated.
 
 ### 8.6 Security and trust
 
-`product.toml` can execute arbitrary local commands. The runner is intended only
-for trusted repositories and Product Bundles. OpenAPI references are local, the
+`product.toml` can execute arbitrary local commands under either product
+protocol. The runners are intended only for trusted repositories and Product
+Bundles. OpenAPI references are local, the
 test server uses loopback networking, and test databases are temporary files.
 
 ### 8.7 Architecture documentation
@@ -319,6 +354,8 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0002](decisions/0002-black-box-product-verification.md) | Products are verified as black boxes through Runtime Protocol v1, OpenAPI, behavior, and contracted storage. | Accepted |
 | [0003](decisions/0003-separate-toolchain-and-product-bundles.md) | Toolchain and Product Bundles have separate boundaries and dependencies. | Accepted |
 | [0004](decisions/0004-common-contract-model-and-work-graph.md) | All deterministic outputs derive from one Contract Model; work is exposed as a dependency graph of proofs. | Accepted |
+| [0005](decisions/0005-bootstrap-toolchain-self-description.md) | The toolchain is specified as a Compiler Product and verified through an explicit bootstrap trust boundary. | Accepted |
+| [0006](decisions/0006-separate-product-protocol-and-transformation-contract.md) | Product identity, invocation protocol, and transformation contract vary independently; executable dispatch follows protocol conformance. | Accepted; supersedes the product-typing part of 0005 |
 
 ## 10. Quality requirements
 
@@ -332,6 +369,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Q-6 | Platform portability | On supported Windows and Linux hosts, the same Poe command generates and verifies the product without shell-specific project scripts. |
 | Q-7 | Lifecycle safety | After success or failure, no Product Runtime descendant remains; a regression test verifies process-tree cleanup. |
 | Q-8 | Comprehensibility | A maintainer can distinguish executable containers, static artifacts, tool choices, and product choices from arc42 and C4 without reading every source file. |
+| Q-9 | Compiler bootstrap | Given the Toolchain Self-Description Bundle, generated black-box proofs invoke the compiler twice on an isolated fixture and require all generated and test files to be byte-identical. |
 
 ## 11. Risks and technical debt
 
@@ -341,6 +379,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Exactly one endpoint, table, parameter, and shared Shape are supported. | The model has not demonstrated multi-resource scaling. Extend only with explicit new semantics and tests. |
 | The Contract Model is an untyped dictionary in a large generator module. | Renderer drift becomes more likely as features grow; introduce typed immutable structures before significant expansion. |
 | Expected OpenAPI and tests come from the same compiler. | A shared interpretation bug can affect both oracle and proof; add independent conformance examples or mutation tests. |
+| The bootstrap compiler generates the tests that judge a later invocation of the same implementation. | The fixpoint detects nondeterminism but not shared semantic defects; retain `G0` as an explicit trust anchor and add an independent compiler or oracle before claiming full self-hosting. |
 | OpenAPI comparison intentionally supports a narrow 3.1 profile. | Equivalent composed schemas may be rejected; broaden the comparator only with explicit semantics and regression tests. |
 | Integer Shape fields have a mapping but no deterministic fixture synthesizer. | Such fields fail late in fixture generation; either implement the value rule or reject them earlier. |
 | Obsolete generated issue files are not pruned. | Contract changes can leave stale guidance; add a manifest-driven cleanup step with safe target validation. |
@@ -366,6 +405,10 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Contract Model | Normalized in-memory representation used by every renderer. |
 | Compiler Convention | Named, versioned deterministic mapping not directly expressed by a spec statement. |
 | Runtime Protocol | Technology-independent contract for starting and observing a product. |
+| Compiler Protocol | Technology-independent contract for invoking a compiler on a Product Bundle and observing its exit status, output, and generated files. |
+| Toolchain Self-Description Bundle | Product Bundle whose specs describe the SHACL Contract Toolchain as a Compiler Product. |
+| Transformation Contract | Independently identified and versionable description of accepted inputs, emitted outputs, rejection behavior, and result equivalence. |
+| Bootstrap compiler (`G0`) | Trusted checked-in compiler used to generate the first executable proofs from the self-description. |
 | Work Item | Goal, obligations, sources, dependencies, exclusions, and one executable proof. |
 | Work Graph | Directed dependency graph of Work Items. |
 | Expected OpenAPI | Generated OpenAPI document whose selected elements define the required HTTP contract. |

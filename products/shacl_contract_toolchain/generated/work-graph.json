@@ -1,0 +1,63 @@
+{
+  "generator": "tools/generate.py",
+  "compiler_conventions_version": 1,
+  "compiler_protocol_version": 1,
+  "work_items": [
+    {
+      "id": "toolchain.compiler.outputs",
+      "title": "Generate the declared compiler artifacts",
+      "goal": "Compile a valid Product Bundle through Compiler Protocol v1.",
+      "depends_on": [],
+      "obligations": [
+        "Input specs are discovered using `specs/*.ttl`.",
+        "A successful compilation emits `generated/expected-openapi.json`.",
+        "A successful compilation emits `generated/issues/*.md`.",
+        "A successful compilation emits `generated/work-graph.json`.",
+        "A successful compilation emits `tests/test_contract.py`."
+      ],
+      "sources": [
+        "`specs/`: compiler input and generated artifact declarations",
+        "Compiler Protocol v1: manifest-driven black-box invocation"
+      ],
+      "test": "products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_generates_declared_artifacts",
+      "excluded": [
+        "A particular compiler implementation language"
+      ]
+    },
+    {
+      "id": "toolchain.compiler.fixpoint",
+      "title": "Reach a deterministic compiler fixpoint",
+      "goal": "Produce byte-identical artifacts on consecutive compilations.",
+      "depends_on": [
+        "toolchain.compiler.outputs"
+      ],
+      "obligations": [
+        "Two compilations of the same Product Bundle produce byte-identical generated and test files."
+      ],
+      "sources": [
+        "`specs/`: deterministic output requirement"
+      ],
+      "test": "products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_output_reaches_a_byte_identical_fixpoint",
+      "excluded": [
+        "Byte identity of product implementation source"
+      ]
+    },
+    {
+      "id": "toolchain.compiler.missing-specs",
+      "title": "Reject a Product Bundle without specs",
+      "goal": "Fail explicitly instead of compiling an unspecified product.",
+      "depends_on": [],
+      "obligations": [
+        "Compilation returns a non-zero exit status when no input specs exist.",
+        "The diagnostic identifies the absence of Turtle specs."
+      ],
+      "sources": [
+        "`specs/`: missing-spec rejection requirement"
+      ],
+      "test": "products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_rejects_a_bundle_without_specs",
+      "excluded": [
+        "A prescribed exception or logging framework"
+      ]
+    }
+  ]
+}

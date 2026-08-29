@@ -68,6 +68,32 @@ Wenn die Spec eine SQLite-Tabelle verlangt, bezeichnet
 `{database_path}` die tatsächlich verwendete dateibasierte Datenbank und ihr
 Schema ist beim Bereitschaftssignal initialisiert.
 
+### Compiler Protocol v1
+
+Ein Compilerprodukt wird nicht künstlich als HTTP-Laufzeit modelliert. Sein
+`product.toml` deklariert stattdessen `compiler_protocol_version = 1` und eine
+Tabelle `[compiler]` mit:
+
+- `command`: Argumentliste des Compilerprozesses,
+- `working_directory`: relativ zum Self-Description Bundle,
+- `timeout_seconds`: optionale Ausführungsfrist,
+- `environment`: optionale Umgebungsvariablen.
+
+In diesen Werten ersetzt der Harness `{compiler_root}`, `{repository_root}` und
+`{input_product_root}`. Er importiert keine Implementierungsmodule, sondern
+beobachtet ausschließlich Exitstatus, zusammengeführte Standardausgabe und die
+im Input Product Bundle erzeugten Dateien.
+
+Das Produkt ist allgemein als `schema:SoftwareApplication` klassifiziert.
+`dcterms:conformsTo ex:CompilerProtocolV1` wählt das ausführbare Protokoll;
+`ex:implementsContract` verweist auf einen separat versionierbaren
+`ex:TransformationContract`. Dieser darf Ausgabepfade oder Glob-Muster, die
+Suche nach Eingabespecs, Fehlerfälle und die jeweilige Ergebnisgleichheit
+explizit festlegen. Beim
+Determinismusnachweis werden zwei Läufe derselben Compilerimplementierung mit
+demselben Input verglichen. Das ist ein Fixpunkt- und Reproduzierbarkeitsnachweis,
+aber kein unabhängiger Beweis für die korrekte Interpretation der Spec.
+
 ## Compilerkonventionen v1
 
 Der Prototyp verwendet folgende explizite Abbildungsregeln:
@@ -82,6 +108,14 @@ Der Prototyp verwendet folgende explizite Abbildungsregeln:
 - `sh:minCount 0` wird zu einem optionalen JSON-Feld und einer nullable Spalte.
 - Nur skalare Properties mit `sh:maxCount 1` und `sh:minCount 0` oder `1`
   werden unterstützt.
+- `dcterms:conformsTo ex:CompilerProtocolV1` wählt das Compilerprodukt-Profil
+  statt des HTTP-/SQLite-Profils; eine fachliche Produktklasse steuert niemals
+  die ausführbare Testsemantik.
+- `ex:implementsContract` muss auf genau einen `ex:TransformationContract`
+  zeigen, aus dem die generierten Verpflichtungen stammen.
+- Die Aussagen `ex:generatesArtifact`, `ex:rejectsMissingSpecs` und
+  `ex:deterministicOutput` werden direkt in fokussierte Black-box-Proofs
+  übersetzt.
 - `sh:minLength`, `sh:minExclusive` und `sh:maxExclusive` werden gleichnamig
   beziehungsweise semantisch äquivalent in JSON Schema/OpenAPI abgebildet.
 
