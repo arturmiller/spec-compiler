@@ -111,10 +111,13 @@ zukünftige Compilerimplementierung abgeleitet werden soll. Er verweist über
 `sco:seedImplementation` auf eine explizite Ausgangsimplementierung und über
 `sco:evolutionStrategy` auf die Ableitungsstrategie. Für den Spec Compiler ist
 G0 der Seed und `sco:ModifyExistingImplementation` die Strategie. Diese
-Provenienz wird validiert und in den Work Graph übernommen, erzeugt aber keine
-Produktverpflichtung: Sprache und Bibliotheken von G0 werden dadurch
-wahrscheinlich weiterverwendet, sind jedoch nicht Teil des
-Transformationsvertrags. Der Prototyp führt noch keine Codeerzeugung aus.
+Provenienz wird validiert und in den Work Graph übernommen. Für
+`sco:ModifyExistingImplementation` materialisiert G0 seinen Quellstand am durch
+`sco:generatesImplementationArtifact` deklarierten Ziel und erhöht den
+eindeutigen Generationsmarker. Sprache und Bibliotheken von G0 werden dadurch
+in G1 weiterverwendet, sind jedoch nicht Teil des Transformationsvertrags. G1
+besitzt ein eigenes Manifest, Projektmetadaten und Lockfile und wird anschließend
+als Black box ausgeführt.
 
 ## Compilerkonventionen v1
 
@@ -140,8 +143,11 @@ Der Prototyp verwendet folgende explizite Abbildungsregeln:
   übersetzt.
 - Ein deklarierter Bootstrap-Prozess muss genau einen als
   `schema:SoftwareApplication` typisierten Seed und die unterstützte Strategie
-  `sco:ModifyExistingImplementation` nennen. Er ist Provenienz, keine
-  Black-box-Verpflichtung des Compilerprodukts.
+  `sco:ModifyExistingImplementation` sowie einen sicheren relativen Pfad über
+  `sco:generatesImplementationArtifact` nennen. Compiler Conventions v1
+  materialisiert dort den Seed-Quellstand mit um eins erhöhtem, eindeutigem
+  Generationsmarker. Der generierte Beweis startet den resultierenden Compiler
+  über dessen eigenes Compiler-Protocol-Manifest.
 - `sh:minLength`, `sh:minExclusive` und `sh:maxExclusive` werden gleichnamig
   beziehungsweise semantisch äquivalent in JSON Schema/OpenAPI abgebildet.
 

@@ -1,5 +1,5 @@
 {
-  "generator": "tools/generate.py",
+  "generator": "spec-compiler",
   "compiler_conventions_version": 1,
   "runtime_protocol_version": 1,
   "work_items": [

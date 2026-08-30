@@ -13,7 +13,8 @@ tool:SpecCompilerG0 a schema:SoftwareApplication ;
 tool:SpecCompilerBootstrapV1 a sco:BootstrapProcess ;
     sco:bootstrapsProduct tool:SpecCompiler ;
     sco:seedImplementation tool:SpecCompilerG0 ;
-    sco:evolutionStrategy sco:ModifyExistingImplementation .
+    sco:evolutionStrategy sco:ModifyExistingImplementation ;
+    sco:generatesImplementationArtifact "src/spec_compiler.py" .
 
 tool:SpecCompilationV1 a sco:TransformationContract ;
     sco:inputSpecPattern "specs/*.ttl" ;

@@ -11,10 +11,11 @@ site/
 products/*
 !products/sql_api_example/
 !products/sql_api_example/**
-!products/shacl_contract_toolchain/
-!products/shacl_contract_toolchain/**
+!products/spec_compiler/
+!products/spec_compiler/**
 products/sql_api_example/**/__pycache__/
 products/sql_api_example/**/*.pyc
 products/sql_api_example/**/.venv/
-products/shacl_contract_toolchain/**/__pycache__/
-products/shacl_contract_toolchain/**/*.pyc
+products/spec_compiler/**/__pycache__/
+products/spec_compiler/**/*.pyc
+products/spec_compiler/**/.venv/

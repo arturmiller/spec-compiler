@@ -1,11 +1,13 @@
 {
-  "generator": "tools/generate.py",
+  "generator": "spec-compiler",
   "compiler_conventions_version": 1,
   "compiler_protocol_version": 1,
   "bootstrap": {
     "process": "https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerBootstrapV1",
     "seed_implementation": "https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerG0",
-    "evolution_strategy": "https://arturmiller.github.io/spec-compiler/ontology/#ModifyExistingImplementation"
+    "evolution_strategy": "https://arturmiller.github.io/spec-compiler/ontology/#ModifyExistingImplementation",
+    "implementation_artifact": "src/spec_compiler.py",
+    "implementation_generation": 1
   },
   "work_items": [
     {
@@ -62,6 +64,28 @@
       "test": "products/spec_compiler/tests/test_contract.py::test_compiler_rejects_a_bundle_without_specs",
       "excluded": [
         "A prescribed exception or logging framework"
+      ]
+    },
+    {
+      "id": "toolchain.compiler.bootstrap",
+      "title": "Execute the bootstrapped Spec Compiler generation",
+      "goal": "Verify the independently materialized G1 compiler.",
+      "depends_on": [
+        "toolchain.compiler.outputs"
+      ],
+      "obligations": [
+        "G0 materializes the declared G1 implementation artifact from its seed source.",
+        "G1 successfully compiles the valid fixture through Compiler Protocol v1."
+      ],
+      "sources": [
+        "`specs/`: Bootstrap Process, seed, strategy, and implementation artifact",
+        "Compiler Conventions v1: deterministic generation increment"
+      ],
+      "test": "products/spec_compiler/tests/test_contract.py::test_bootstrapped_compiler_is_independently_executable",
+      "excluded": [
+        "Byte identity between compiler implementation generations",
+        "A required implementation language",
+        "Stochastic coding-agent orchestration"
       ]
     }
   ]

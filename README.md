@@ -45,17 +45,19 @@ SHACL-Konformität der Antwort.
 
 Der Spec Compiler wird außerdem über sein externes Compilerverhalten beschrieben.
 Der vorhandene Generator dient als expliziter Bootstrap-Compiler `G0` und
-erzeugt Tests, die eine weitere Compilerinvokation `G1` auf einem isolierten
-Product Bundle zweimal ausführen. Beide Läufe müssen byte-identische generierte
-Dateien erreichen. Das prüft Selbstbeschreibung und Reproduzierbarkeit, ist
-aber noch keine unabhängige Korrektheitsprüfung oder vollständige Erzeugung
-einer neuen Compilerimplementierung.
+materialisiert aus seinem Seed deterministisch den eigenständigen Compiler `G1`
+unter `products/spec_compiler/src/spec_compiler.py`. Das Produktmanifest startet
+G1 mit seinem eigenen `pyproject.toml` und Lockfile. Die generierten
+Black-box-Tests führen G1 auf einem isolierten Product Bundle zweimal aus;
+beide Läufe müssen byte-identische Vertragsartefakte erreichen.
 
 Der Bootstrap-Prozess verwendet ausdrücklich die Strategie
 `sco:ModifyExistingImplementation`. Dadurch ist die vorhandene Python-
-Implementierung die wahrscheinliche technische Ausgangsbasis für G1, ohne
-Python zur Anforderung des Transformationsvertrags zu machen. Die tatsächliche
-Codeerzeugung und Ausführung eines Coding Agents ist noch nicht implementiert.
+Implementierung die technische Ausgangsbasis für G1, ohne Python zur
+Anforderung des Transformationsvertrags zu machen. Die aktuelle deterministische
+Seed-Transformation ändert den Generationsmarker und übernimmt den übrigen
+Quellstand. Ein Coding Agent ist an diesem Schritt nicht beteiligt; spätere
+inhaltliche Evolution kann auf demselben geprüften G1-Bundle aufbauen.
 
 ## Ontologie-Dokumentation
 

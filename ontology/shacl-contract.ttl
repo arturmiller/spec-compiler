@@ -223,3 +223,10 @@ sco:deterministicOutput
     rdfs:label "hat deterministische Ausgabe"@de ;
     rdfs:domain sco:TransformationContract ;
     rdfs:range xsd:boolean .
+
+sco:generatesImplementationArtifact
+    a owl:DatatypeProperty ;
+    rdfs:label "generates implementation artifact"@en ;
+    rdfs:label "generiert Implementierungsartefakt"@de ;
+    rdfs:domain sco:BootstrapProcess ;
+    rdfs:range xsd:string .

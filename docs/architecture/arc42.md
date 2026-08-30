@@ -136,7 +136,7 @@ implementation; the directory itself is not an executable system.
 | Behavioral verification | Seed the contracted SQLite store, call the real HTTP endpoint, and validate returned RDF against SHACL. |
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
-| Compiler bootstrap | Record G0 as the seed for modifying an existing implementation, generate proofs from the Spec Compiler Self-Description Bundle, then exercise the selected compiler twice and compare its outputs. Code synthesis is not yet orchestrated. |
+| Compiler bootstrap | Materialize G1 deterministically from G0 at the declared implementation path, then invoke the independent G1 through its own manifest and compare repeated outputs. |
 | Ontology publication | Separate vocabulary definitions from product/example resources, validate every used public term, and deploy unversioned static WIDOCO/WebVOWL output. |
 
 See the accepted decisions in section 9 for rationale and consequences.
@@ -260,7 +260,7 @@ sequenceDiagram
     participant Fixture as Temporary Product Bundle
 
     Operator->>G0: Compile self-description specs
-    G0->>Self: Generate compiler proofs and Work Graph
+    G0->>Self: Generate G1 source, compiler proofs, and Work Graph
     Operator->>Harness: Run generated compiler proofs
     Harness->>G1: Compile isolated fixture through Compiler Protocol v1
     G1->>Fixture: Write declared artifacts A1
@@ -269,9 +269,11 @@ sequenceDiagram
     Harness->>Harness: Require A1 and A2 byte-identical
 ```
 
-`G0` and `G1` currently execute the same checked-in implementation. The
-sequence establishes self-description and a deterministic fixpoint, not an
-independent proof of compiler correctness.
+`G1` is a separately materialized source artifact with its own project metadata,
+lockfile, and manifest. Its implementation is deterministically derived from G0
+by incrementing a generation marker and otherwise retaining the seed source.
+This establishes executable bootstrap continuity and a deterministic behavioral
+fixpoint, not an independent proof of compiler correctness.
 
 ### 6.5 Build and publish ontology documentation
 
@@ -414,6 +416,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0007](decisions/0007-publish-experimental-ontology-with-github-pages.md) | The vocabulary uses separated GitHub-hosted namespaces and is published as an unversioned WIDOCO/WebVOWL GitHub Pages artifact. | Accepted |
 | [0008](decisions/0008-rename-system-and-repository-to-spec-compiler.md) | The system and repository are named Spec Compiler; experimental GitHub-hosted IRIs move with the repository. | Accepted; supersedes earlier system/repository names and ADR 0007's IRI paths |
 | [0009](decisions/0009-separate-bootstrap-provenance-from-transformation-contract.md) | G0 and the modify-existing strategy are explicit Bootstrap Process provenance, separate from technology-neutral product obligations. | Accepted |
+| [0010](decisions/0010-materialize-and-execute-bootstrap-generation.md) | G0 deterministically materializes an independent G1 source artifact that is executed through its own project and manifest. | Accepted; supersedes ADR 0009's deferred-synthesis statement |
 
 ## 10. Quality requirements
 
@@ -438,8 +441,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Exactly one endpoint, table, parameter, and shared Shape are supported. | The model has not demonstrated multi-resource scaling. Extend only with explicit new semantics and tests. |
 | The Contract Model is an untyped dictionary in a large generator module. | Renderer drift becomes more likely as features grow; introduce typed immutable structures before significant expansion. |
 | Expected OpenAPI and tests come from the same compiler. | A shared interpretation bug can affect both oracle and proof; add independent conformance examples or mutation tests. |
-| The bootstrap compiler generates the tests that judge a later invocation of the same implementation. | The fixpoint detects nondeterminism but not shared semantic defects; retain `G0` as an explicit trust anchor and add an independent compiler or oracle before claiming full self-hosting. |
-| Bootstrap provenance is modeled but code synthesis is not orchestrated. | Do not claim that G1 is generated until an agent/runtime consumes the declared seed and produces an independently executable candidate. |
+| G1 is mechanically derived from G0 and judged by tests generated from the same lineage. | The bootstrap proves executable continuity and determinism but not semantic independence; retain G0 as a trust anchor and add an independent compiler or oracle before claiming diverse double compilation. |
 | Experimental IRIs contain the GitHub account and repository name. | Renaming either breaks identifiers; migrate through a persistent redirect such as w3id.org before promising stable public IRIs. |
 | WIDOCO/WebVOWL are documentation-build dependencies with older bundled browser assets. | Pin and hash-check WIDOCO, build the complete site in CI, self-host assets, and keep it outside product runtime boundaries. |
 | GitHub Pages has no RDF content negotiation or SPARQL service. | Publish explicit HTML and serialization URLs; add dynamic infrastructure only if a demonstrated use case requires it. |
@@ -475,6 +477,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Ontology Documentation Site | Unversioned static WIDOCO/WebVOWL artifact deployed to GitHub Pages. |
 | Bootstrap compiler (`G0`) | Trusted checked-in compiler used to generate the first executable proofs from the self-description. |
 | Bootstrap Process | Provenance describing the seed implementation and evolution strategy for deriving a future implementation; not a product behavior contract. |
+| Bootstrap generation (`G1`) | Independently executable compiler source materialized from G0 with its own project metadata, lockfile, and Compiler Protocol manifest. |
 | Work Item | Goal, obligations, sources, dependencies, exclusions, and one executable proof. |
 | Work Graph | Directed dependency graph of Work Items. |
 | Expected OpenAPI | Generated OpenAPI document whose selected elements define the required HTTP contract. |

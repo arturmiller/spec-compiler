@@ -1,6 +1,6 @@
 compiler_protocol_version = 1
 
 [compiler]
-command = ["uv", "run", "python", "tools/generate.py", "--product", "{input_product_root}"]
-working_directory = "../.."
+command = ["uv", "run", "--project", "{compiler_root}", "--frozen", "python", "{compiler_root}/src/spec_compiler.py", "--product", "{input_product_root}"]
+working_directory = "."
 timeout_seconds = 30
