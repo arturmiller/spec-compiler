@@ -26,6 +26,8 @@ The toolchain must:
   OpenAPI, HTTP, SHACL, and explicitly contracted SQLite boundaries;
 - invoke compiler products through Compiler Protocol v1 and verify declared
   artifacts, failure behavior, and deterministic fixpoints as black boxes;
+- keep bootstrap provenance and implementation-neutral transformation
+  obligations separate;
 - validate and publish the experimental contract vocabulary as bilingual
   WIDOCO reference documentation with a searchable WebVOWL graph;
 - produce identical files for identical specs and compiler versions.
@@ -81,7 +83,7 @@ Detailed quality scenarios are in section 10.
 | Datatypes | `xsd:string`, `xsd:decimal`, and `xsd:integer` mappings; fixture synthesis currently covers Shape fields of string and decimal |
 | OpenAPI profile | Self-contained OpenAPI 3.1 JSON, local `$ref`, direct schemas, no schema composition |
 | Orchestration | `uv run --extra dev poe run` on a local or CI host; pytest importlib mode isolates identically named generated test modules between Product Bundles |
-| Compiler product | One `schema:SoftwareApplication` conforming to `sco:CompilerProtocolV1` and linked to one `sco:TransformationContract` with declared input pattern, fixture, artifact patterns, missing-spec behavior, and determinism |
+| Compiler product | One `schema:SoftwareApplication` conforming to `sco:CompilerProtocolV1` and linked to one `sco:TransformationContract` with declared input pattern, fixture, artifact patterns, missing-spec behavior, and determinism; optional validated Bootstrap Process provenance |
 | Ontology publication | Canonical OWL/RDFS vocabulary in `ontology/shacl-contract.ttl`; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
 | Version control | Generated products are ignored except the versioned `sql_api_example` reference bundle |
 
@@ -134,7 +136,7 @@ implementation; the directory itself is not an executable system.
 | Behavioral verification | Seed the contracted SQLite store, call the real HTTP endpoint, and validate returned RDF against SHACL. |
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
-| Compiler bootstrap | Generate proofs from the Spec Compiler Self-Description Bundle with trusted `G0`, then exercise `G1` twice and compare its outputs. |
+| Compiler bootstrap | Record G0 as the seed for modifying an existing implementation, generate proofs from the Spec Compiler Self-Description Bundle, then exercise the selected compiler twice and compare its outputs. Code synthesis is not yet orchestrated. |
 | Ontology publication | Separate vocabulary definitions from product/example resources, validate every used public term, and deploy unversioned static WIDOCO/WebVOWL output. |
 
 See the accepted decisions in section 9 for rationale and consequences.
@@ -160,7 +162,7 @@ views for this section.
 | Component | Source | Responsibility |
 | --- | --- | --- |
 | CLI and Output Coordinator | `parse_args()`, `main()` | Validate the Product Bundle path and coordinate compilation and writes. |
-| RDF/SHACL Contract Reader | `read_contract()` and parsing helpers | Merge Turtle files, validate the supported profile, and build the Contract Model. |
+| RDF/SHACL Contract Reader | `read_contract()` and parsing helpers | Merge Turtle files, validate the supported profile including optional Bootstrap Process provenance, and build the Contract Model. |
 | Deterministic Fixture Synthesizer | `deterministic_value()` | Derive reproducible valid values from supported Shape boundaries. |
 | OpenAPI Contract Renderer | `build_openapi()` | Produce `generated/expected-openapi.json`. |
 | Work Graph Compiler | `build_work_items()` | Produce obligations, sources, dependencies, exclusions, and proof references. |
@@ -355,8 +357,10 @@ compiler error. The normative details are in
 - No LLM or external service participates in compilation.
 - `COMPILER_CONVENTIONS_VERSION` and `RUNTIME_PROTOCOL_VERSION` expose semantic
   compatibility versions in the Work Graph.
-- Compiler-product Work Graphs expose `compiler_protocol_version`; generated
-  proofs compare consecutive output snapshots byte for byte.
+- Compiler-product Work Graphs expose `compiler_protocol_version` and validated
+  Bootstrap Process provenance; generated proofs compare consecutive output
+  snapshots byte for byte. Bootstrap provenance does not prescribe the product
+  implementation language.
 - Ontology documentation is explicitly excluded from byte-identity guarantees;
   its source vocabulary and public-term validation remain deterministic inputs.
 
@@ -409,6 +413,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0006](decisions/0006-separate-product-protocol-and-transformation-contract.md) | Product identity, invocation protocol, and transformation contract vary independently; executable dispatch follows protocol conformance. | Accepted; supersedes the product-typing part of 0005 |
 | [0007](decisions/0007-publish-experimental-ontology-with-github-pages.md) | The vocabulary uses separated GitHub-hosted namespaces and is published as an unversioned WIDOCO/WebVOWL GitHub Pages artifact. | Accepted |
 | [0008](decisions/0008-rename-system-and-repository-to-spec-compiler.md) | The system and repository are named Spec Compiler; experimental GitHub-hosted IRIs move with the repository. | Accepted; supersedes earlier system/repository names and ADR 0007's IRI paths |
+| [0009](decisions/0009-separate-bootstrap-provenance-from-transformation-contract.md) | G0 and the modify-existing strategy are explicit Bootstrap Process provenance, separate from technology-neutral product obligations. | Accepted |
 
 ## 10. Quality requirements
 
@@ -434,6 +439,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | The Contract Model is an untyped dictionary in a large generator module. | Renderer drift becomes more likely as features grow; introduce typed immutable structures before significant expansion. |
 | Expected OpenAPI and tests come from the same compiler. | A shared interpretation bug can affect both oracle and proof; add independent conformance examples or mutation tests. |
 | The bootstrap compiler generates the tests that judge a later invocation of the same implementation. | The fixpoint detects nondeterminism but not shared semantic defects; retain `G0` as an explicit trust anchor and add an independent compiler or oracle before claiming full self-hosting. |
+| Bootstrap provenance is modeled but code synthesis is not orchestrated. | Do not claim that G1 is generated until an agent/runtime consumes the declared seed and produces an independently executable candidate. |
 | Experimental IRIs contain the GitHub account and repository name. | Renaming either breaks identifiers; migrate through a persistent redirect such as w3id.org before promising stable public IRIs. |
 | WIDOCO/WebVOWL are documentation-build dependencies with older bundled browser assets. | Pin and hash-check WIDOCO, build the complete site in CI, self-host assets, and keep it outside product runtime boundaries. |
 | GitHub Pages has no RDF content negotiation or SPARQL service. | Publish explicit HTML and serialization URLs; add dynamic infrastructure only if a demonstrated use case requires it. |
@@ -468,6 +474,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Canonical Ontology | Authored OWL/RDFS vocabulary definition in `ontology/shacl-contract.ttl`; source for WIDOCO and public-term validation. |
 | Ontology Documentation Site | Unversioned static WIDOCO/WebVOWL artifact deployed to GitHub Pages. |
 | Bootstrap compiler (`G0`) | Trusted checked-in compiler used to generate the first executable proofs from the self-description. |
+| Bootstrap Process | Provenance describing the seed implementation and evolution strategy for deriving a future implementation; not a product behavior contract. |
 | Work Item | Goal, obligations, sources, dependencies, exclusions, and one executable proof. |
 | Work Graph | Directed dependency graph of Work Items. |
 | Expected OpenAPI | Generated OpenAPI document whose selected elements define the required HTTP contract. |

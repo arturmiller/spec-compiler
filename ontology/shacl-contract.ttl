@@ -24,6 +24,22 @@ sco:TransformationContract
     rdfs:label "Transformationsvertrag"@de ;
     rdfs:comment "Versioned description of accepted inputs, emitted outputs, rejection behavior, and result equivalence."@en .
 
+sco:BootstrapProcess
+    a owl:Class ;
+    rdfs:label "Bootstrap process"@en ;
+    rdfs:label "Bootstrap-Prozess"@de ;
+    rdfs:comment "Provenance for deriving a candidate implementation from an explicitly identified seed implementation."@en .
+
+sco:EvolutionStrategy
+    a owl:Class ;
+    rdfs:label "Evolution strategy"@en ;
+    rdfs:label "Evolutionsstrategie"@de .
+
+sco:ModifyExistingImplementation
+    a owl:NamedIndividual, sco:EvolutionStrategy ;
+    rdfs:label "Modify existing implementation"@en ;
+    rdfs:label "Bestehende Implementierung verändern"@de .
+
 sco:GetEndpoint
     a owl:Class ;
     rdfs:label "GET endpoint"@en ;
@@ -53,6 +69,27 @@ sco:implementsContract
     rdfs:label "implementiert Vertrag"@de ;
     rdfs:domain schema:SoftwareApplication ;
     rdfs:range sco:TransformationContract .
+
+sco:bootstrapsProduct
+    a owl:ObjectProperty ;
+    rdfs:label "bootstraps product"@en ;
+    rdfs:label "führt Bootstrap für Produkt durch"@de ;
+    rdfs:domain sco:BootstrapProcess ;
+    rdfs:range schema:SoftwareApplication .
+
+sco:seedImplementation
+    a owl:ObjectProperty ;
+    rdfs:label "seed implementation"@en ;
+    rdfs:label "Ausgangsimplementierung"@de ;
+    rdfs:domain sco:BootstrapProcess ;
+    rdfs:range schema:SoftwareApplication .
+
+sco:evolutionStrategy
+    a owl:ObjectProperty ;
+    rdfs:label "evolution strategy"@en ;
+    rdfs:label "Evolutionsstrategie"@de ;
+    rdfs:domain sco:BootstrapProcess ;
+    rdfs:range sco:EvolutionStrategy .
 
 sco:readsFrom
     a owl:ObjectProperty ;

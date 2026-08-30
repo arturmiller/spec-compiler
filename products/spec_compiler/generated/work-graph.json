@@ -2,6 +2,11 @@
   "generator": "tools/generate.py",
   "compiler_conventions_version": 1,
   "compiler_protocol_version": 1,
+  "bootstrap": {
+    "process": "https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerBootstrapV1",
+    "seed_implementation": "https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerG0",
+    "evolution_strategy": "https://arturmiller.github.io/spec-compiler/ontology/#ModifyExistingImplementation"
+  },
   "work_items": [
     {
       "id": "toolchain.compiler.outputs",

@@ -106,6 +106,16 @@ Determinismusnachweis werden zwei Läufe derselben Compilerimplementierung mit
 demselben Input verglichen. Das ist ein Fixpunkt- und Reproduzierbarkeitsnachweis,
 aber kein unabhängiger Beweis für die korrekte Interpretation der Spec.
 
+Ein optionaler `sco:BootstrapProcess` beschreibt getrennt davon, wie eine
+zukünftige Compilerimplementierung abgeleitet werden soll. Er verweist über
+`sco:seedImplementation` auf eine explizite Ausgangsimplementierung und über
+`sco:evolutionStrategy` auf die Ableitungsstrategie. Für den Spec Compiler ist
+G0 der Seed und `sco:ModifyExistingImplementation` die Strategie. Diese
+Provenienz wird validiert und in den Work Graph übernommen, erzeugt aber keine
+Produktverpflichtung: Sprache und Bibliotheken von G0 werden dadurch
+wahrscheinlich weiterverwendet, sind jedoch nicht Teil des
+Transformationsvertrags. Der Prototyp führt noch keine Codeerzeugung aus.
+
 ## Compilerkonventionen v1
 
 Der Prototyp verwendet folgende explizite Abbildungsregeln:
@@ -128,6 +138,10 @@ Der Prototyp verwendet folgende explizite Abbildungsregeln:
 - Die Aussagen `sco:generatesArtifact`, `sco:rejectsMissingSpecs` und
   `sco:deterministicOutput` werden direkt in fokussierte Black-box-Proofs
   übersetzt.
+- Ein deklarierter Bootstrap-Prozess muss genau einen als
+  `schema:SoftwareApplication` typisierten Seed und die unterstützte Strategie
+  `sco:ModifyExistingImplementation` nennen. Er ist Provenienz, keine
+  Black-box-Verpflichtung des Compilerprodukts.
 - `sh:minLength`, `sh:minExclusive` und `sh:maxExclusive` werden gleichnamig
   beziehungsweise semantisch äquivalent in JSON Schema/OpenAPI abgebildet.
 

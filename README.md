@@ -29,7 +29,9 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
   OpenAPI-Spezifikation und `generated/`-Arbeitsaufträgen.
 - `products/spec_compiler/`: Self-Description Bundle, dessen Specs
   die allgemeine Softwareanwendung, ihre Konformität zu Compiler Protocol v1
-  und ihren separat austauschbaren Transformationsvertrag beschreiben.
+  und ihren separat austauschbaren Transformationsvertrag beschreiben. Ein
+  getrennter Bootstrap-Prozess bezeichnet die vorhandene G0-Implementierung als
+  Seed für eine spätere, codegenerierte G1-Implementierung.
 - `ontology/shacl-contract.ttl`: kanonische, öffentliche Definition des
   experimentellen Vertragsvokabulars.
 - `docs/generation-principles.md`: Regeln gegen erfundene
@@ -48,6 +50,12 @@ Product Bundle zweimal ausführen. Beide Läufe müssen byte-identische generier
 Dateien erreichen. Das prüft Selbstbeschreibung und Reproduzierbarkeit, ist
 aber noch keine unabhängige Korrektheitsprüfung oder vollständige Erzeugung
 einer neuen Compilerimplementierung.
+
+Der Bootstrap-Prozess verwendet ausdrücklich die Strategie
+`sco:ModifyExistingImplementation`. Dadurch ist die vorhandene Python-
+Implementierung die wahrscheinliche technische Ausgangsbasis für G1, ohne
+Python zur Anforderung des Transformationsvertrags zu machen. Die tatsächliche
+Codeerzeugung und Ausführung eines Coding Agents ist noch nicht implementiert.
 
 ## Ontologie-Dokumentation
 

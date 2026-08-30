@@ -9,6 +9,7 @@ from tools.generate import read_compiler_contract
 def _graph(
     contract_type: str = "sco:TransformationContract",
     product_type: str = "schema:SoftwareApplication",
+    bootstrap: str = "",
 ) -> Graph:
     graph = Graph()
     graph.parse(
@@ -27,6 +28,8 @@ resource:CompilationV1 a {contract_type} ;
     sco:generatesArtifact "generated/result.txt" ;
     sco:rejectsMissingSpecs true ;
     sco:deterministicOutput true .
+
+{bootstrap}
 ''',
         format="turtle",
     )
@@ -41,6 +44,44 @@ def test_product_identity_is_separate_from_protocol_and_contract(tmp_path: Path)
     assert contract["name"] == "ReplaceableImplementation"
     assert contract["protocol"].endswith("CompilerProtocolV1")
     assert contract["contract"].endswith("CompilationV1")
+    assert contract["bootstrap"] is None
+
+
+def test_bootstrap_provenance_keeps_seed_separate_from_product_contract(
+    tmp_path: Path,
+):
+    (tmp_path / "fixture").mkdir()
+    bootstrap = """
+resource:SeedG0 a schema:SoftwareApplication .
+resource:BootstrapV1 a sco:BootstrapProcess ;
+    sco:bootstrapsProduct resource:ReplaceableImplementation ;
+    sco:seedImplementation resource:SeedG0 ;
+    sco:evolutionStrategy sco:ModifyExistingImplementation .
+"""
+
+    contract = read_compiler_contract(
+        tmp_path,
+        _graph(bootstrap=bootstrap),
+    )
+
+    assert contract["bootstrap"] == {
+        "process": "https://arturmiller.github.io/spec-compiler/resources/test/#BootstrapV1",
+        "seed_implementation": "https://arturmiller.github.io/spec-compiler/resources/test/#SeedG0",
+        "evolution_strategy": "https://arturmiller.github.io/spec-compiler/ontology/#ModifyExistingImplementation",
+    }
+
+
+def test_bootstrap_seed_must_be_a_software_application(tmp_path: Path):
+    (tmp_path / "fixture").mkdir()
+    bootstrap = """
+resource:BootstrapV1 a sco:BootstrapProcess ;
+    sco:bootstrapsProduct resource:ReplaceableImplementation ;
+    sco:seedImplementation resource:SeedG0 ;
+    sco:evolutionStrategy sco:ModifyExistingImplementation .
+"""
+
+    with pytest.raises(ValueError, match="Bootstrap seed"):
+        read_compiler_contract(tmp_path, _graph(bootstrap=bootstrap))
 
 
 def test_compiler_protocol_requires_a_transformation_contract(tmp_path: Path):

@@ -15,7 +15,10 @@ CONTRACT = {'name': 'SpecCompiler',
                          'generated/work-graph.json',
                          'tests/test_contract.py'],
  'rejects_missing_specs': True,
- 'deterministic_output': True}
+ 'deterministic_output': True,
+ 'bootstrap': {'process': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerBootstrapV1',
+               'seed_implementation': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerG0',
+               'evolution_strategy': 'https://arturmiller.github.io/spec-compiler/ontology/#ModifyExistingImplementation'}}
 
 
 def _snapshot(product_root):

@@ -186,6 +186,34 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
     fixture_path = (product_root / fixture).resolve()
     if not fixture_path.is_dir():
         raise ValueError(f"Compiler fixture product does not exist: {fixture_path}")
+    bootstrap_processes = list(graph.subjects(SCO.bootstrapsProduct, product))
+    if len(bootstrap_processes) > 1:
+        raise ValueError(
+            "Compiler product may declare at most one sco:BootstrapProcess"
+        )
+    bootstrap = None
+    if bootstrap_processes:
+        process = bootstrap_processes[0]
+        if (process, RDF.type, SCO.BootstrapProcess) not in graph:
+            raise ValueError(
+                "Compiler bootstrap provenance must be a sco:BootstrapProcess"
+            )
+        seed = one(graph, process, SCO.seedImplementation)
+        if (seed, RDF.type, SCHEMA.SoftwareApplication) not in graph:
+            raise ValueError(
+                "Bootstrap seed must be a schema:SoftwareApplication"
+            )
+        strategy = one(graph, process, SCO.evolutionStrategy)
+        if strategy != SCO.ModifyExistingImplementation:
+            raise ValueError(
+                "Bootstrap evolution strategy must be "
+                "sco:ModifyExistingImplementation"
+            )
+        bootstrap = {
+            "process": str(process),
+            "seed_implementation": str(seed),
+            "evolution_strategy": str(strategy),
+        }
     return {
         "name": local_name(product),
         "contract": str(contract),
@@ -199,6 +227,7 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
         "deterministic_output": bool(
             one(graph, contract, SCO.deterministicOutput).toPython()
         ),
+        "bootstrap": bootstrap,
     }
 
 
@@ -843,6 +872,7 @@ def generate_compiler_contract(product_root: Path, product_path: str, contract: 
                 "generator": "tools/generate.py",
                 "compiler_conventions_version": COMPILER_CONVENTIONS_VERSION,
                 "compiler_protocol_version": 1,
+                "bootstrap": contract["bootstrap"],
                 "work_items": work_items,
             },
             indent=2,
