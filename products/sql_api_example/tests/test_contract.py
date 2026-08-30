@@ -27,11 +27,11 @@ CONTRACT = {'api_path': '/articles/{id}',
  'id_sql_type': 'INTEGER',
  'id_primary_key': True,
  'id_generated': True,
- 'rdf_class': 'https://example.org/catalog/Article',
+ 'rdf_class': 'https://arturmiller.github.io/shacl_example/resources/sql-api/#Article',
  'resource_name': 'Article',
  'shape_name': 'ArticleShape',
  'closed': True,
- 'fields': [{'rdf_path': 'https://example.org/catalog/description',
+ 'fields': [{'rdf_path': 'https://arturmiller.github.io/shacl_example/resources/sql-api/#description',
              'name': 'description',
              'sql_type': 'TEXT',
              'required': True,
@@ -40,7 +40,7 @@ CONTRACT = {'api_path': '/articles/{id}',
              'min_length': 1,
              'min_exclusive': None,
              'max_exclusive': None},
-            {'rdf_path': 'https://example.org/catalog/price',
+            {'rdf_path': 'https://arturmiller.github.io/shacl_example/resources/sql-api/#price',
              'name': 'price',
              'sql_type': 'DECIMAL',
              'required': True,
@@ -272,7 +272,10 @@ def test_get_endpoint_returns_shape_conformant_resource(running_api):
         assert actual == expected
 
     data = Graph()
-    resource = URIRef(f"https://example.org/catalog/contract-resource-{record_id}")
+    resource = URIRef(
+        "https://arturmiller.github.io/shacl_example/resources/sql-api/#"
+        f"contract-resource-{record_id}"
+    )
     data.add((resource, RDF.type, URIRef(CONTRACT["rdf_class"])))
     for field in fields:
         value = payload[field["name"]]

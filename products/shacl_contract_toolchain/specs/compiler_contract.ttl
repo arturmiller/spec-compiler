@@ -1,17 +1,18 @@
-@prefix ex: <https://example.org/catalog/> .
+@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
+@prefix tool: <https://arturmiller.github.io/shacl_example/resources/toolchain/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix schema: <https://schema.org/> .
 
-ex:ShaclContractToolchain a schema:SoftwareApplication ;
-    dcterms:conformsTo ex:CompilerProtocolV1 ;
-    ex:implementsContract ex:ShaclContractCompilationV1 .
+tool:ShaclContractToolchain a schema:SoftwareApplication ;
+    dcterms:conformsTo sco:CompilerProtocolV1 ;
+    sco:implementsContract tool:ShaclContractCompilationV1 .
 
-ex:ShaclContractCompilationV1 a ex:TransformationContract ;
-    ex:inputSpecPattern "specs/*.ttl" ;
-    ex:validFixtureProduct "../sql_api_example" ;
-    ex:generatesArtifact "tests/test_contract.py" ,
+tool:ShaclContractCompilationV1 a sco:TransformationContract ;
+    sco:inputSpecPattern "specs/*.ttl" ;
+    sco:validFixtureProduct "../sql_api_example" ;
+    sco:generatesArtifact "tests/test_contract.py" ,
         "generated/expected-openapi.json" ,
         "generated/work-graph.json" ,
         "generated/issues/*.md" ;
-    ex:rejectsMissingSpecs true ;
-    ex:deterministicOutput true .
+    sco:rejectsMissingSpecs true ;
+    sco:deterministicOutput true .

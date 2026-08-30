@@ -30,6 +30,8 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
 - `products/shacl_contract_toolchain/`: Self-Description Bundle, dessen Specs
   die allgemeine Softwareanwendung, ihre Konformität zu Compiler Protocol v1
   und ihren separat austauschbaren Transformationsvertrag beschreiben.
+- `ontology/shacl-contract.ttl`: kanonische, öffentliche Definition des
+  experimentellen Vertragsvokabulars.
 - `docs/generation-principles.md`: Regeln gegen erfundene
   Implementierungsanforderungen.
 
@@ -46,6 +48,33 @@ Product Bundle zweimal ausführen. Beide Läufe müssen byte-identische generier
 Dateien erreichen. Das prüft Selbstbeschreibung und Reproduzierbarkeit, ist
 aber noch keine unabhängige Korrektheitsprüfung oder vollständige Erzeugung
 einer neuen Compilerimplementierung.
+
+## Ontologie-Dokumentation
+
+Die öffentliche Dokumentationsseite wird lokal mit WIDOCO 1.4.25 und dem darin
+enthaltenen WebVOWL gebaut:
+
+```console
+uv run --extra dev poe ontology-site
+```
+
+Das Ergebnis liegt unversioniert unter `build/ontology-site/`. Der erste Lauf
+lädt das gepinnte WIDOCO-JAR in `.cache/widoco/` und prüft dessen SHA-256. Die
+Startseite verlinkt die englische und deutsche WIDOCO-Referenz, den interaktiven
+WebVOWL-Graphen mit Entitätssuche, die Turtle-Serialisierung und getrennte
+Beispielspezifikationen.
+
+Der Workflow `.github/workflows/ontology-pages.yml` baut die Site bei Pull
+Requests und veröffentlicht sie nach erfolgreichen Tests bei Pushes auf `main`
+über GitHub Pages. Im Repository muss unter **Settings → Pages → Build and
+deployment → Source** einmalig **GitHub Actions** ausgewählt werden.
+
+Die experimentellen IRIs beginnen mit
+`https://arturmiller.github.io/shacl_example/`; das Vokabular verwendet den
+dereferenzierbaren Fragment-Namespace `.../ontology/#`. Ein stabiler Redirect über
+w3id.org bleibt eine spätere Option, falls das Vokabular produktiv wird.
+Auch die getrennten Toolchain- und SQL-API-Ressourcen-Namespaces besitzen unter
+`resources/toolchain/` und `resources/sql-api/` eigene HTML- und Turtle-Ziele.
 
 `generated/expected-openapi.json` beschreibt den aus den Specs erwarteten
 HTTP-Vertrag. Der OpenAPI-Test ruft das Dokument der laufenden Implementierung
@@ -84,7 +113,7 @@ vereinbarten Grenzen. Das Referenzprodukt verwendet Python und FastAPI; eine
 andere Implementierung darf jede Sprache und jedes Framework wählen. Maßgeblich
 ist das Prinzip [Keine erfundenen Anforderungen](docs/generation-principles.md).
 
-`sh:*` ist standardisiertes SHACL. Die `ex:*`-Aussagen beschreiben die
-technische Verbindung zwischen HTTP und Speicherung. Der lokale Name von
+`sh:*` ist standardisiertes SHACL. Die öffentlichen `sco:*`-Aussagen beschreiben
+die technische Verbindung zwischen HTTP und Speicherung. Der lokale Name von
 `sh:path` wird gemäß der dokumentierten Compilerkonvention gleichermaßen als
-JSON-Feld und SQL-Spalte verwendet: `ex:price` wird zu `price`.
+JSON-Feld und SQL-Spalte verwendet: `article:price` wird zu `price`.

@@ -26,6 +26,8 @@ The toolchain must:
   OpenAPI, HTTP, SHACL, and explicitly contracted SQLite boundaries;
 - invoke compiler products through Compiler Protocol v1 and verify declared
   artifacts, failure behavior, and deterministic fixpoints as black boxes;
+- validate and publish the experimental contract vocabulary as bilingual
+  WIDOCO reference documentation with a searchable WebVOWL graph;
 - produce identical files for identical specs and compiler versions.
 
 The prototype is not a complete SHACL, SQL, or OpenAPI compiler, a production
@@ -73,13 +75,14 @@ Detailed quality scenarios are in section 10.
 | --- | --- |
 | Tool implementation | Python 3.12 or newer, RDFLib, pytest, HTTPX, pySHACL |
 | Specs | All `*.ttl` files below a Product Bundle's `specs/`, merged into one RDF graph |
-| Topology | Exactly one `ex:GetEndpoint`, one `ex:SqlTable`, and one shared Shape |
+| Topology | Exactly one `sco:GetEndpoint`, one `sco:SqlTable`, and one shared Shape |
 | Storage | Explicitly declared SQLite with a file supplied through Runtime Protocol v1 |
 | Shape values | Scalar properties with `sh:minCount` 0 or 1 and `sh:maxCount` 1 |
 | Datatypes | `xsd:string`, `xsd:decimal`, and `xsd:integer` mappings; fixture synthesis currently covers Shape fields of string and decimal |
 | OpenAPI profile | Self-contained OpenAPI 3.1 JSON, local `$ref`, direct schemas, no schema composition |
 | Orchestration | `uv run --extra dev poe run` on a local or CI host; pytest importlib mode isolates identically named generated test modules between Product Bundles |
-| Compiler product | One `schema:SoftwareApplication` conforming to `ex:CompilerProtocolV1` and linked to one `ex:TransformationContract` with declared input pattern, fixture, artifact patterns, missing-spec behavior, and determinism |
+| Compiler product | One `schema:SoftwareApplication` conforming to `sco:CompilerProtocolV1` and linked to one `sco:TransformationContract` with declared input pattern, fixture, artifact patterns, missing-spec behavior, and determinism |
+| Ontology publication | Canonical OWL/RDFS vocabulary in `ontology/shacl-contract.ttl`; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
 | Version control | Generated products are ignored except the versioned `sql_api_example` reference bundle |
 
 Python and pytest constrain the toolchain. FastAPI, Pydantic, and Uvicorn are
@@ -109,6 +112,8 @@ the Work Graph, issue Markdown, and tests are a file-based handoff.
 | Compiler Product | Compiler Protocol v1 manifest and an input Product Bundle | Exit status, combined process output, generated files |
 | Operating system | Process, loopback network, temporary files | Exit status and cleanup behavior |
 | Reviewer or CI | Poe/uv commands | Generated artifacts and pytest result |
+| Ontology reader | GitHub Pages URL | WIDOCO reference, WebVOWL entity search, RDF downloads, example specs |
+| GitHub Pages | Static site artifact uploaded by GitHub Actions | Public HTTPS documentation |
 
 ### 3.3 System boundary
 
@@ -130,6 +135,7 @@ implementation; the directory itself is not an executable system.
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
 | Toolchain bootstrap | Generate proofs from the Toolchain Self-Description Bundle with trusted `G0`, then exercise `G1` twice and compare its outputs. |
+| Ontology publication | Separate vocabulary definitions from product/example resources, validate every used public term, and deploy unversioned static WIDOCO/WebVOWL output. |
 
 See the accepted decisions in section 9 for rationale and consequences.
 
@@ -147,6 +153,7 @@ views for this section.
 | Product Bundle | Hold all authored and generated artifacts for one product. It is an artifact boundary, not a runtime process. | `specs/`, `generated/`, `tests/`, `product.toml`, implementation files |
 | Generated Product | Implement the contract using technology selected by its implementer. | Product Runtime process, OpenAPI/HTTP, contracted store |
 | Toolchain Self-Description Bundle | Describe a replaceable Software Application, its Compiler Protocol conformance, and its separately versioned Transformation Contract while keeping the bootstrap trust boundary explicit. | Specs, Compiler Protocol v1 manifest, generated proofs and work |
+| Ontology Documentation Site | Publish human- and machine-readable vocabulary documentation without becoming a runtime dependency of products. | GitHub Pages HTTPS, HTML, JavaScript, Turtle, JSON-LD, RDF/XML |
 
 ### 5.2 Contract Compiler CLI
 
@@ -170,6 +177,7 @@ data, not an independently deployable building block.
 | Generated Contract Test Suite | `products/<name>/tests/test_contract.py` | Define Runtime, OpenAPI, SQLite, HTTP, and SHACL proofs. |
 | Product Runtime Adapter | `tools/contract_runtime.py` | Read the manifest, substitute values, start the process, detect readiness, and clean up the tree. |
 | Compiler Runtime Adapter | `tools/compiler_runtime.py` | Invoke a compiler manifest as a separate bounded process and capture its observable result. |
+| Ontology Documentation Builder | `tools/build_ontology_site.py`, WIDOCO 1.4.25 | Validate namespace use, invoke pinned WIDOCO/WebVOWL, add landing page and example downloads, and verify the static site shape. |
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
 | HTTP/SHACL Behavior Verifier | Generated behavior test | Call the live endpoint, compare values, and validate the response Shape. |
@@ -263,10 +271,37 @@ sequenceDiagram
 sequence establishes self-description and a deterministic fixpoint, not an
 independent proof of compiler correctness.
 
+### 6.5 Build and publish ontology documentation
+
+```mermaid
+sequenceDiagram
+    actor Maintainer
+    participant CI as GitHub Actions
+    participant Builder as Ontology Documentation Builder
+    participant Ontology as Canonical ontology
+    participant Specs as Product specs
+    participant WIDOCO as WIDOCO / WebVOWL
+    participant Pages as GitHub Pages
+
+    Maintainer->>CI: Push main or open pull request
+    CI->>CI: Run complete contract workflow
+    CI->>Builder: Build ontology site
+    Builder->>Ontology: Parse OWL/RDFS definitions and labels
+    Builder->>Specs: Verify used public terms and namespaces
+    Builder->>WIDOCO: Generate bilingual reference and searchable graph
+    WIDOCO-->>Builder: Static site artifact
+    alt push to main
+        CI->>Pages: Deploy build/ontology-site
+    else pull request
+        CI-->>Maintainer: Report build result without deployment
+    end
+```
+
 ## 7. Deployment view
 
-The prototype runs on one Windows or Linux development/CI host. There is no
-production deployment model yet.
+Contract generation and verification run on one Windows or Linux development/CI
+host. Ontology documentation additionally deploys as a static GitHub Pages
+site; there is no Generated Product production deployment model yet.
 
 ```mermaid
 flowchart TB
@@ -281,6 +316,14 @@ flowchart TB
         tool -->|"schema inspection and test fixtures"| db
         product -->|"initializes and reads data"| db
     end
+
+    subgraph github["Deployment Node: GitHub"]
+        actions["Execution Environment: GitHub Actions runner<br/>uv, Python 3.12, Java 17, WIDOCO 1.4.25"]
+        pages["Static Web Host: GitHub Pages<br/>WIDOCO HTML, WebVOWL JavaScript, RDF serializations, examples"]
+        actions -->|"uploads Pages artifact after verification"| pages
+    end
+
+    files -->|"push triggers workflow"| actions
 ```
 
 - The root and reference-product environments have separate dependency manifests
@@ -291,6 +334,8 @@ flowchart TB
   POSIX it uses a dedicated process group and signals the group.
 - Port selection has a small bind race; the runner retries early startup failure
   up to three times.
+- The Pages site is built from sources on every workflow run and is not stored
+  in version control. Pull requests exercise the build without deployment.
 
 ## 8. Crosscutting concepts
 
@@ -312,6 +357,8 @@ compiler error. The normative details are in
   compatibility versions in the Work Graph.
 - Compiler-product Work Graphs expose `compiler_protocol_version`; generated
   proofs compare consecutive output snapshots byte for byte.
+- Ontology documentation is explicitly excluded from byte-identity guarantees;
+  its source vocabulary and public-term validation remain deterministic inputs.
 
 ### 8.3 Product isolation
 
@@ -332,6 +379,10 @@ captured process output. OpenAPI is validated before subset comparison.
 Specs and versioned conventions are inputs. Expected OpenAPI, tests, Work Graph,
 and issues are outputs and carry generated-file warnings where appropriate.
 Changes are made at the source and regenerated.
+
+The WIDOCO/WebVOWL site under `build/ontology-site/` is a disposable,
+unversioned documentation artifact. The canonical ontology and Product Bundle
+specs remain the authored sources.
 
 ### 8.6 Security and trust
 
@@ -356,6 +407,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0004](decisions/0004-common-contract-model-and-work-graph.md) | All deterministic outputs derive from one Contract Model; work is exposed as a dependency graph of proofs. | Accepted |
 | [0005](decisions/0005-bootstrap-toolchain-self-description.md) | The toolchain is specified as a Compiler Product and verified through an explicit bootstrap trust boundary. | Accepted |
 | [0006](decisions/0006-separate-product-protocol-and-transformation-contract.md) | Product identity, invocation protocol, and transformation contract vary independently; executable dispatch follows protocol conformance. | Accepted; supersedes the product-typing part of 0005 |
+| [0007](decisions/0007-publish-experimental-ontology-with-github-pages.md) | The vocabulary uses separated GitHub-hosted namespaces and is published as an unversioned WIDOCO/WebVOWL GitHub Pages artifact. | Accepted |
 
 ## 10. Quality requirements
 
@@ -370,16 +422,20 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Q-7 | Lifecycle safety | After success or failure, no Product Runtime descendant remains; a regression test verifies process-tree cleanup. |
 | Q-8 | Comprehensibility | A maintainer can distinguish executable containers, static artifacts, tool choices, and product choices from arc42 and C4 without reading every source file. |
 | Q-9 | Compiler bootstrap | Given the Toolchain Self-Description Bundle, generated black-box proofs invoke the compiler twice on an isolated fixture and require all generated and test files to be byte-identical. |
+| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes bilingual term reference, RDF downloads, examples, and an interactive WebVOWL graph whose entity search is present. |
 
 ## 11. Risks and technical debt
 
 | Risk or debt | Consequence / mitigation |
 | --- | --- |
-| The custom `ex:*` vocabulary has no independent formal meta-schema. | Invalid contracts are detected procedurally by the compiler; formalize the vocabulary if the prototype continues. |
+| The public ontology currently defines only the vocabulary slice exercised by the prototype. | Publication validation prevents undefined used terms, but OWL axioms and bilingual descriptions must deepen as the contract language grows. |
 | Exactly one endpoint, table, parameter, and shared Shape are supported. | The model has not demonstrated multi-resource scaling. Extend only with explicit new semantics and tests. |
 | The Contract Model is an untyped dictionary in a large generator module. | Renderer drift becomes more likely as features grow; introduce typed immutable structures before significant expansion. |
 | Expected OpenAPI and tests come from the same compiler. | A shared interpretation bug can affect both oracle and proof; add independent conformance examples or mutation tests. |
 | The bootstrap compiler generates the tests that judge a later invocation of the same implementation. | The fixpoint detects nondeterminism but not shared semantic defects; retain `G0` as an explicit trust anchor and add an independent compiler or oracle before claiming full self-hosting. |
+| Experimental IRIs contain the GitHub account and repository name. | Renaming either breaks identifiers; migrate through a persistent redirect such as w3id.org before promising stable public IRIs. |
+| WIDOCO/WebVOWL are documentation-build dependencies with older bundled browser assets. | Pin and hash-check WIDOCO, build the complete site in CI, self-host assets, and keep it outside product runtime boundaries. |
+| GitHub Pages has no RDF content negotiation or SPARQL service. | Publish explicit HTML and serialization URLs; add dynamic infrastructure only if a demonstrated use case requires it. |
 | OpenAPI comparison intentionally supports a narrow 3.1 profile. | Equivalent composed schemas may be rejected; broaden the comparator only with explicit semantics and regression tests. |
 | Integer Shape fields have a mapping but no deterministic fixture synthesizer. | Such fields fail late in fixture generation; either implement the value rule or reject them earlier. |
 | Obsolete generated issue files are not pruned. | Contract changes can leave stale guidance; add a manifest-driven cleanup step with safe target validation. |
@@ -408,6 +464,8 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Compiler Protocol | Technology-independent contract for invoking a compiler on a Product Bundle and observing its exit status, output, and generated files. |
 | Toolchain Self-Description Bundle | Product Bundle whose specs describe the SHACL Contract Toolchain as a Compiler Product. |
 | Transformation Contract | Independently identified and versionable description of accepted inputs, emitted outputs, rejection behavior, and result equivalence. |
+| Canonical Ontology | Authored OWL/RDFS vocabulary definition in `ontology/shacl-contract.ttl`; source for WIDOCO and public-term validation. |
+| Ontology Documentation Site | Unversioned static WIDOCO/WebVOWL artifact deployed to GitHub Pages. |
 | Bootstrap compiler (`G0`) | Trusted checked-in compiler used to generate the first executable proofs from the self-description. |
 | Work Item | Goal, obligations, sources, dependencies, exclusions, and one executable proof. |
 | Work Graph | Directed dependency graph of Work Items. |

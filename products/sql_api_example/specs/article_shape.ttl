@@ -1,23 +1,23 @@
-@prefix ex: <https://example.org/catalog/> .
+@prefix article: <https://arturmiller.github.io/shacl_example/resources/sql-api/#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 # Rein fachlich: Was ist ein gültiger Artikel?
-ex:ArticleShape
+article:ArticleShape
     a sh:NodeShape ;
-    sh:targetClass ex:Article ;
+    sh:targetClass article:Article ;
     sh:closed true ;
     sh:ignoredProperties ( rdf:type ) ;
     sh:property [
-        sh:path ex:description ;
+        sh:path article:description ;
         sh:datatype xsd:string ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
         sh:minLength 1 ;
     ] ;
     sh:property [
-        sh:path ex:price ;
+        sh:path article:price ;
         sh:datatype xsd:decimal ;
         sh:minCount 1 ;
         sh:maxCount 1 ;

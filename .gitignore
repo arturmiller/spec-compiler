@@ -1,6 +1,9 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.cache/
+build/
+site/
 *.pyc
 *.sqlite3
 

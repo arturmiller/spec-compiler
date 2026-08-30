@@ -15,7 +15,7 @@ from rdflib.namespace import DCTERMS, SH, XSD
 ROOT = Path(__file__).parents[1]
 COMPILER_CONVENTIONS_VERSION = 1
 RUNTIME_PROTOCOL_VERSION = 1
-EX = Namespace("https://example.org/catalog/")
+SCO = Namespace("https://arturmiller.github.io/shacl_example/ontology/#")
 SCHEMA = Namespace("https://schema.org/")
 SQL_TYPES = {
     XSD.string: "TEXT",
@@ -69,35 +69,35 @@ def load_contract_graph(product_root: Path) -> Graph:
 def read_contract(product_root: Path, contract_graph: Graph | None = None) -> dict:
     contract_graph = contract_graph or load_contract_graph(product_root)
     shapes = system = contract_graph
-    endpoints = list(system.subjects(RDF.type, EX.GetEndpoint))
-    tables = list(system.subjects(RDF.type, EX.SqlTable))
+    endpoints = list(system.subjects(RDF.type, SCO.GetEndpoint))
+    tables = list(system.subjects(RDF.type, SCO.SqlTable))
     if len(endpoints) != 1 or len(tables) != 1:
         raise ValueError("Prototype expects exactly one GET endpoint and one SQL table")
     endpoint, table = endpoints[0], tables[0]
-    shape = one(system, endpoint, EX.returns)
-    if one(system, table, EX.stores) != shape:
+    shape = one(system, endpoint, SCO.returns)
+    if one(system, table, SCO.stores) != shape:
         raise ValueError("Endpoint and table must reference the same shape")
-    if one(system, endpoint, EX.readsFrom) != table:
+    if one(system, endpoint, SCO.readsFrom) != table:
         raise ValueError("GET endpoint must explicitly identify the table it reads")
-    if one(system, table, EX.databaseEngine) != EX.SQLite:
-        raise ValueError("Prototype only has a declared mapping for ex:SQLite")
+    if one(system, table, SCO.databaseEngine) != SCO.SQLite:
+        raise ValueError("Prototype only has a declared mapping for sco:SQLite")
     rdf_class = one(shapes, shape, SH.targetClass)
 
-    api_path = str(one(system, endpoint, EX.path))
-    path_parameter = one(system, endpoint, EX.pathParameter)
-    parameter_name = str(one(system, path_parameter, EX.name))
+    api_path = str(one(system, endpoint, SCO.path))
+    path_parameter = one(system, endpoint, SCO.pathParameter)
+    parameter_name = str(one(system, path_parameter, SCO.name))
     parameter_datatype = one(system, path_parameter, SH.datatype)
     if parameter_datatype not in OPENAPI_TYPES:
         raise ValueError(f"No OpenAPI type mapping for {parameter_datatype}")
     if f"{{{parameter_name}}}" not in api_path:
         raise ValueError(f"Path does not contain declared parameter {parameter_name!r}")
 
-    table_name = sql_identifier(str(one(system, table, EX.tableName)))
-    id_column = sql_identifier(str(one(system, table, EX.idColumn)))
-    id_datatype = one(system, table, EX.idDatatype)
+    table_name = sql_identifier(str(one(system, table, SCO.tableName)))
+    id_column = sql_identifier(str(one(system, table, SCO.idColumn)))
+    id_datatype = one(system, table, SCO.idDatatype)
     if id_datatype not in SQL_TYPES:
         raise ValueError(f"No SQL type mapping for identifier {id_datatype}")
-    if str(one(system, path_parameter, EX.mapsToColumn)) != id_column:
+    if str(one(system, path_parameter, SCO.mapsToColumn)) != id_column:
         raise ValueError("Path parameter must explicitly map to the identifier column")
 
     fields = []
@@ -134,20 +134,20 @@ def read_contract(product_root: Path, contract_graph: Graph | None = None) -> di
 
     return {
         "api_path": api_path,
-        "success_status": int(one(system, endpoint, EX.successStatus)),
-        "media_type": str(one(system, endpoint, EX.mediaType)),
+        "success_status": int(one(system, endpoint, SCO.successStatus)),
+        "media_type": str(one(system, endpoint, SCO.mediaType)),
         "path_parameter": {
             "name": parameter_name,
             "datatype": str(parameter_datatype),
             "openapi_type": OPENAPI_TYPES[parameter_datatype],
             "column": id_column,
         },
-        "database_engine": local_name(one(system, table, EX.databaseEngine)),
+        "database_engine": local_name(one(system, table, SCO.databaseEngine)),
         "table_name": table_name,
         "id_column": id_column,
         "id_sql_type": SQL_TYPES[id_datatype],
-        "id_primary_key": bool(one(system, table, EX.idPrimaryKey).toPython()),
-        "id_generated": bool(one(system, table, EX.idGenerated).toPython()),
+        "id_primary_key": bool(one(system, table, SCO.idPrimaryKey).toPython()),
+        "id_generated": bool(one(system, table, SCO.idGenerated).toPython()),
         "rdf_class": str(rdf_class),
         "resource_name": local_name(rdf_class),
         "shape_name": local_name(shape),
@@ -157,45 +157,47 @@ def read_contract(product_root: Path, contract_graph: Graph | None = None) -> di
 
 
 def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
-    products = list(graph.subjects(DCTERMS.conformsTo, EX.CompilerProtocolV1))
+    products = list(graph.subjects(DCTERMS.conformsTo, SCO.CompilerProtocolV1))
     if len(products) != 1:
         raise ValueError(
             "Compiler profile expects exactly one product conforming to "
-            "ex:CompilerProtocolV1"
+            "sco:CompilerProtocolV1"
         )
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
         raise ValueError(
             "Compiler Protocol product must be a schema:SoftwareApplication"
         )
-    contract = one(graph, product, EX.implementsContract)
-    if (contract, RDF.type, EX.TransformationContract) not in graph:
+    contract = one(graph, product, SCO.implementsContract)
+    if (contract, RDF.type, SCO.TransformationContract) not in graph:
         raise ValueError(
-            "Compiler product contract must be an ex:TransformationContract"
+            "Compiler product contract must be a sco:TransformationContract"
         )
-    artifacts = sorted(str(value) for value in graph.objects(contract, EX.generatesArtifact))
+    artifacts = sorted(
+        str(value) for value in graph.objects(contract, SCO.generatesArtifact)
+    )
     if not artifacts:
         raise ValueError("Contract compiler must declare at least one generated artifact")
     for artifact in artifacts:
         path = Path(artifact)
         if path.is_absolute() or ".." in path.parts:
             raise ValueError(f"Generated artifact pattern must stay in the input bundle: {artifact}")
-    fixture = str(one(graph, contract, EX.validFixtureProduct))
+    fixture = str(one(graph, contract, SCO.validFixtureProduct))
     fixture_path = (product_root / fixture).resolve()
     if not fixture_path.is_dir():
         raise ValueError(f"Compiler fixture product does not exist: {fixture_path}")
     return {
         "name": local_name(product),
         "contract": str(contract),
-        "protocol": str(EX.CompilerProtocolV1),
-        "input_spec_pattern": str(one(graph, contract, EX.inputSpecPattern)),
+        "protocol": str(SCO.CompilerProtocolV1),
+        "input_spec_pattern": str(one(graph, contract, SCO.inputSpecPattern)),
         "valid_fixture_product": fixture,
         "generated_artifacts": artifacts,
         "rejects_missing_specs": bool(
-            one(graph, contract, EX.rejectsMissingSpecs).toPython()
+            one(graph, contract, SCO.rejectsMissingSpecs).toPython()
         ),
         "deterministic_output": bool(
-            one(graph, contract, EX.deterministicOutput).toPython()
+            one(graph, contract, SCO.deterministicOutput).toPython()
         ),
     }
 
@@ -685,7 +687,10 @@ def test_get_endpoint_returns_shape_conformant_resource(running_api):
         assert actual == expected
 
     data = Graph()
-    resource = URIRef(f"https://example.org/catalog/contract-resource-{record_id}")
+    resource = URIRef(
+        "https://arturmiller.github.io/shacl_example/resources/sql-api/#"
+        f"contract-resource-{record_id}"
+    )
     data.add((resource, RDF.type, URIRef(CONTRACT["rdf_class"])))
     for field in fields:
         value = payload[field["name"]]
@@ -879,7 +884,7 @@ def main() -> None:
     )
     graph = load_contract_graph(product_root)
     compiler_products = list(
-        graph.subjects(DCTERMS.conformsTo, EX.CompilerProtocolV1)
+        graph.subjects(DCTERMS.conformsTo, SCO.CompilerProtocolV1)
     )
     if compiler_products:
         contract = read_compiler_contract(product_root, graph)

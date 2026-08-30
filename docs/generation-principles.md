@@ -23,6 +23,18 @@ Produktcode.
 
 ## Quellen der aktuellen Anforderungen
 
+Das öffentliche Vokabular liegt autoritativ in
+`ontology/shacl-contract.ttl`. Eigene Vertragsbegriffe verwenden den Namespace
+`https://arturmiller.github.io/shacl_example/ontology/#`. Konkrete Toolchain- und
+SQL-API-Ressourcen liegen in getrennten `resources/toolchain/#`- beziehungsweise
+`resources/sql-api/#`-Namespaces. Eine Produkt-Spec darf einen öffentlichen
+Vokabularbegriff verwenden, ohne ihn neu zu definieren; der Publikationsvalidator
+verlangt dafür eine Definition und ein Label in der kanonischen Ontologie.
+
+WIDOCO-HTML, WebVOWL-Daten und publizierte Beispielkopien sind abgeleitete
+Dokumentationsartefakte. Sie begründen keine Produktanforderungen und werden
+nicht als deterministische Vertragsartefakte behandelt.
+
 Die RDF-/SHACL-Specs legen ausdrücklich fest:
 
 - GET-Endpunkt, Pfad, Pfadparameter und dessen Datentyp,
@@ -85,9 +97,9 @@ beobachtet ausschließlich Exitstatus, zusammengeführte Standardausgabe und die
 im Input Product Bundle erzeugten Dateien.
 
 Das Produkt ist allgemein als `schema:SoftwareApplication` klassifiziert.
-`dcterms:conformsTo ex:CompilerProtocolV1` wählt das ausführbare Protokoll;
-`ex:implementsContract` verweist auf einen separat versionierbaren
-`ex:TransformationContract`. Dieser darf Ausgabepfade oder Glob-Muster, die
+`dcterms:conformsTo sco:CompilerProtocolV1` wählt das ausführbare Protokoll;
+`sco:implementsContract` verweist auf einen separat versionierbaren
+`sco:TransformationContract`. Dieser darf Ausgabepfade oder Glob-Muster, die
 Suche nach Eingabespecs, Fehlerfälle und die jeweilige Ergebnisgleichheit
 explizit festlegen. Beim
 Determinismusnachweis werden zwei Läufe derselben Compilerimplementierung mit
@@ -98,7 +110,7 @@ aber kein unabhängiger Beweis für die korrekte Interpretation der Spec.
 
 Der Prototyp verwendet folgende explizite Abbildungsregeln:
 
-- `ex:GetEndpoint` wird als HTTP `GET` interpretiert.
+- `sco:GetEndpoint` wird als HTTP `GET` interpretiert.
 - Der lokale Name eines `sh:path` wird als JSON-Feld und SQL-Spalte verwendet.
   Er muss deshalb ein sicherer SQL-Bezeichner sein.
 - `xsd:string` wird zu OpenAPI `string` und SQL `TEXT`.
@@ -108,13 +120,13 @@ Der Prototyp verwendet folgende explizite Abbildungsregeln:
 - `sh:minCount 0` wird zu einem optionalen JSON-Feld und einer nullable Spalte.
 - Nur skalare Properties mit `sh:maxCount 1` und `sh:minCount 0` oder `1`
   werden unterstützt.
-- `dcterms:conformsTo ex:CompilerProtocolV1` wählt das Compilerprodukt-Profil
+- `dcterms:conformsTo sco:CompilerProtocolV1` wählt das Compilerprodukt-Profil
   statt des HTTP-/SQLite-Profils; eine fachliche Produktklasse steuert niemals
   die ausführbare Testsemantik.
-- `ex:implementsContract` muss auf genau einen `ex:TransformationContract`
+- `sco:implementsContract` muss auf genau einen `sco:TransformationContract`
   zeigen, aus dem die generierten Verpflichtungen stammen.
-- Die Aussagen `ex:generatesArtifact`, `ex:rejectsMissingSpecs` und
-  `ex:deterministicOutput` werden direkt in fokussierte Black-box-Proofs
+- Die Aussagen `sco:generatesArtifact`, `sco:rejectsMissingSpecs` und
+  `sco:deterministicOutput` werden direkt in fokussierte Black-box-Proofs
   übersetzt.
 - `sh:minLength`, `sh:minExclusive` und `sh:maxExclusive` werden gleichnamig
   beziehungsweise semantisch äquivalent in JSON Schema/OpenAPI abgebildet.

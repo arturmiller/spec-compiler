@@ -1,0 +1,188 @@
+@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://arturmiller.github.io/shacl_example/ontology/>
+    a owl:Ontology ;
+    dcterms:title "SHACL Contract Ontology"@en ;
+    dcterms:title "SHACL-Vertragsontologie"@de ;
+    dcterms:description "Vocabulary for executable product and transformation contracts."@en ;
+    dcterms:description "Vokabular für ausführbare Produkt- und Transformationsverträge."@de ;
+    dcterms:creator <https://github.com/arturmiller> ;
+    dcterms:source <https://github.com/arturmiller/shacl_example> ;
+    vann:preferredNamespacePrefix "sco" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/shacl_example/ontology/#" ;
+    owl:versionInfo "0.1.0-experimental" .
+
+sco:TransformationContract
+    a owl:Class ;
+    rdfs:label "Transformation contract"@en ;
+    rdfs:label "Transformationsvertrag"@de ;
+    rdfs:comment "Versioned description of accepted inputs, emitted outputs, rejection behavior, and result equivalence."@en .
+
+sco:GetEndpoint
+    a owl:Class ;
+    rdfs:label "GET endpoint"@en ;
+    rdfs:label "GET-Endpunkt"@de ;
+    rdfs:comment "HTTP GET endpoint that returns resources described by a SHACL shape."@en .
+
+sco:SqlTable
+    a owl:Class ;
+    rdfs:label "SQL table"@en ;
+    rdfs:label "SQL-Tabelle"@de ;
+    rdfs:comment "Relational table that stores resources described by a SHACL shape."@en .
+
+sco:CompilerProtocolV1
+    a owl:NamedIndividual ;
+    rdfs:label "Compiler Protocol v1"@en ;
+    rdfs:label "Compilerprotokoll v1"@de ;
+    rdfs:comment "Manifest-driven command-line protocol for invoking a compiler on a Product Bundle."@en .
+
+sco:SQLite
+    a owl:NamedIndividual ;
+    rdfs:label "SQLite"@en ;
+    rdfs:label "SQLite"@de .
+
+sco:implementsContract
+    a owl:ObjectProperty ;
+    rdfs:label "implements contract"@en ;
+    rdfs:label "implementiert Vertrag"@de ;
+    rdfs:domain schema:SoftwareApplication ;
+    rdfs:range sco:TransformationContract .
+
+sco:readsFrom
+    a owl:ObjectProperty ;
+    rdfs:label "reads from"@en ;
+    rdfs:label "liest aus"@de ;
+    rdfs:domain sco:GetEndpoint ;
+    rdfs:range sco:SqlTable .
+
+sco:returns
+    a owl:ObjectProperty ;
+    rdfs:label "returns shape"@en ;
+    rdfs:label "liefert Shape"@de ;
+    rdfs:domain sco:GetEndpoint .
+
+sco:stores
+    a owl:ObjectProperty ;
+    rdfs:label "stores shape"@en ;
+    rdfs:label "speichert Shape"@de ;
+    rdfs:domain sco:SqlTable .
+
+sco:pathParameter
+    a owl:ObjectProperty ;
+    rdfs:label "path parameter"@en ;
+    rdfs:label "Pfadparameter"@de ;
+    rdfs:domain sco:GetEndpoint .
+
+sco:databaseEngine
+    a owl:ObjectProperty ;
+    rdfs:label "database engine"@en ;
+    rdfs:label "Datenbank-Engine"@de ;
+    rdfs:domain sco:SqlTable .
+
+sco:idDatatype
+    a owl:ObjectProperty ;
+    rdfs:label "identifier datatype"@en ;
+    rdfs:label "Bezeichner-Datentyp"@de ;
+    rdfs:domain sco:SqlTable .
+
+sco:path
+    a owl:DatatypeProperty ;
+    rdfs:label "HTTP path"@en ;
+    rdfs:label "HTTP-Pfad"@de ;
+    rdfs:domain sco:GetEndpoint ;
+    rdfs:range xsd:string .
+
+sco:name
+    a owl:DatatypeProperty ;
+    rdfs:label "name"@en ;
+    rdfs:label "Name"@de ;
+    rdfs:range xsd:string .
+
+sco:mapsToColumn
+    a owl:DatatypeProperty ;
+    rdfs:label "maps to column"@en ;
+    rdfs:label "bildet auf Spalte ab"@de ;
+    rdfs:range xsd:string .
+
+sco:successStatus
+    a owl:DatatypeProperty ;
+    rdfs:label "success status"@en ;
+    rdfs:label "Erfolgsstatus"@de ;
+    rdfs:domain sco:GetEndpoint ;
+    rdfs:range xsd:integer .
+
+sco:mediaType
+    a owl:DatatypeProperty ;
+    rdfs:label "media type"@en ;
+    rdfs:label "Medientyp"@de ;
+    rdfs:domain sco:GetEndpoint ;
+    rdfs:range xsd:string .
+
+sco:tableName
+    a owl:DatatypeProperty ;
+    rdfs:label "table name"@en ;
+    rdfs:label "Tabellenname"@de ;
+    rdfs:domain sco:SqlTable ;
+    rdfs:range xsd:string .
+
+sco:idColumn
+    a owl:DatatypeProperty ;
+    rdfs:label "identifier column"@en ;
+    rdfs:label "Bezeichnerspalte"@de ;
+    rdfs:domain sco:SqlTable ;
+    rdfs:range xsd:string .
+
+sco:idPrimaryKey
+    a owl:DatatypeProperty ;
+    rdfs:label "identifier is primary key"@en ;
+    rdfs:label "Bezeichner ist Primärschlüssel"@de ;
+    rdfs:domain sco:SqlTable ;
+    rdfs:range xsd:boolean .
+
+sco:idGenerated
+    a owl:DatatypeProperty ;
+    rdfs:label "identifier is generated"@en ;
+    rdfs:label "Bezeichner wird generiert"@de ;
+    rdfs:domain sco:SqlTable ;
+    rdfs:range xsd:boolean .
+
+sco:inputSpecPattern
+    a owl:DatatypeProperty ;
+    rdfs:label "input specification pattern"@en ;
+    rdfs:label "Eingabespezifikationsmuster"@de ;
+    rdfs:domain sco:TransformationContract ;
+    rdfs:range xsd:string .
+
+sco:validFixtureProduct
+    a owl:DatatypeProperty ;
+    rdfs:label "valid fixture product"@en ;
+    rdfs:label "gültiges Fixture-Produkt"@de ;
+    rdfs:domain sco:TransformationContract ;
+    rdfs:range xsd:string .
+
+sco:generatesArtifact
+    a owl:DatatypeProperty ;
+    rdfs:label "generates artifact"@en ;
+    rdfs:label "generiert Artefakt"@de ;
+    rdfs:domain sco:TransformationContract ;
+    rdfs:range xsd:string .
+
+sco:rejectsMissingSpecs
+    a owl:DatatypeProperty ;
+    rdfs:label "rejects missing specifications"@en ;
+    rdfs:label "lehnt fehlende Spezifikationen ab"@de ;
+    rdfs:domain sco:TransformationContract ;
+    rdfs:range xsd:boolean .
+
+sco:deterministicOutput
+    a owl:DatatypeProperty ;
+    rdfs:label "has deterministic output"@en ;
+    rdfs:label "hat deterministische Ausgabe"@de ;
+    rdfs:domain sco:TransformationContract ;
+    rdfs:range xsd:boolean .

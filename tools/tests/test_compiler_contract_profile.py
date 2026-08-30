@@ -7,25 +7,26 @@ from tools.generate import read_compiler_contract
 
 
 def _graph(
-    contract_type: str = "ex:TransformationContract",
+    contract_type: str = "sco:TransformationContract",
     product_type: str = "schema:SoftwareApplication",
 ) -> Graph:
     graph = Graph()
     graph.parse(
-        data=f'''@prefix ex: <https://example.org/catalog/> .
+        data=f'''@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
+@prefix resource: <https://arturmiller.github.io/shacl_example/resources/test/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix schema: <https://schema.org/> .
 
-ex:ReplaceableImplementation a {product_type} ;
-    dcterms:conformsTo ex:CompilerProtocolV1 ;
-    ex:implementsContract ex:CompilationV1 .
+resource:ReplaceableImplementation a {product_type} ;
+    dcterms:conformsTo sco:CompilerProtocolV1 ;
+    sco:implementsContract resource:CompilationV1 .
 
-ex:CompilationV1 a {contract_type} ;
-    ex:inputSpecPattern "specs/*.ttl" ;
-    ex:validFixtureProduct "fixture" ;
-    ex:generatesArtifact "generated/result.txt" ;
-    ex:rejectsMissingSpecs true ;
-    ex:deterministicOutput true .
+resource:CompilationV1 a {contract_type} ;
+    sco:inputSpecPattern "specs/*.ttl" ;
+    sco:validFixtureProduct "fixture" ;
+    sco:generatesArtifact "generated/result.txt" ;
+    sco:rejectsMissingSpecs true ;
+    sco:deterministicOutput true .
 ''',
         format="turtle",
     )
@@ -45,8 +46,8 @@ def test_product_identity_is_separate_from_protocol_and_contract(tmp_path: Path)
 def test_compiler_protocol_requires_a_transformation_contract(tmp_path: Path):
     (tmp_path / "fixture").mkdir()
 
-    with pytest.raises(ValueError, match="ex:TransformationContract"):
-        read_compiler_contract(tmp_path, _graph("ex:UnrelatedContract"))
+    with pytest.raises(ValueError, match="sco:TransformationContract"):
+        read_compiler_contract(tmp_path, _graph("sco:UnrelatedContract"))
 
 
 def test_protocol_dispatch_does_not_replace_general_product_type(tmp_path: Path):
@@ -55,5 +56,5 @@ def test_protocol_dispatch_does_not_replace_general_product_type(tmp_path: Path)
     with pytest.raises(ValueError, match="schema:SoftwareApplication"):
         read_compiler_contract(
             tmp_path,
-            _graph(product_type="ex:ContractCompiler"),
+            _graph(product_type="sco:ContractCompiler"),
         )

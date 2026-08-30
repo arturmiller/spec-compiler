@@ -6,8 +6,8 @@ from tools.compiler_runtime import run_compiler
 
 COMPILER_ROOT = Path(__file__).parents[1]
 CONTRACT = {'name': 'ShaclContractToolchain',
- 'contract': 'https://example.org/catalog/ShaclContractCompilationV1',
- 'protocol': 'https://example.org/catalog/CompilerProtocolV1',
+ 'contract': 'https://arturmiller.github.io/shacl_example/resources/toolchain/#ShaclContractCompilationV1',
+ 'protocol': 'https://arturmiller.github.io/shacl_example/ontology/#CompilerProtocolV1',
  'input_spec_pattern': 'specs/*.ttl',
  'valid_fixture_product': '../sql_api_example',
  'generated_artifacts': ['generated/expected-openapi.json',

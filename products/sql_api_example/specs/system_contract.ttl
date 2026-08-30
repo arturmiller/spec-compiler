@@ -1,27 +1,28 @@
-@prefix ex: <https://example.org/catalog/> .
+@prefix article: <https://arturmiller.github.io/shacl_example/resources/sql-api/#> .
+@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 # Technisch: Wo wird ein Artikel ausgegeben und gespeichert?
-ex:GetArticleEndpoint
-    a ex:GetEndpoint ;
-    ex:path "/articles/{id}" ;
-    ex:pathParameter [
-        ex:name "id" ;
+article:GetArticleEndpoint
+    a sco:GetEndpoint ;
+    sco:path "/articles/{id}" ;
+    sco:pathParameter [
+        sco:name "id" ;
         sh:datatype xsd:integer ;
-        ex:mapsToColumn "id" ;
+        sco:mapsToColumn "id" ;
     ] ;
-    ex:successStatus 200 ;
-    ex:mediaType "application/json" ;
-    ex:readsFrom ex:ArticlesTable ;
-    ex:returns ex:ArticleShape .
+    sco:successStatus 200 ;
+    sco:mediaType "application/json" ;
+    sco:readsFrom article:ArticlesTable ;
+    sco:returns article:ArticleShape .
 
-ex:ArticlesTable
-    a ex:SqlTable ;
-    ex:databaseEngine ex:SQLite ;
-    ex:tableName "articles" ;
-    ex:idColumn "id" ;
-    ex:idDatatype xsd:integer ;
-    ex:idPrimaryKey true ;
-    ex:idGenerated true ;
-    ex:stores ex:ArticleShape .
+article:ArticlesTable
+    a sco:SqlTable ;
+    sco:databaseEngine sco:SQLite ;
+    sco:tableName "articles" ;
+    sco:idColumn "id" ;
+    sco:idDatatype xsd:integer ;
+    sco:idPrimaryKey true ;
+    sco:idGenerated true ;
+    sco:stores article:ArticleShape .
