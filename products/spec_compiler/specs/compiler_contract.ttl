@@ -1,13 +1,13 @@
-@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
-@prefix tool: <https://arturmiller.github.io/shacl_example/resources/toolchain/#> .
+@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
+@prefix tool: <https://arturmiller.github.io/spec-compiler/resources/toolchain/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix schema: <https://schema.org/> .
 
-tool:ShaclContractToolchain a schema:SoftwareApplication ;
+tool:SpecCompiler a schema:SoftwareApplication ;
     dcterms:conformsTo sco:CompilerProtocolV1 ;
-    sco:implementsContract tool:ShaclContractCompilationV1 .
+    sco:implementsContract tool:SpecCompilationV1 .
 
-tool:ShaclContractCompilationV1 a sco:TransformationContract ;
+tool:SpecCompilationV1 a sco:TransformationContract ;
     sco:inputSpecPattern "specs/*.ttl" ;
     sco:validFixtureProduct "../sql_api_example" ;
     sco:generatesArtifact "tests/test_contract.py" ,

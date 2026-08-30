@@ -25,7 +25,7 @@ Produktcode.
 
 Das öffentliche Vokabular liegt autoritativ in
 `ontology/shacl-contract.ttl`. Eigene Vertragsbegriffe verwenden den Namespace
-`https://arturmiller.github.io/shacl_example/ontology/#`. Konkrete Toolchain- und
+`https://arturmiller.github.io/spec-compiler/ontology/#`. Konkrete Toolchain- und
 SQL-API-Ressourcen liegen in getrennten `resources/toolchain/#`- beziehungsweise
 `resources/sql-api/#`-Namespaces. Eine Produkt-Spec darf einen öffentlichen
 Vokabularbegriff verwenden, ohne ihn neu zu definieren; der Publikationsvalidator

@@ -1,4 +1,4 @@
-@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
+@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -6,16 +6,16 @@
 @prefix vann: <http://purl.org/vocab/vann/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<https://arturmiller.github.io/shacl_example/ontology/>
+<https://arturmiller.github.io/spec-compiler/ontology/>
     a owl:Ontology ;
     dcterms:title "SHACL Contract Ontology"@en ;
     dcterms:title "SHACL-Vertragsontologie"@de ;
     dcterms:description "Vocabulary for executable product and transformation contracts."@en ;
     dcterms:description "Vokabular für ausführbare Produkt- und Transformationsverträge."@de ;
     dcterms:creator <https://github.com/arturmiller> ;
-    dcterms:source <https://github.com/arturmiller/shacl_example> ;
+    dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "sco" ;
-    vann:preferredNamespaceUri "https://arturmiller.github.io/shacl_example/ontology/#" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/#" ;
     owl:versionInfo "0.1.0-experimental" .
 
 sco:TransformationContract

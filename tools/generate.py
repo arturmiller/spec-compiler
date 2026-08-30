@@ -15,7 +15,7 @@ from rdflib.namespace import DCTERMS, SH, XSD
 ROOT = Path(__file__).parents[1]
 COMPILER_CONVENTIONS_VERSION = 1
 RUNTIME_PROTOCOL_VERSION = 1
-SCO = Namespace("https://arturmiller.github.io/shacl_example/ontology/#")
+SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
 SCHEMA = Namespace("https://schema.org/")
 SQL_TYPES = {
     XSD.string: "TEXT",
@@ -177,7 +177,7 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
         str(value) for value in graph.objects(contract, SCO.generatesArtifact)
     )
     if not artifacts:
-        raise ValueError("Contract compiler must declare at least one generated artifact")
+        raise ValueError("Spec compiler must declare at least one generated artifact")
     for artifact in artifacts:
         path = Path(artifact)
         if path.is_absolute() or ".." in path.parts:
@@ -688,7 +688,7 @@ def test_get_endpoint_returns_shape_conformant_resource(running_api):
 
     data = Graph()
     resource = URIRef(
-        "https://arturmiller.github.io/shacl_example/resources/sql-api/#"
+        "https://arturmiller.github.io/spec-compiler/resources/sql-api/#"
         f"contract-resource-{record_id}"
     )
     data.add((resource, RDF.type, URIRef(CONTRACT["rdf_class"])))

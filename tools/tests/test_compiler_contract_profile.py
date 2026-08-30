@@ -12,8 +12,8 @@ def _graph(
 ) -> Graph:
     graph = Graph()
     graph.parse(
-        data=f'''@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
-@prefix resource: <https://arturmiller.github.io/shacl_example/resources/test/#> .
+        data=f'''@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
+@prefix resource: <https://arturmiller.github.io/spec-compiler/resources/test/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix schema: <https://schema.org/> .
 

@@ -21,7 +21,7 @@ Compile a valid Product Bundle through Compiler Protocol v1.
 ## Verification
 
 ```console
-uv run --extra dev pytest -q products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_generates_declared_artifacts
+uv run --extra dev pytest -q products/spec_compiler/tests/test_contract.py::test_compiler_generates_declared_artifacts
 ```
 
 ## Sources
@@ -32,6 +32,6 @@ uv run --extra dev pytest -q products/shacl_contract_toolchain/tests/test_contra
 ## Boundaries
 
 - Do not edit the product's `specs/`, `tests/`, or `generated/` directories.
-- Implement product behavior under `products/shacl_contract_toolchain/`.
+- Implement product behavior under `products/spec_compiler/`.
 - Do not add implementation requirements that are absent from the specs or the documented runtime protocol.
 - Out of scope: A particular compiler implementation language.

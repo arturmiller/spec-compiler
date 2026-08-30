@@ -1,4 +1,4 @@
-# SHACL contract prototype
+# Spec Compiler
 
 Dieses kleine Beispiel beantwortet eine konkrete Frage: Kann ein RDF-Vertrag
 ein Artikelobjekt mit einem GET-Endpunkt und einer SQLite-Tabelle verbinden und
@@ -27,7 +27,7 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
 - `products/sql_api_example/`: versioniertes Referenzprodukt mit Produktcode,
   `specs/`, Laufzeitmanifest, deterministisch erzeugten `tests/`, erwarteter
   OpenAPI-Spezifikation und `generated/`-Arbeitsaufträgen.
-- `products/shacl_contract_toolchain/`: Self-Description Bundle, dessen Specs
+- `products/spec_compiler/`: Self-Description Bundle, dessen Specs
   die allgemeine Softwareanwendung, ihre Konformität zu Compiler Protocol v1
   und ihren separat austauschbaren Transformationsvertrag beschreiben.
 - `ontology/shacl-contract.ttl`: kanonische, öffentliche Definition des
@@ -41,7 +41,7 @@ Danach prüft der generierte Test SQLite-Schema, die vom laufenden Produkt
 veröffentlichte OpenAPI-Spezifikation, den echten GET-Endpunkt und die
 SHACL-Konformität der Antwort.
 
-Die Toolchain wird außerdem über ihr externes Compilerverhalten beschrieben.
+Der Spec Compiler wird außerdem über sein externes Compilerverhalten beschrieben.
 Der vorhandene Generator dient als expliziter Bootstrap-Compiler `G0` und
 erzeugt Tests, die eine weitere Compilerinvokation `G1` auf einem isolierten
 Product Bundle zweimal ausführen. Beide Läufe müssen byte-identische generierte
@@ -70,7 +70,7 @@ Requests und veröffentlicht sie nach erfolgreichen Tests bei Pushes auf `main`
 deployment → Source** einmalig **GitHub Actions** ausgewählt werden.
 
 Die experimentellen IRIs beginnen mit
-`https://arturmiller.github.io/shacl_example/`; das Vokabular verwendet den
+`https://arturmiller.github.io/spec-compiler/`; das Vokabular verwendet den
 dereferenzierbaren Fragment-Namespace `.../ontology/#`. Ein stabiler Redirect über
 w3id.org bleibt eine spätere Option, falls das Vokabular produktiv wird.
 Auch die getrennten Toolchain- und SQL-API-Ressourcen-Namespaces besitzen unter

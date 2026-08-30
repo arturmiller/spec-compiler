@@ -17,7 +17,7 @@ Produce byte-identical artifacts on consecutive compilations.
 ## Verification
 
 ```console
-uv run --extra dev pytest -q products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_output_reaches_a_byte_identical_fixpoint
+uv run --extra dev pytest -q products/spec_compiler/tests/test_contract.py::test_compiler_output_reaches_a_byte_identical_fixpoint
 ```
 
 ## Sources
@@ -27,6 +27,6 @@ uv run --extra dev pytest -q products/shacl_contract_toolchain/tests/test_contra
 ## Boundaries
 
 - Do not edit the product's `specs/`, `tests/`, or `generated/` directories.
-- Implement product behavior under `products/shacl_contract_toolchain/`.
+- Implement product behavior under `products/spec_compiler/`.
 - Do not add implementation requirements that are absent from the specs or the documented runtime protocol.
 - Out of scope: Byte identity of product implementation source.

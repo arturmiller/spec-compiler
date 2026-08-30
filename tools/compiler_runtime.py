@@ -1,4 +1,4 @@
-"""Invoke a contract compiler through Compiler Protocol v1."""
+"""Invoke a spec compiler through Compiler Protocol v1."""
 
 from __future__ import annotations
 

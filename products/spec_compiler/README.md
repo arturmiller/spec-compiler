@@ -1,7 +1,7 @@
-# SHACL Contract Toolchain self-description
+# Spec Compiler self-description
 
 This bundle describes the externally observable compiler behavior of the
-repository's SHACL Contract Toolchain. `product.toml` adapts the implementation
+repository's Spec Compiler. `product.toml` adapts the implementation
 to Compiler Protocol v1. The generated tests invoke the compiler as a separate
 process and do not import `tools.generate`.
 

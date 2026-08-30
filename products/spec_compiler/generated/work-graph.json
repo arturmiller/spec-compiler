@@ -19,7 +19,7 @@
         "`specs/`: compiler input and generated artifact declarations",
         "Compiler Protocol v1: manifest-driven black-box invocation"
       ],
-      "test": "products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_generates_declared_artifacts",
+      "test": "products/spec_compiler/tests/test_contract.py::test_compiler_generates_declared_artifacts",
       "excluded": [
         "A particular compiler implementation language"
       ]
@@ -37,7 +37,7 @@
       "sources": [
         "`specs/`: deterministic output requirement"
       ],
-      "test": "products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_output_reaches_a_byte_identical_fixpoint",
+      "test": "products/spec_compiler/tests/test_contract.py::test_compiler_output_reaches_a_byte_identical_fixpoint",
       "excluded": [
         "Byte identity of product implementation source"
       ]
@@ -54,7 +54,7 @@
       "sources": [
         "`specs/`: missing-spec rejection requirement"
       ],
-      "test": "products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_rejects_a_bundle_without_specs",
+      "test": "products/spec_compiler/tests/test_contract.py::test_compiler_rejects_a_bundle_without_specs",
       "excluded": [
         "A prescribed exception or logging framework"
       ]

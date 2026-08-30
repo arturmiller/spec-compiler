@@ -1,5 +1,5 @@
-@prefix article: <https://arturmiller.github.io/shacl_example/resources/sql-api/#> .
-@prefix sco: <https://arturmiller.github.io/shacl_example/ontology/#> .
+@prefix article: <https://arturmiller.github.io/spec-compiler/resources/sql-api/#> .
+@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 

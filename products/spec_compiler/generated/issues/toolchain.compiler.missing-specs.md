@@ -18,7 +18,7 @@ Fail explicitly instead of compiling an unspecified product.
 ## Verification
 
 ```console
-uv run --extra dev pytest -q products/shacl_contract_toolchain/tests/test_contract.py::test_compiler_rejects_a_bundle_without_specs
+uv run --extra dev pytest -q products/spec_compiler/tests/test_contract.py::test_compiler_rejects_a_bundle_without_specs
 ```
 
 ## Sources
@@ -28,6 +28,6 @@ uv run --extra dev pytest -q products/shacl_contract_toolchain/tests/test_contra
 ## Boundaries
 
 - Do not edit the product's `specs/`, `tests/`, or `generated/` directories.
-- Implement product behavior under `products/shacl_contract_toolchain/`.
+- Implement product behavior under `products/spec_compiler/`.
 - Do not add implementation requirements that are absent from the specs or the documented runtime protocol.
 - Out of scope: A prescribed exception or logging framework.

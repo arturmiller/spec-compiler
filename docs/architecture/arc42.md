@@ -1,4 +1,4 @@
-# SHACL Contract Toolchain – arc42 architecture
+# Spec Compiler – arc42 architecture
 
 Status: living architecture documentation for the current prototype.
 
@@ -10,7 +10,7 @@ normative generation rules live in the [generation principles](../generation-pri
 
 ### 1.1 Requirements overview
 
-The SHACL Contract Toolchain explores whether RDF/SHACL product specifications
+The Spec Compiler explores whether RDF/SHACL product specifications
 can be compiled deterministically into executable contracts, tests, and small
 work items that guide stochastic product-code generation.
 
@@ -94,7 +94,7 @@ The authoritative System Context diagram is in [C4 level 1](c4.md#level-1-system
 
 ### 3.1 Business context
 
-The spec author records product intent. The SHACL Contract Toolchain compiles it
+The spec author records product intent. The Spec Compiler compiles it
 into deterministic guidance and proofs. A product developer or optional coding
 agent changes the separately bounded Generated Product. A reviewer or CI
 operator runs the same toolchain to decide whether the product conforms.
@@ -117,7 +117,7 @@ the Work Graph, issue Markdown, and tests are a file-based handoff.
 
 ### 3.3 System boundary
 
-The primary software system is the **SHACL Contract Toolchain** under `tools/`
+The primary software system is the **Spec Compiler** under `tools/`
 plus its generated Contract Verification Harness. A **Generated Product** is a
 separate software system. Its static **Product Bundle** under `products/<name>/`
 is the exchange boundary between specs, generated guidance, tests, and product
@@ -134,7 +134,7 @@ implementation; the directory itself is not an executable system.
 | Behavioral verification | Seed the contracted SQLite store, call the real HTTP endpoint, and validate returned RDF against SHACL. |
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
-| Toolchain bootstrap | Generate proofs from the Toolchain Self-Description Bundle with trusted `G0`, then exercise `G1` twice and compare its outputs. |
+| Compiler bootstrap | Generate proofs from the Spec Compiler Self-Description Bundle with trusted `G0`, then exercise `G1` twice and compare its outputs. |
 | Ontology publication | Separate vocabulary definitions from product/example resources, validate every used public term, and deploy unversioned static WIDOCO/WebVOWL output. |
 
 See the accepted decisions in section 9 for rationale and consequences.
@@ -149,13 +149,13 @@ views for this section.
 
 | Building block | Responsibility | Interfaces |
 | --- | --- | --- |
-| SHACL Contract Toolchain | Deterministically compile specs and verify a running product. | Product Bundle files, Runtime Protocol v1, HTTP, SQLite |
+| Spec Compiler | Deterministically compile specs and verify a running product. | Product Bundle files, Runtime Protocol v1, HTTP, SQLite |
 | Product Bundle | Hold all authored and generated artifacts for one product. It is an artifact boundary, not a runtime process. | `specs/`, `generated/`, `tests/`, `product.toml`, implementation files |
 | Generated Product | Implement the contract using technology selected by its implementer. | Product Runtime process, OpenAPI/HTTP, contracted store |
-| Toolchain Self-Description Bundle | Describe a replaceable Software Application, its Compiler Protocol conformance, and its separately versioned Transformation Contract while keeping the bootstrap trust boundary explicit. | Specs, Compiler Protocol v1 manifest, generated proofs and work |
+| Spec Compiler Self-Description Bundle | Describe a replaceable Software Application, its Compiler Protocol conformance, and its separately versioned Transformation Contract while keeping the bootstrap trust boundary explicit. | Specs, Compiler Protocol v1 manifest, generated proofs and work |
 | Ontology Documentation Site | Publish human- and machine-readable vocabulary documentation without becoming a runtime dependency of products. | GitHub Pages HTTPS, HTML, JavaScript, Turtle, JSON-LD, RDF/XML |
 
-### 5.2 Contract Compiler CLI
+### 5.2 Spec Compiler CLI
 
 | Component | Source | Responsibility |
 | --- | --- | --- |
@@ -194,7 +194,7 @@ an architecture that does not exist.
 ```mermaid
 sequenceDiagram
     actor Operator as Reviewer / CI
-    participant Compiler as Contract Compiler CLI
+    participant Compiler as Spec Compiler CLI
     participant Specs as Product specs (*.ttl)
     participant Bundle as Product Bundle
 
@@ -251,8 +251,8 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Operator as Reviewer / CI
-    participant G0 as Bootstrap Contract Compiler G0
-    participant Self as Toolchain Self-Description Bundle
+    participant G0 as Bootstrap Spec Compiler G0
+    participant Self as Spec Compiler Self-Description Bundle
     participant Harness as Contract Verification Harness
     participant G1 as Compiler Product G1
     participant Fixture as Temporary Product Bundle
@@ -408,6 +408,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0005](decisions/0005-bootstrap-toolchain-self-description.md) | The toolchain is specified as a Compiler Product and verified through an explicit bootstrap trust boundary. | Accepted |
 | [0006](decisions/0006-separate-product-protocol-and-transformation-contract.md) | Product identity, invocation protocol, and transformation contract vary independently; executable dispatch follows protocol conformance. | Accepted; supersedes the product-typing part of 0005 |
 | [0007](decisions/0007-publish-experimental-ontology-with-github-pages.md) | The vocabulary uses separated GitHub-hosted namespaces and is published as an unversioned WIDOCO/WebVOWL GitHub Pages artifact. | Accepted |
+| [0008](decisions/0008-rename-system-and-repository-to-spec-compiler.md) | The system and repository are named Spec Compiler; experimental GitHub-hosted IRIs move with the repository. | Accepted; supersedes earlier system/repository names and ADR 0007's IRI paths |
 
 ## 10. Quality requirements
 
@@ -421,7 +422,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Q-6 | Platform portability | On supported Windows and Linux hosts, the same Poe command generates and verifies the product without shell-specific project scripts. |
 | Q-7 | Lifecycle safety | After success or failure, no Product Runtime descendant remains; a regression test verifies process-tree cleanup. |
 | Q-8 | Comprehensibility | A maintainer can distinguish executable containers, static artifacts, tool choices, and product choices from arc42 and C4 without reading every source file. |
-| Q-9 | Compiler bootstrap | Given the Toolchain Self-Description Bundle, generated black-box proofs invoke the compiler twice on an isolated fixture and require all generated and test files to be byte-identical. |
+| Q-9 | Compiler bootstrap | Given the Spec Compiler Self-Description Bundle, generated black-box proofs invoke the compiler twice on an isolated fixture and require all generated and test files to be byte-identical. |
 | Q-10 | Ontology discoverability | Given a push to `main`, CI publishes bilingual term reference, RDF downloads, examples, and an interactive WebVOWL graph whose entity search is present. |
 
 ## 11. Risks and technical debt
@@ -450,7 +451,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 
 | Term | Meaning |
 | --- | --- |
-| SHACL Contract Toolchain | Software system that compiles product specs and verifies a separate Generated Product. |
+| Spec Compiler | Software system that compiles product specs and verifies a separate Generated Product. |
 | Generated Product | Separately executable software system whose implementation is stochastic but whose observable contract is deterministic. |
 | Product Bundle | Static `products/<name>/` artifact boundary containing specs, manifest, code, generated artifacts, and tests. |
 | Product Runtime | Running product process started through Runtime Protocol v1. |
@@ -462,7 +463,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Compiler Convention | Named, versioned deterministic mapping not directly expressed by a spec statement. |
 | Runtime Protocol | Technology-independent contract for starting and observing a product. |
 | Compiler Protocol | Technology-independent contract for invoking a compiler on a Product Bundle and observing its exit status, output, and generated files. |
-| Toolchain Self-Description Bundle | Product Bundle whose specs describe the SHACL Contract Toolchain as a Compiler Product. |
+| Spec Compiler Self-Description Bundle | Product Bundle whose specs describe the Spec Compiler as a Compiler Product. |
 | Transformation Contract | Independently identified and versionable description of accepted inputs, emitted outputs, rejection behavior, and result equivalence. |
 | Canonical Ontology | Authored OWL/RDFS vocabulary definition in `ontology/shacl-contract.ttl`; source for WIDOCO and public-term validation. |
 | Ontology Documentation Site | Unversioned static WIDOCO/WebVOWL artifact deployed to GitHub Pages. |

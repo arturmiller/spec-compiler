@@ -1,5 +1,5 @@
 [project]
-name = "shacl-contract-prototype"
+name = "spec-compiler"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -17,15 +17,15 @@ dev = [
 
 [tool.poe.tasks]
 generate-sql-api = { cmd = "python tools/generate.py --product products/sql_api_example", help = "Generate the SQL API contract" }
-generate-toolchain = { cmd = "python tools/generate.py --product products/shacl_contract_toolchain", help = "Generate the toolchain compiler contract" }
-generate = { sequence = ["generate-sql-api", "generate-toolchain"], help = "Generate all contract tests and work items" }
+generate-spec-compiler = { cmd = "python tools/generate.py --product products/spec_compiler", help = "Generate the Spec Compiler contract" }
+generate = { sequence = ["generate-sql-api", "generate-spec-compiler"], help = "Generate all contract tests and work items" }
 ontology-validate = { cmd = "python tools/build_ontology_site.py --validate-only", help = "Validate the public ontology and its use in specs" }
 ontology-site = { cmd = "python tools/build_ontology_site.py", help = "Build WIDOCO and WebVOWL documentation" }
 test = { cmd = "pytest -q", help = "Run the test suite" }
 run = { sequence = ["generate", "ontology-validate", "test"], help = "Generate all artifacts and run validation and tests" }
 
 [tool.pytest.ini_options]
-testpaths = ["tools/tests", "products/sql_api_example/tests", "products/shacl_contract_toolchain/tests"]
+testpaths = ["tools/tests", "products/sql_api_example/tests", "products/spec_compiler/tests"]
 pythonpath = ["."]
 addopts = ["--import-mode=importlib"]
 filterwarnings = [

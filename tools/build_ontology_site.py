@@ -26,11 +26,11 @@ WIDOCO_URL = (
     f"v{WIDOCO_VERSION}/{WIDOCO_NAME}"
 )
 WIDOCO_SHA256 = "be57a270fffb91e55810fa308717e704a44e2e7c027a3d68125a49da6c8b4e2b"
-ONTOLOGY_IRI = "https://arturmiller.github.io/shacl_example/ontology/"
+ONTOLOGY_IRI = "https://arturmiller.github.io/spec-compiler/ontology/"
 VOCABULARY_IRI = ONTOLOGY_IRI + "#"
 SCO = Namespace(VOCABULARY_IRI)
 RESOURCE_PUBLICATIONS = {
-    "shacl_contract_toolchain": ("toolchain", "Toolchain resources"),
+    "spec_compiler": ("toolchain", "Spec Compiler resources"),
     "sql_api_example": ("sql-api", "SQL API example resources"),
 }
 
@@ -133,8 +133,8 @@ def _write_landing_page() -> None:
     <a class="card" href="ontology/webvowl/index.html"><strong>Interactive graph</strong>Explore and search the ontology with WebVOWL</a>
     <a class="card" href="ontology/ontology.ttl"><strong>Turtle</strong>Download the published ontology</a>
   </nav>
-  <p>Namespace: <code>https://arturmiller.github.io/shacl_example/ontology/#</code></p>
-  <p><a href="examples/">Published example specifications</a> · <a href="https://github.com/arturmiller/shacl_example">Source repository</a></p>
+  <p>Namespace: <code>https://arturmiller.github.io/spec-compiler/ontology/#</code></p>
+  <p><a href="examples/">Published example specifications</a> · <a href="https://github.com/arturmiller/spec-compiler">Source repository</a></p>
 </body>
 </html>
 ''',
