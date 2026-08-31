@@ -35,6 +35,12 @@ WIDOCO-HTML, WebVOWL-Daten und publizierte Beispielkopien sind abgeleitete
 Dokumentationsartefakte. Sie begründen keine Produktanforderungen und werden
 nicht als deterministische Vertragsartefakte behandelt.
 
+Der kanonische WebVOWL-Graph enthält nur das öffentliche `sco:*`-Vokabular. Ein
+zweiter, daraus klar getrennter Visualisierungsgraph wird aus den SQL-API-Specs
+gebildet. Fachliche Klassen und Properties müssen dafür explizit als OWL/RDFS-
+Terme mit deutschen und englischen Labels deklariert sein. Die Visualisierung
+ersetzt weder die SHACL-Specs noch deren ausführbare Constraints.
+
 Die RDF-/SHACL-Specs legen ausdrücklich fest:
 
 - GET-Endpunkt, Pfad, Pfadparameter und dessen Datentyp,

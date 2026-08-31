@@ -1,9 +1,30 @@
 @prefix article: <https://arturmiller.github.io/spec-compiler/resources/sql-api/#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 # Rein fachlich: Was ist ein gültiger Artikel?
+article:Article
+    a owl:Class ;
+    rdfs:label "Article"@en ;
+    rdfs:label "Artikel"@de .
+
+article:description
+    a owl:DatatypeProperty ;
+    rdfs:label "description"@en ;
+    rdfs:label "Beschreibung"@de ;
+    rdfs:domain article:Article ;
+    rdfs:range xsd:string .
+
+article:price
+    a owl:DatatypeProperty ;
+    rdfs:label "price"@en ;
+    rdfs:label "Preis"@de ;
+    rdfs:domain article:Article ;
+    rdfs:range xsd:decimal .
+
 article:ArticleShape
     a sh:NodeShape ;
     sh:targetClass article:Article ;

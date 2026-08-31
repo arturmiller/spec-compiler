@@ -84,7 +84,7 @@ Detailed quality scenarios are in section 10.
 | OpenAPI profile | Self-contained OpenAPI 3.1 JSON, local `$ref`, direct schemas, no schema composition |
 | Orchestration | `uv run --extra dev poe run` on a local or CI host; pytest importlib mode isolates identically named generated test modules between Product Bundles |
 | Compiler product | One `schema:SoftwareApplication` conforming to `sco:CompilerProtocolV1` and linked to one `sco:TransformationContract` with declared input pattern, fixture, artifact patterns, missing-spec behavior, and determinism; optional validated Bootstrap Process provenance |
-| Ontology publication | Canonical OWL/RDFS vocabulary in `ontology/shacl-contract.ttl`; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
+| Ontology publication | Canonical OWL/RDFS vocabulary plus a separately generated SQL API example graph; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
 | Version control | Generated products are ignored except the versioned `sql_api_example` reference bundle |
 
 Python and pytest constrain the toolchain. FastAPI, Pydantic, and Uvicorn are
@@ -114,7 +114,7 @@ the Work Graph, issue Markdown, and tests are a file-based handoff.
 | Compiler Product | Compiler Protocol v1 manifest and an input Product Bundle | Exit status, combined process output, generated files |
 | Operating system | Process, loopback network, temporary files | Exit status and cleanup behavior |
 | Reviewer or CI | Poe/uv commands | Generated artifacts and pytest result |
-| Ontology reader | GitHub Pages URL | WIDOCO reference, WebVOWL entity search, RDF downloads, example specs |
+| Ontology reader | GitHub Pages URL | WIDOCO reference, separate vocabulary and SQL API WebVOWL searches, RDF downloads, example specs |
 | GitHub Pages | Static site artifact uploaded by GitHub Actions | Public HTTPS documentation |
 
 ### 3.3 System boundary
@@ -137,7 +137,7 @@ implementation; the directory itself is not an executable system.
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
 | Compiler bootstrap | Materialize G1 deterministically from G0 at the declared implementation path, then invoke the independent G1 through its own manifest and compare repeated outputs. |
-| Ontology publication | Separate vocabulary definitions from product/example resources, validate every used public term, and deploy unversioned static WIDOCO/WebVOWL output. |
+| Ontology publication | Keep vocabulary and product example graphs separate, validate public terms and bilingual example labels, and deploy both searchable WIDOCO/WebVOWL outputs. |
 
 See the accepted decisions in section 9 for rationale and consequences.
 
@@ -417,6 +417,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0008](decisions/0008-rename-system-and-repository-to-spec-compiler.md) | The system and repository are named Spec Compiler; experimental GitHub-hosted IRIs move with the repository. | Accepted; supersedes earlier system/repository names and ADR 0007's IRI paths |
 | [0009](decisions/0009-separate-bootstrap-provenance-from-transformation-contract.md) | G0 and the modify-existing strategy are explicit Bootstrap Process provenance, separate from technology-neutral product obligations. | Accepted |
 | [0010](decisions/0010-materialize-and-execute-bootstrap-generation.md) | G0 deterministically materializes an independent G1 source artifact that is executed through its own project and manifest. | Accepted; supersedes ADR 0009's deferred-synthesis statement |
+| [0011](decisions/0011-publish-separate-example-webvowl-graph.md) | The SQL API example receives a separate WebVOWL graph instead of being merged into the canonical vocabulary graph. | Accepted; refines ADR 0007's example-publication decision |
 
 ## 10. Quality requirements
 
@@ -431,7 +432,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Q-7 | Lifecycle safety | After success or failure, no Product Runtime descendant remains; a regression test verifies process-tree cleanup. |
 | Q-8 | Comprehensibility | A maintainer can distinguish executable containers, static artifacts, tool choices, and product choices from arc42 and C4 without reading every source file. |
 | Q-9 | Compiler bootstrap | Given the Spec Compiler Self-Description Bundle, generated black-box proofs invoke the compiler twice on an isolated fixture and require all generated and test files to be byte-identical. |
-| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes bilingual term reference, RDF downloads, examples, and an interactive WebVOWL graph whose entity search is present. |
+| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes bilingual term references, RDF downloads, examples, and separate vocabulary and SQL API WebVOWL graphs whose entity searches and core terms are present. |
 
 ## 11. Risks and technical debt
 

@@ -74,6 +74,13 @@ Startseite verlinkt die englische und deutsche WIDOCO-Referenz, den interaktiven
 WebVOWL-Graphen mit Entitätssuche, die Turtle-Serialisierung und getrennte
 Beispielspezifikationen.
 
+WebVOWL wird in zwei getrennten Sichten veröffentlicht: `/ontology/webvowl/`
+zeigt ausschließlich das allgemeine `sco:*`-Vokabular;
+`/examples/sql-api/webvowl/` zeigt das fachliche SQL-API-Beispiel mit
+`article:Article`, `article:description` und `article:price`. Die vollständigen
+SHACL-Constraints bleiben in den verlinkten Turtle-Specs, da WebVOWL primär
+OWL/RDFS-Strukturen visualisiert.
+
 Der Workflow `.github/workflows/ontology-pages.yml` baut die Site bei Pull
 Requests und veröffentlicht sie nach erfolgreichen Tests bei Pushes auf `main`
 über GitHub Pages. Im Repository muss unter **Settings → Pages → Build and
