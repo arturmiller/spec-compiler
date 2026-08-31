@@ -79,9 +79,12 @@ Beispielspezifikationen.
 WebVOWL wird in zwei getrennten Sichten veröffentlicht: `/ontology/webvowl/`
 zeigt ausschließlich das allgemeine `sco:*`-Vokabular;
 `/examples/sql-api/webvowl/` zeigt das fachliche SQL-API-Beispiel mit
-`article:Article`, `article:description` und `article:price`. Die vollständigen
-SHACL-Constraints bleiben in den verlinkten Turtle-Specs, da WebVOWL primär
-OWL/RDFS-Strukturen visualisiert.
+`article:Article`, `article:description` und `article:price`. Eine ausschließlich
+für WebVOWL abgeleitete OWL-Projektion verbindet außerdem `GetArticleEndpoint`
+über `returns` und `reads from` mit `Article` und `ArticlesTable` sowie die
+Tabelle über `stores` mit `Article`. Diese Projektion begründet keine
+Produktanforderungen. Die vollständigen SHACL-Constraints bleiben in den
+verlinkten Turtle-Specs, da WebVOWL primär OWL/RDFS-Strukturen visualisiert.
 
 Der Workflow `.github/workflows/ontology-pages.yml` baut die Site bei Pull
 Requests und veröffentlicht sie nach erfolgreichen Tests bei Pushes auf `main`

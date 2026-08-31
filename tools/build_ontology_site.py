@@ -11,7 +11,7 @@ import subprocess
 from urllib.request import urlopen
 
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
-from rdflib.namespace import DCTERMS, OWL, RDFS
+from rdflib.namespace import DCTERMS, OWL, RDFS, SH
 
 
 ROOT = Path(__file__).parents[1]
@@ -32,6 +32,8 @@ VOCABULARY_IRI = ONTOLOGY_IRI + "#"
 SCO = Namespace(VOCABULARY_IRI)
 SQL_API_IRI = "https://arturmiller.github.io/spec-compiler/resources/sql-api/"
 ARTICLE = Namespace(SQL_API_IRI + "#")
+SQL_API_VISUALIZATION_IRI = SQL_API_IRI + "visualization/"
+SQL_API_VISUALIZATION = Namespace(SQL_API_VISUALIZATION_IRI + "#")
 RESOURCE_PUBLICATIONS = {
     "spec_compiler": ("toolchain", "Spec Compiler resources"),
     "sql_api_example": ("sql-api", "SQL API example resources"),
@@ -266,13 +268,108 @@ def _run_widoco(jar: Path, ontology: Path, output: Path) -> None:
     )
 
 
+def _single_target_class(graph: Graph, shape: URIRef) -> URIRef:
+    targets = list(graph.objects(shape, SH.targetClass))
+    if len(targets) != 1 or not isinstance(targets[0], URIRef):
+        raise ValueError(
+            f"Visualization relation target {shape} must have exactly one "
+            "sh:targetClass"
+        )
+    return targets[0]
+
+
+def _add_visualization_edge(
+    graph: Graph,
+    *,
+    source: URIRef,
+    target: URIRef,
+    relation_name: str,
+    label_en: str,
+    label_de: str,
+) -> URIRef:
+    source_name = source.rsplit("#", 1)[-1]
+    target_name = target.rsplit("#", 1)[-1]
+    relation = SQL_API_VISUALIZATION[
+        f"{source_name}-{relation_name}-{target_name}"
+    ]
+    graph.add((relation, RDF.type, OWL.ObjectProperty))
+    graph.add((relation, RDFS.label, Literal(label_en, lang="en")))
+    graph.add((relation, RDFS.label, Literal(label_de, lang="de")))
+    graph.add((relation, RDFS.domain, source))
+    graph.add((relation, RDFS.range, target))
+    return relation
+
+
+def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
+    """Project instance/SHACL relations into an OWL graph understood by WebVOWL."""
+    generated_terms: set[URIRef] = set()
+    endpoints = set(graph.subjects(RDF.type, SCO.GetEndpoint))
+    tables = set(graph.subjects(RDF.type, SCO.SqlTable))
+
+    for endpoint in endpoints:
+        if not isinstance(endpoint, URIRef):
+            continue
+        graph.add((endpoint, RDF.type, OWL.Class))
+        graph.add((endpoint, RDFS.label, Literal("GET endpoint", lang="en")))
+        graph.add((endpoint, RDFS.label, Literal("GET-Endpunkt", lang="de")))
+        generated_terms.add(endpoint)
+
+        for shape in graph.objects(endpoint, SCO.returns):
+            if isinstance(shape, URIRef):
+                target = _single_target_class(graph, shape)
+                generated_terms.add(
+                    _add_visualization_edge(
+                        graph,
+                        source=endpoint,
+                        target=target,
+                        relation_name="returns",
+                        label_en="returns",
+                        label_de="liefert",
+                    )
+                )
+        for table in graph.objects(endpoint, SCO.readsFrom):
+            if isinstance(table, URIRef):
+                generated_terms.add(
+                    _add_visualization_edge(
+                        graph,
+                        source=endpoint,
+                        target=table,
+                        relation_name="reads-from",
+                        label_en="reads from",
+                        label_de="liest aus",
+                    )
+                )
+
+    for table in tables:
+        if not isinstance(table, URIRef):
+            continue
+        graph.add((table, RDF.type, OWL.Class))
+        graph.add((table, RDFS.label, Literal("articles table", lang="en")))
+        graph.add((table, RDFS.label, Literal("Artikeltabelle", lang="de")))
+        generated_terms.add(table)
+        for shape in graph.objects(table, SCO.stores):
+            if isinstance(shape, URIRef):
+                target = _single_target_class(graph, shape)
+                generated_terms.add(
+                    _add_visualization_edge(
+                        graph,
+                        source=table,
+                        target=target,
+                        relation_name="stores",
+                        label_en="stores",
+                        label_de="speichert",
+                    )
+                )
+    return generated_terms
+
+
 def _build_sql_api_visualization(jar: Path) -> None:
     graph = Graph()
     for spec_file in sorted(
         (ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")
     ):
         graph.parse(spec_file, format="turtle")
-    visualization_iri = URIRef(SQL_API_IRI + "visualization/")
+    visualization_iri = URIRef(SQL_API_VISUALIZATION_IRI)
     graph.add((visualization_iri, RDF.type, OWL.Ontology))
     graph.add(
         (visualization_iri, DCTERMS.title, Literal("SQL API example", lang="en"))
@@ -280,6 +377,31 @@ def _build_sql_api_visualization(jar: Path) -> None:
     graph.add(
         (visualization_iri, DCTERMS.title, Literal("SQL-API-Beispiel", lang="de"))
     )
+    graph.add(
+        (
+            visualization_iri,
+            DCTERMS.description,
+            Literal(
+                "Derived OWL projection for visualization; the linked Turtle "
+                "specifications remain authoritative.",
+                lang="en",
+            ),
+        )
+    )
+    projected_terms = _add_sql_api_visualization_projection(graph)
+    expected_projected_terms = {
+        ARTICLE.GetArticleEndpoint,
+        ARTICLE.ArticlesTable,
+        SQL_API_VISUALIZATION["GetArticleEndpoint-returns-Article"],
+        SQL_API_VISUALIZATION["GetArticleEndpoint-reads-from-ArticlesTable"],
+        SQL_API_VISUALIZATION["ArticlesTable-stores-Article"],
+    }
+    missing_projected_terms = expected_projected_terms - projected_terms
+    if missing_projected_terms:
+        raise ValueError(
+            "SQL API visualization projection is incomplete: "
+            f"{sorted(map(str, missing_projected_terms))}"
+        )
     source = OUTPUT.parent / "sql-api-visualization.ttl"
     graph.serialize(destination=source, format="turtle")
     try:
@@ -360,7 +482,16 @@ def build_site(jar: Path) -> None:
     serialized_sql_api = json.dumps(sql_api_data)
     missing_example_terms = [
         str(term)
-        for term in (ARTICLE.Article, ARTICLE.description, ARTICLE.price)
+        for term in (
+            ARTICLE.Article,
+            ARTICLE.description,
+            ARTICLE.price,
+            ARTICLE.GetArticleEndpoint,
+            ARTICLE.ArticlesTable,
+            SQL_API_VISUALIZATION["GetArticleEndpoint-returns-Article"],
+            SQL_API_VISUALIZATION["GetArticleEndpoint-reads-from-ArticlesTable"],
+            SQL_API_VISUALIZATION["ArticlesTable-stores-Article"],
+        )
         if str(term) not in serialized_sql_api
     ]
     if missing_example_terms:

@@ -137,7 +137,7 @@ implementation; the directory itself is not an executable system.
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
 | Compiler bootstrap | Materialize G1 deterministically from G0 at the declared implementation path, then invoke the independent G1 through its own manifest and compare repeated outputs. |
-| Ontology publication | Keep vocabulary and product example graphs separate, validate public terms and bilingual example labels, and deploy both searchable WIDOCO/WebVOWL outputs. |
+| Ontology publication | Keep vocabulary and product example graphs separate, validate public terms and bilingual example labels, derive visualization-only OWL connections from explicit example relations, and deploy both searchable WIDOCO/WebVOWL outputs. |
 
 See the accepted decisions in section 9 for rationale and consequences.
 
@@ -179,7 +179,7 @@ data, not an independently deployable building block.
 | Generated Contract Test Suite | `products/<name>/tests/test_contract.py` | Define Runtime, OpenAPI, SQLite, and direct HTTP obligation proofs. |
 | Product Runtime Adapter | `tools/contract_runtime.py` | Read the manifest, substitute values, start the process, detect readiness, and clean up the tree. |
 | Compiler Runtime Adapter | `tools/compiler_runtime.py` | Invoke a compiler manifest as a separate bounded process and capture its observable result. |
-| Ontology Documentation Builder | `tools/build_ontology_site.py`, WIDOCO 1.4.25 | Validate namespace use, invoke pinned WIDOCO/WebVOWL, add landing page and example downloads, and verify the static site shape. |
+| Ontology Documentation Builder | `tools/build_ontology_site.py`, WIDOCO 1.4.25 | Validate namespace use, derive the SQL API OWL visualization projection, invoke pinned WIDOCO/WebVOWL, add landing page and example downloads, and verify the static site shape. |
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
 | HTTP Obligation Verifier | Generated behavior test | Call the live endpoint and directly assert required fields, types, bounds, closure, and stored values. |
@@ -419,6 +419,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0010](decisions/0010-materialize-and-execute-bootstrap-generation.md) | G0 deterministically materializes an independent G1 source artifact that is executed through its own project and manifest. | Accepted; supersedes ADR 0009's deferred-synthesis statement |
 | [0011](decisions/0011-publish-separate-example-webvowl-graph.md) | The SQL API example receives a separate WebVOWL graph instead of being merged into the canonical vocabulary graph. | Accepted; refines ADR 0007's example-publication decision |
 | [0012](decisions/0012-generate-direct-tests-from-explicit-obligations.md) | SHACL is an input profile; product JSON is checked directly from an Explicit Obligation Model without pySHACL. | Accepted |
+| [0013](decisions/0013-project-example-relations-for-webvowl.md) | Explicit instance and SHACL relations are projected into visualization-only OWL edges so WebVOWL can connect the SQL API example nodes. | Accepted; refines ADR 0011 |
 
 ## 10. Quality requirements
 
@@ -433,7 +434,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Q-7 | Lifecycle safety | After success or failure, no Product Runtime descendant remains; a regression test verifies process-tree cleanup. |
 | Q-8 | Comprehensibility | A maintainer can distinguish executable containers, static artifacts, tool choices, and product choices from arc42 and C4 without reading every source file. |
 | Q-9 | Compiler bootstrap | Given the Spec Compiler Self-Description Bundle, generated black-box proofs invoke the compiler twice on an isolated fixture and require all generated and test files to be byte-identical. |
-| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes bilingual term references, RDF downloads, examples, and separate vocabulary and SQL API WebVOWL graphs whose entity searches and core terms are present. |
+| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes bilingual term references, RDF downloads, examples, and separate vocabulary and SQL API WebVOWL graphs whose entity searches, core terms, and endpoint-to-domain connections are present. |
 
 ## 11. Risks and technical debt
 
