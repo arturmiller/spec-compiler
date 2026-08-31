@@ -67,7 +67,9 @@ def load_contract_graph(product_root: Path) -> Graph:
     return contract_graph
 
 
-def read_contract(product_root: Path, contract_graph: Graph | None = None) -> dict:
+def read_obligation_model(
+    product_root: Path, contract_graph: Graph | None = None
+) -> dict:
     contract_graph = contract_graph or load_contract_graph(product_root)
     shapes = system = contract_graph
     endpoints = list(system.subjects(RDF.type, SCO.GetEndpoint))
@@ -427,15 +429,15 @@ def build_work_items(contract: dict, test_path: str) -> list[dict]:
                 ),
                 response_fields_obligation,
                 "The response values equal the stored values.",
-                "The response conforms to the contracted SHACL shape.",
+                "The response satisfies every explicit Shape obligation.",
             ],
             "sources": [
                 "`specs/`: endpoint-to-table relation and HTTP result",
                 "`specs/`: response Shape",
-                "Compiler conventions v1: SHACL-to-JSON mapping",
+                "Compiler conventions v1: SHACL-to-obligation mapping",
             ],
             "test": (
-                f"{test_path}::test_get_endpoint_returns_shape_conformant_resource"
+                f"{test_path}::test_get_endpoint_satisfies_explicit_obligations"
             ),
             "excluded": [
                 f"Behavior for unknown {contract['resource_name']} identifiers"
@@ -497,14 +499,12 @@ from pathlib import Path
 
 import httpx
 from openapi_spec_validator import OpenAPIV31SpecValidator, validate as validate_openapi
-from pyshacl import validate
 import pytest
-from rdflib import Graph, Literal, RDF, URIRef
 
 from tools.contract_runtime import running_product
 
 PRODUCT_ROOT = Path(__file__).parents[1]
-CONTRACT = __CONTRACT__
+OBLIGATIONS = __CONTRACT__
 RESOURCE_VALUES = __RESOURCE_VALUES__
 EXPECTED_OPENAPI = json.loads(
     (PRODUCT_ROOT / "generated" / "expected-openapi.json").read_text(encoding="utf-8")
@@ -653,7 +653,7 @@ def test_openapi_matches_contract(running_api):
 
 
 def _insert_resource(database_path):
-    fields = CONTRACT["fields"]
+    fields = OBLIGATIONS["fields"]
     names = [field["name"] for field in fields]
     values = [
         float(RESOURCE_VALUES[name])
@@ -662,26 +662,26 @@ def _insert_resource(database_path):
         for name in names
     ]
     expected_identifier = None
-    if not CONTRACT["id_generated"]:
+    if not OBLIGATIONS["id_generated"]:
         expected_identifier = 1
-        names.insert(0, CONTRACT["id_column"])
+        names.insert(0, OBLIGATIONS["id_column"])
         values.insert(0, expected_identifier)
     placeholders = ", ".join("?" for _ in names)
     with closing(sqlite3.connect(database_path)) as connection:
         with connection:
             cursor = connection.execute(
-                f"INSERT INTO {CONTRACT['table_name']} ({', '.join(names)}) "
+                f"INSERT INTO {OBLIGATIONS['table_name']} ({', '.join(names)}) "
                 f"VALUES ({placeholders})",
                 values,
             )
-    return cursor.lastrowid if CONTRACT["id_generated"] else expected_identifier
+    return cursor.lastrowid if OBLIGATIONS["id_generated"] else expected_identifier
 
 
 def test_sql_table_matches_contract(running_api):
     _, database_path = running_api
     with closing(sqlite3.connect(database_path)) as connection:
         rows = connection.execute(
-            f"PRAGMA table_info({CONTRACT['table_name']})"
+            f"PRAGMA table_info({OBLIGATIONS['table_name']})"
         ).fetchall()
 
     columns = {
@@ -692,58 +692,128 @@ def test_sql_table_matches_contract(running_api):
         }
         for row in rows
     }
-    identifier = columns[CONTRACT["id_column"]]
-    assert identifier["type"] == CONTRACT["id_sql_type"]
-    assert identifier["primary_key"] is CONTRACT["id_primary_key"]
-    for field in CONTRACT["fields"]:
+    identifier = columns[OBLIGATIONS["id_column"]]
+    assert identifier["type"] == OBLIGATIONS["id_sql_type"]
+    assert identifier["primary_key"] is OBLIGATIONS["id_primary_key"]
+    for field in OBLIGATIONS["fields"]:
         actual = columns[field["name"]]
         assert actual["type"] == field["sql_type"]
         assert actual["not_null"] is field["required"]
-    if CONTRACT["id_generated"]:
+    if OBLIGATIONS["id_generated"]:
         assert _insert_resource(database_path) is not None
 
 
-def test_get_endpoint_returns_shape_conformant_resource(running_api):
+def _assert_payload_obligations(payload):
+    assert isinstance(payload, dict)
+    fields = OBLIGATIONS["fields"]
+    field_names = {field["name"] for field in fields}
+    required_names = {field["name"] for field in fields if field["required"]}
+    assert required_names <= set(payload)
+    if OBLIGATIONS["closed"]:
+        assert set(payload) <= field_names
+
+    for field in fields:
+        name = field["name"]
+        if name not in payload:
+            continue
+        value = payload[name]
+        if field["datatype"] == "http://www.w3.org/2001/XMLSchema#string":
+            assert isinstance(value, str)
+            if field["min_length"] is not None:
+                assert len(value) >= field["min_length"]
+        elif field["datatype"] == "http://www.w3.org/2001/XMLSchema#decimal":
+            assert isinstance(value, (int, float)) and not isinstance(value, bool)
+            decimal_value = Decimal(str(value))
+            if field["min_exclusive"] is not None:
+                assert decimal_value > Decimal(str(field["min_exclusive"]))
+            if field["max_exclusive"] is not None:
+                assert decimal_value < Decimal(str(field["max_exclusive"]))
+        elif field["datatype"] == "http://www.w3.org/2001/XMLSchema#integer":
+            assert isinstance(value, int) and not isinstance(value, bool)
+        else:
+            raise AssertionError(f"Unsupported obligation datatype: {field['datatype']}")
+
+
+def test_generated_assertions_cover_declared_obligations():
+    valid = {
+        name: float(value) if isinstance(value, Decimal) else value
+        for name, value in RESOURCE_VALUES.items()
+    }
+    _assert_payload_obligations(valid)
+
+    for field in OBLIGATIONS["fields"]:
+        name = field["name"]
+        if field["required"]:
+            missing = dict(valid)
+            missing.pop(name)
+            with pytest.raises(AssertionError):
+                _assert_payload_obligations(missing)
+
+        invalid = dict(valid)
+        if field["datatype"] == "http://www.w3.org/2001/XMLSchema#string":
+            invalid[name] = 1
+        elif field["datatype"] == "http://www.w3.org/2001/XMLSchema#decimal":
+            invalid[name] = "not-a-number"
+        elif field["datatype"] == "http://www.w3.org/2001/XMLSchema#integer":
+            invalid[name] = "not-an-integer"
+        with pytest.raises(AssertionError):
+            _assert_payload_obligations(invalid)
+
+        if field["min_length"] is not None and field["min_length"] > 0:
+            too_short = dict(valid)
+            too_short[name] = "" * field["min_length"]
+            with pytest.raises(AssertionError):
+                _assert_payload_obligations(too_short)
+        if field["min_exclusive"] is not None:
+            too_small = dict(valid)
+            too_small[name] = float(field["min_exclusive"])
+            with pytest.raises(AssertionError):
+                _assert_payload_obligations(too_small)
+        if field["max_exclusive"] is not None:
+            too_large = dict(valid)
+            too_large[name] = float(field["max_exclusive"])
+            with pytest.raises(AssertionError):
+                _assert_payload_obligations(too_large)
+
+    if OBLIGATIONS["closed"]:
+        unexpected = {**valid, "unspecified": True}
+        with pytest.raises(AssertionError):
+            _assert_payload_obligations(unexpected)
+
+    if OBLIGATIONS["fields"]:
+        first_field = OBLIGATIONS["fields"][0]
+        original_closed = OBLIGATIONS["closed"]
+        original_required = first_field["required"]
+        try:
+            OBLIGATIONS["closed"] = False
+            first_field["required"] = False
+            open_payload = {**valid, "unspecified": True}
+            open_payload.pop(first_field["name"])
+            _assert_payload_obligations(open_payload)
+        finally:
+            OBLIGATIONS["closed"] = original_closed
+            first_field["required"] = original_required
+
+
+def test_get_endpoint_satisfies_explicit_obligations(running_api):
     product, database_path = running_api
-    fields = CONTRACT["fields"]
-    names = [field["name"] for field in fields]
+    fields = OBLIGATIONS["fields"]
     record_id = _insert_resource(database_path)
 
-    parameter = CONTRACT["path_parameter"]["name"]
-    path = CONTRACT["api_path"].replace("{" + parameter + "}", str(record_id))
+    parameter = OBLIGATIONS["path_parameter"]["name"]
+    path = OBLIGATIONS["api_path"].replace("{" + parameter + "}", str(record_id))
     response = httpx.get(product.base_url + path)
-    assert response.status_code == CONTRACT["success_status"]
+    assert response.status_code == OBLIGATIONS["success_status"]
     actual_media_type = response.headers["content-type"].split(";", 1)[0]
-    assert actual_media_type.strip().lower() == CONTRACT["media_type"].lower()
+    assert actual_media_type.strip().lower() == OBLIGATIONS["media_type"].lower()
     payload = response.json()
-    if CONTRACT["closed"]:
-        assert set(payload) == set(names)
-    else:
-        assert set(names) <= set(payload)
+    _assert_payload_obligations(payload)
     for field in fields:
         actual = payload[field["name"]]
         expected = RESOURCE_VALUES[field["name"]]
         if isinstance(expected, Decimal):
             actual = Decimal(str(actual))
         assert actual == expected
-
-    data = Graph()
-    resource = URIRef(
-        "https://arturmiller.github.io/spec-compiler/resources/sql-api/#"
-        f"contract-resource-{record_id}"
-    )
-    data.add((resource, RDF.type, URIRef(CONTRACT["rdf_class"])))
-    for field in fields:
-        value = payload[field["name"]]
-        if field["datatype"] == "http://www.w3.org/2001/XMLSchema#decimal":
-            value = Decimal(str(value))
-        data.add((resource, URIRef(field["rdf_path"]), Literal(value)))
-
-    shape_graph = Graph()
-    for spec_file in sorted((PRODUCT_ROOT / "specs").glob("*.ttl")):
-        shape_graph.parse(spec_file, format="turtle")
-    conforms, _, report = validate(data, shacl_graph=shape_graph)
-    assert conforms, report
 '''
 
 
@@ -1003,16 +1073,16 @@ def main() -> None:
         else output.relative_to(product_root).as_posix()
     )
 
-    contract = read_contract(product_root, graph)
-    expected_openapi = build_openapi(contract)
-    work_items = build_work_items(contract, test_path)
+    obligations = read_obligation_model(product_root, graph)
+    expected_openapi = build_openapi(obligations)
+    work_items = build_work_items(obligations, test_path)
     article_values = {
-        field["name"]: deterministic_value(field) for field in contract["fields"]
+        field["name"]: deterministic_value(field) for field in obligations["fields"]
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         TEST_TEMPLATE.replace(
-            "__CONTRACT__", pformat(contract, sort_dicts=False)
+            "__CONTRACT__", pformat(obligations, sort_dicts=False)
         ).replace(
             "__RESOURCE_VALUES__", pformat(article_values, sort_dicts=False)
         ),

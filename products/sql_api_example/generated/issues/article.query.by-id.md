@@ -18,19 +18,19 @@ Return a stored Article through the contracted GET endpoint.
 - A stored Article is returned with status `200` and media type `application/json`.
 - The response contains exactly the fields `description`, `price`.
 - The response values equal the stored values.
-- The response conforms to the contracted SHACL shape.
+- The response satisfies every explicit Shape obligation.
 
 ## Verification
 
 ```console
-uv run --extra dev pytest -q products/sql_api_example/tests/test_contract.py::test_get_endpoint_returns_shape_conformant_resource
+uv run --extra dev pytest -q products/sql_api_example/tests/test_contract.py::test_get_endpoint_satisfies_explicit_obligations
 ```
 
 ## Sources
 
 - `specs/`: endpoint-to-table relation and HTTP result
 - `specs/`: response Shape
-- Compiler conventions v1: SHACL-to-JSON mapping
+- Compiler conventions v1: SHACL-to-obligation mapping
 
 ## Boundaries
 

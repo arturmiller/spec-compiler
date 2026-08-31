@@ -55,6 +55,10 @@ Der Generator lädt alle `*.ttl`-Dateien unter `specs/` in einen gemeinsamen
 Vertragsgraphen. Dateinamen wie `article_shape.ttl` tragen keine Semantik und
 sind keine Anforderung an andere Produkte.
 
+Der RDF-Graph wird in ein **Explicit Obligation Model** normalisiert. Dieses
+interne Modell enthält ausschließlich Aussagen, die eine beobachtbare
+Verpflichtung begründen. Fehlende Aussagen erzeugen weder Defaults noch Tests.
+
 `product.toml` ist kein fachlicher Vertrag. Es ist der kleine Laufzeitadapter,
 über den das Werkzeug ein Produkt unabhängig von seiner Technologie startet.
 Das Manifest deklariert Argumentliste, Arbeitsverzeichnis, Umgebungsvariablen
@@ -176,8 +180,15 @@ Dokument gegen OpenAPI 3.1. Die Validierung ist Teil des Test-Harness und stellt
 keine Abhängigkeit der Produktimplementierung dar.
 
 OpenAPI ersetzt keine Verhaltenstests. Ein echtes HTTP-Szenario prüft weiterhin,
-dass ein gespeicherter Datensatz korrekt ausgeliefert wird und der SHACL-Shape
-entspricht.
+dass ein gespeicherter Datensatz korrekt ausgeliefert wird und alle expliziten
+Shape-Verpflichtungen erfüllt. Der generierte Test validiert die JSON-Antwort
+direkt aus dem Explicit Obligation Model. Er konvertiert JSON nicht in einen
+künstlichen RDF-Graphen und benötigt deshalb kein pySHACL. SHACL bleibt das
+aktuelle RDF-Eingabeprofil; Produkte müssen SHACL oder RDF nicht verwenden.
+
+Bei offenen Shapes werden nur Felder mit `sh:minCount 1` verlangt und
+zusätzliche Felder akzeptiert. Erst ein explizites `sh:closed true` verbietet
+nicht spezifizierte Felder.
 
 ## Prüffrage für neue Generatorregeln
 

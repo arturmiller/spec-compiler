@@ -41,7 +41,9 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
 den aktuellen Vertrag entstehen immer `description="x"` und `price=0.01`.
 Danach prüft der generierte Test SQLite-Schema, die vom laufenden Produkt
 veröffentlichte OpenAPI-Spezifikation, den echten GET-Endpunkt und die
-SHACL-Konformität der Antwort.
+expliziten Antwortverpflichtungen. SHACL dient dabei als Eingabeprofil; die
+JSON-Antwort wird ohne künstliche RDF-Konvertierung direkt durch generierte
+Black-box-Assertions geprüft.
 
 Der Spec Compiler wird außerdem über sein externes Compilerverhalten beschrieben.
 Der vorhandene Generator dient als expliziter Bootstrap-Compiler `G0` und
@@ -108,6 +110,11 @@ nur `sql_api_example` wird als nachvollziehbares Beispiel eingecheckt.
 Damit sind Werkzeug und Ergebnisse klar getrennt: `tools/` enthält die
 Transformation von Specs zu Verträgen, Tests und Arbeitsaufträgen;
 `products/<name>/` enthält jeweils sämtliche Ein- und Ausgaben eines Produkts.
+
+Intern normalisiert der Compiler ausschließlich explizite Aussagen in ein
+**Explicit Obligation Model**. Nicht spezifizierte Eigenschaften werden nicht
+zu Tests. Zusätzliche JSON-Felder sind deshalb erlaubt, sofern die Spec nicht
+ausdrücklich `sh:closed true` setzt.
 
 ## Architektur
 

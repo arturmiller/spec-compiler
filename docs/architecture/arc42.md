@@ -19,11 +19,11 @@ The toolchain must:
 - read explicit domain, HTTP, and storage statements from Turtle specs;
 - reject missing, ambiguous, or unsupported information instead of guessing;
 - derive expected OpenAPI, black-box tests, a Work Graph, and issue text from one
-  Contract Model;
+  Explicit Obligation Model;
 - keep the implementation language, framework, modules, and internal product
   architecture outside the generated requirements;
 - start a product through Runtime Protocol v1 and verify its externally visible
-  OpenAPI, HTTP, SHACL, and explicitly contracted SQLite boundaries;
+  OpenAPI, HTTP, explicit response obligations, and contracted SQLite boundaries;
 - invoke compiler products through Compiler Protocol v1 and verify declared
   artifacts, failure behavior, and deterministic fixpoints as black boxes;
 - keep bootstrap provenance and implementation-neutral transformation
@@ -75,7 +75,7 @@ Detailed quality scenarios are in section 10.
 
 | Area | Supported profile |
 | --- | --- |
-| Tool implementation | Python 3.12 or newer, RDFLib, pytest, HTTPX, pySHACL |
+| Tool implementation | Python 3.12 or newer, RDFLib, pytest, HTTPX |
 | Specs | All `*.ttl` files below a Product Bundle's `specs/`, merged into one RDF graph |
 | Topology | Exactly one `sco:GetEndpoint`, one `sco:SqlTable`, and one shared Shape |
 | Storage | Explicitly declared SQLite with a file supplied through Runtime Protocol v1 |
@@ -130,10 +130,10 @@ implementation; the directory itself is not an executable system.
 | Goal | Strategy |
 | --- | --- |
 | No invented requirements | Validate explicit RDF relations and use only Compiler Conventions v1 or Runtime Protocol v1 for remaining mappings. |
-| Reproducibility | Build one normalized Contract Model and render all outputs with sorted inputs and fixed templates. |
+| Reproducibility | Build one normalized Explicit Obligation Model and render all outputs with sorted inputs and fixed templates. |
 | Technology independence | Start the Product Runtime from a product-owned manifest and observe it only through declared external boundaries. |
 | Interface verification | Generate expected OpenAPI, validate the published document as OpenAPI 3.1, then compare the required subset within the supported profile. |
-| Behavioral verification | Seed the contracted SQLite store, call the real HTTP endpoint, and validate returned RDF against SHACL. |
+| Behavioral verification | Seed the contracted SQLite store, call the real HTTP endpoint, and assert JSON directly against explicit obligations derived from SHACL. |
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
 | Compiler bootstrap | Materialize G1 deterministically from G0 at the declared implementation path, then invoke the independent G1 through its own manifest and compare repeated outputs. |
@@ -162,27 +162,27 @@ views for this section.
 | Component | Source | Responsibility |
 | --- | --- | --- |
 | CLI and Output Coordinator | `parse_args()`, `main()` | Validate the Product Bundle path and coordinate compilation and writes. |
-| RDF/SHACL Contract Reader | `read_contract()` and parsing helpers | Merge Turtle files, validate the supported profile including optional Bootstrap Process provenance, and build the Contract Model. |
+| RDF/SHACL Obligation Reader | `read_obligation_model()` and parsing helpers | Merge Turtle files, validate the supported profile, and build the Explicit Obligation Model. |
 | Deterministic Fixture Synthesizer | `deterministic_value()` | Derive reproducible valid values from supported Shape boundaries. |
 | OpenAPI Contract Renderer | `build_openapi()` | Produce `generated/expected-openapi.json`. |
 | Work Graph Compiler | `build_work_items()` | Produce obligations, sources, dependencies, exclusions, and proof references. |
 | Issue Template Renderer | `render_issue()` | Produce natural-language Markdown without an LLM. |
 | Contract Test Renderer | `TEST_TEMPLATE` | Produce the black-box pytest source. |
 
-The Contract Model is currently an in-memory Python dictionary. It is shared
+The Explicit Obligation Model is currently an in-memory Python dictionary. It is shared
 data, not an independently deployable building block.
 
 ### 5.3 Contract Verification Harness
 
 | Component | Source | Responsibility |
 | --- | --- | --- |
-| Generated Contract Test Suite | `products/<name>/tests/test_contract.py` | Define Runtime, OpenAPI, SQLite, HTTP, and SHACL proofs. |
+| Generated Contract Test Suite | `products/<name>/tests/test_contract.py` | Define Runtime, OpenAPI, SQLite, and direct HTTP obligation proofs. |
 | Product Runtime Adapter | `tools/contract_runtime.py` | Read the manifest, substitute values, start the process, detect readiness, and clean up the tree. |
 | Compiler Runtime Adapter | `tools/compiler_runtime.py` | Invoke a compiler manifest as a separate bounded process and capture its observable result. |
 | Ontology Documentation Builder | `tools/build_ontology_site.py`, WIDOCO 1.4.25 | Validate namespace use, invoke pinned WIDOCO/WebVOWL, add landing page and example downloads, and verify the static site shape. |
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
-| HTTP/SHACL Behavior Verifier | Generated behavior test | Call the live endpoint, compare values, and validate the response Shape. |
+| HTTP Obligation Verifier | Generated behavior test | Call the live endpoint and directly assert required fields, types, bounds, closure, and stored values. |
 | Runtime Regression Test | `tools/tests/test_contract_runtime.py` | Prove that parent and child product processes are removed after a test. |
 
 No component decomposition is documented for the reference Product Runtime. It
@@ -203,7 +203,7 @@ sequenceDiagram
     Operator->>Compiler: poe generate --product products/<name>
     Compiler->>Specs: Load sorted Turtle files
     Specs-->>Compiler: Merged RDF graph
-    Compiler->>Compiler: Validate and build Contract Model
+    Compiler->>Compiler: Validate and build Explicit Obligation Model
     alt missing, ambiguous, or unsupported statement
         Compiler-->>Operator: Fail with diagnostic
     else valid contract
@@ -235,7 +235,7 @@ sequenceDiagram
     Harness->>Runtime: GET contracted resource path
     Runtime->>DB: Read record by mapped identifier
     Runtime-->>Harness: Contracted JSON response
-    Harness->>Harness: Compare values and validate SHACL
+    Harness->>Harness: Compare values and assert explicit obligations
     Harness->>Runtime: Stop complete process tree
     Harness-->>Operator: Deterministic pytest result
 ```
@@ -418,6 +418,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0009](decisions/0009-separate-bootstrap-provenance-from-transformation-contract.md) | G0 and the modify-existing strategy are explicit Bootstrap Process provenance, separate from technology-neutral product obligations. | Accepted |
 | [0010](decisions/0010-materialize-and-execute-bootstrap-generation.md) | G0 deterministically materializes an independent G1 source artifact that is executed through its own project and manifest. | Accepted; supersedes ADR 0009's deferred-synthesis statement |
 | [0011](decisions/0011-publish-separate-example-webvowl-graph.md) | The SQL API example receives a separate WebVOWL graph instead of being merged into the canonical vocabulary graph. | Accepted; refines ADR 0007's example-publication decision |
+| [0012](decisions/0012-generate-direct-tests-from-explicit-obligations.md) | SHACL is an input profile; product JSON is checked directly from an Explicit Obligation Model without pySHACL. | Accepted |
 
 ## 10. Quality requirements
 
@@ -440,7 +441,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | --- | --- |
 | The public ontology currently defines only the vocabulary slice exercised by the prototype. | Publication validation prevents undefined used terms, but OWL axioms and bilingual descriptions must deepen as the contract language grows. |
 | Exactly one endpoint, table, parameter, and shared Shape are supported. | The model has not demonstrated multi-resource scaling. Extend only with explicit new semantics and tests. |
-| The Contract Model is an untyped dictionary in a large generator module. | Renderer drift becomes more likely as features grow; introduce typed immutable structures before significant expansion. |
+| The Explicit Obligation Model is an untyped dictionary in a large generator module. | Renderer drift becomes more likely as features grow; introduce typed immutable structures before significant expansion. |
 | Expected OpenAPI and tests come from the same compiler. | A shared interpretation bug can affect both oracle and proof; add independent conformance examples or mutation tests. |
 | G1 is mechanically derived from G0 and judged by tests generated from the same lineage. | The bootstrap proves executable continuity and determinism but not semantic independence; retain G0 as a trust anchor and add an independent compiler or oracle before claiming diverse double compilation. |
 | Experimental IRIs contain the GitHub account and repository name. | Renaming either breaks identifiers; migrate through a persistent redirect such as w3id.org before promising stable public IRIs. |
@@ -468,7 +469,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Spec | Explicit RDF/SHACL statement authored as product input. |
 | Shape | SHACL description of valid resource data. |
 | Contract Graph | RDF graph formed by merging the Product Bundle's sorted Turtle files. |
-| Contract Model | Normalized in-memory representation used by every renderer. |
+| Explicit Obligation Model | Normalized in-memory representation containing only explicitly sourced, externally testable obligations used by every renderer. |
 | Compiler Convention | Named, versioned deterministic mapping not directly expressed by a spec statement. |
 | Runtime Protocol | Technology-independent contract for starting and observing a product. |
 | Compiler Protocol | Technology-independent contract for invoking a compiler on a Product Bundle and observing its exit status, output, and generated files. |
