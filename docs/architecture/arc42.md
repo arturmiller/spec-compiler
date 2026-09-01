@@ -420,6 +420,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0011](decisions/0011-publish-separate-example-webvowl-graph.md) | The SQL API example receives a separate WebVOWL graph instead of being merged into the canonical vocabulary graph. | Accepted; refines ADR 0007's example-publication decision |
 | [0012](decisions/0012-generate-direct-tests-from-explicit-obligations.md) | SHACL is an input profile; product JSON is checked directly from an Explicit Obligation Model without pySHACL. | Accepted |
 | [0013](decisions/0013-project-example-relations-for-webvowl.md) | Explicit instance and SHACL relations are projected into visualization-only OWL edges so WebVOWL can connect the SQL API example nodes. | Accepted; refines ADR 0011 |
+| [0014](decisions/0014-preserve-node-shapes-in-webvowl-projection.md) | The visualization projection preserves each Node Shape as a connected node instead of bypassing it when resolving its target class. | Accepted; refines ADR 0013 |
 
 ## 10. Quality requirements
 

@@ -43,9 +43,10 @@ ersetzt weder die SHACL-Specs noch deren ausführbare Constraints.
 
 Für diesen zweiten Graphen projiziert der Dokumentationsbuilder ausgewählte
 Instanz- und SHACL-Beziehungen in ausschließlich visuelle OWL-Klassen und
-Object Properties. Dadurch kann WebVOWL Endpunkt, Tabelle und fachliche Klasse
-verbinden. Die Projektion ist abgeleitet, nicht autoritativ und darf weder vom
-Compiler gelesen werden noch neue Testverpflichtungen begründen.
+Object Properties. Dabei bleibt das Node Shape als eigener Knoten zwischen
+Endpunkt beziehungsweise Tabelle und fachlicher Zielklasse sichtbar. Die
+Projektion ist abgeleitet, nicht autoritativ und darf weder vom Compiler gelesen
+werden noch neue Testverpflichtungen begründen.
 
 Die RDF-/SHACL-Specs legen ausdrücklich fest:
 

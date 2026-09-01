@@ -300,6 +300,24 @@ def _add_visualization_edge(
     return relation
 
 
+def _project_shape(graph: Graph, shape: URIRef) -> set[URIRef]:
+    target = _single_target_class(graph, shape)
+    graph.add((shape, RDF.type, OWL.Class))
+    graph.add((shape, RDFS.label, Literal("Article shape", lang="en")))
+    graph.add((shape, RDFS.label, Literal("Artikel-Shape", lang="de")))
+    return {
+        shape,
+        _add_visualization_edge(
+            graph,
+            source=shape,
+            target=target,
+            relation_name="target-class",
+            label_en="target class",
+            label_de="Zielklasse",
+        ),
+    }
+
+
 def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
     """Project instance/SHACL relations into an OWL graph understood by WebVOWL."""
     generated_terms: set[URIRef] = set()
@@ -316,12 +334,12 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
 
         for shape in graph.objects(endpoint, SCO.returns):
             if isinstance(shape, URIRef):
-                target = _single_target_class(graph, shape)
+                generated_terms.update(_project_shape(graph, shape))
                 generated_terms.add(
                     _add_visualization_edge(
                         graph,
                         source=endpoint,
-                        target=target,
+                        target=shape,
                         relation_name="returns",
                         label_en="returns",
                         label_de="liefert",
@@ -349,12 +367,12 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
         generated_terms.add(table)
         for shape in graph.objects(table, SCO.stores):
             if isinstance(shape, URIRef):
-                target = _single_target_class(graph, shape)
+                generated_terms.update(_project_shape(graph, shape))
                 generated_terms.add(
                     _add_visualization_edge(
                         graph,
                         source=table,
-                        target=target,
+                        target=shape,
                         relation_name="stores",
                         label_en="stores",
                         label_de="speichert",
@@ -392,9 +410,11 @@ def _build_sql_api_visualization(jar: Path) -> None:
     expected_projected_terms = {
         ARTICLE.GetArticleEndpoint,
         ARTICLE.ArticlesTable,
-        SQL_API_VISUALIZATION["GetArticleEndpoint-returns-Article"],
+        ARTICLE.ArticleShape,
+        SQL_API_VISUALIZATION["GetArticleEndpoint-returns-ArticleShape"],
         SQL_API_VISUALIZATION["GetArticleEndpoint-reads-from-ArticlesTable"],
-        SQL_API_VISUALIZATION["ArticlesTable-stores-Article"],
+        SQL_API_VISUALIZATION["ArticlesTable-stores-ArticleShape"],
+        SQL_API_VISUALIZATION["ArticleShape-target-class-Article"],
     }
     missing_projected_terms = expected_projected_terms - projected_terms
     if missing_projected_terms:
@@ -488,9 +508,11 @@ def build_site(jar: Path) -> None:
             ARTICLE.price,
             ARTICLE.GetArticleEndpoint,
             ARTICLE.ArticlesTable,
-            SQL_API_VISUALIZATION["GetArticleEndpoint-returns-Article"],
+            ARTICLE.ArticleShape,
+            SQL_API_VISUALIZATION["GetArticleEndpoint-returns-ArticleShape"],
             SQL_API_VISUALIZATION["GetArticleEndpoint-reads-from-ArticlesTable"],
-            SQL_API_VISUALIZATION["ArticlesTable-stores-Article"],
+            SQL_API_VISUALIZATION["ArticlesTable-stores-ArticleShape"],
+            SQL_API_VISUALIZATION["ArticleShape-target-class-Article"],
         )
         if str(term) not in serialized_sql_api
     ]

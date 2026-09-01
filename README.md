@@ -81,8 +81,9 @@ zeigt ausschließlich das allgemeine `sco:*`-Vokabular;
 `/examples/sql-api/webvowl/` zeigt das fachliche SQL-API-Beispiel mit
 `article:Article`, `article:description` und `article:price`. Eine ausschließlich
 für WebVOWL abgeleitete OWL-Projektion verbindet außerdem `GetArticleEndpoint`
-über `returns` und `reads from` mit `Article` und `ArticlesTable` sowie die
-Tabelle über `stores` mit `Article`. Diese Projektion begründet keine
+über `returns` mit `ArticleShape` und über `reads from` mit `ArticlesTable`.
+Die Tabelle verweist über `stores` ebenfalls auf `ArticleShape`, das über
+`target class` mit `Article` verbunden ist. Diese Projektion begründet keine
 Produktanforderungen. Die vollständigen SHACL-Constraints bleiben in den
 verlinkten Turtle-Specs, da WebVOWL primär OWL/RDFS-Strukturen visualisiert.
 
