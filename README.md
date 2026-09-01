@@ -85,7 +85,9 @@ für WebVOWL abgeleitete OWL-Projektion verbindet außerdem `GetArticleEndpoint`
 Die Tabelle verweist über `stores` ebenfalls auf `ArticleShape`, das über
 `target class` mit `Article` verbunden ist. Diese Projektion begründet keine
 Produktanforderungen. Die vollständigen SHACL-Constraints bleiben in den
-verlinkten Turtle-Specs, da WebVOWL primär OWL/RDFS-Strukturen visualisiert.
+verlinkten Turtle-Specs, da WebVOWL primär OWL/RDFS-Strukturen visualisiert. Der
+Graph verwendet den SQL-API-Ressourcen-Namespace als WebVOWL-Basis, sodass diese
+vier Beispielknoten nicht fälschlich als `external` erscheinen.
 
 Der Workflow `.github/workflows/ontology-pages.yml` baut die Site bei Pull
 Requests und veröffentlicht sie nach erfolgreichen Tests bei Pushes auf `main`

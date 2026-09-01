@@ -48,6 +48,11 @@ Endpunkt beziehungsweise Tabelle und fachlicher Zielklasse sichtbar. Die
 Projektion ist abgeleitet, nicht autoritativ und darf weder vom Compiler gelesen
 werden noch neue Testverpflichtungen begründen.
 
+Die Ontologie-IRI des abgeleiteten Graphen entspricht seinem
+`resources/sql-api/`-Basisnamespace. WebVOWL erkennt dadurch die projizierten
+Beispielknoten als interne Elemente. Eigene Visualisierungskanten behalten ihren
+getrennten `resources/sql-api/visualization/#`-Namespace.
+
 Die RDF-/SHACL-Specs legen ausdrücklich fest:
 
 - GET-Endpunkt, Pfad, Pfadparameter und dessen Datentyp,

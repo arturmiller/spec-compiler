@@ -387,7 +387,10 @@ def _build_sql_api_visualization(jar: Path) -> None:
         (ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")
     ):
         graph.parse(spec_file, format="turtle")
-    visualization_iri = URIRef(SQL_API_VISUALIZATION_IRI)
+    # WebVOWL uses the ontology IRI as its internal namespace. The projected
+    # classes retain their authored article:* IRIs, so use that resource base
+    # here and keep visualization-only edge IRIs in their separate namespace.
+    visualization_iri = URIRef(SQL_API_IRI)
     graph.add((visualization_iri, RDF.type, OWL.Ontology))
     graph.add(
         (visualization_iri, DCTERMS.title, Literal("SQL API example", lang="en"))
@@ -519,6 +522,23 @@ def build_site(jar: Path) -> None:
     if missing_example_terms:
         raise ValueError(
             f"SQL API terms are absent from WebVOWL: {missing_example_terms}"
+        )
+    internal_example_classes = {
+        str(ARTICLE.Article),
+        str(ARTICLE.ArticleShape),
+        str(ARTICLE.GetArticleEndpoint),
+        str(ARTICLE.ArticlesTable),
+    }
+    external_example_classes = [
+        item["iri"]
+        for item in sql_api_data.get("classAttribute", [])
+        if item.get("iri") in internal_example_classes
+        and "external" in item.get("attributes", [])
+    ]
+    if external_example_classes:
+        raise ValueError(
+            "SQL API classes are incorrectly marked external in WebVOWL: "
+            f"{external_example_classes}"
         )
 
 
