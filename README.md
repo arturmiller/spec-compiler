@@ -31,7 +31,8 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
 - `products/kfw_458_eligibility/`: versioniertes Referenzprodukt mit manuell
   kuratierten Rules und Source Citations, Decision Protocol v1, kompiliertem
   Decision Contract sowie Black-box-Fällen für `eligible`, `ineligible` und
-  `unknown`.
+  `unknown` einschließlich eines deterministischen, quellengestützten
+  Frageablaufs.
 - `products/spec_compiler/`: Self-Description Bundle, dessen Specs
   die allgemeine Softwareanwendung, ihre Konformität zu Compiler Protocol v1
   und ihren separat austauschbaren Transformationsvertrag beschreiben. Ein
@@ -65,7 +66,11 @@ gepinnte Rule Set Version und vollständige Source Provenance nach
 Manifest einen UTF-8-JSON-Request auf stdin und liefert genau ein JSON-Resultat
 auf stdout. Der Vertrag fordert kein HTTP, Python oder RDF im Produkt. Ein
 fehlender Fact wird als Fact Gap und nicht als `false` behandelt. Der
-mitgelieferte Scope Note stellt klar, dass das Pilotresultat weder Beratung
+Compiler wählt für ein noch `unknown`es Result genau eine explizit formulierte
+Fact Question aus den aktuellen Fact Gaps. Die Antwort wird am ausgegebenen
+JSON Pointer in den vollständigen Case eingetragen und erneut eingereicht; die
+Auswahl verlangt weder Session State noch UI. Der mitgelieferte Scope Note
+stellt klar, dass das Pilotresultat weder Beratung
 noch KfW-Zusage oder Förderentscheidung ist.
 
 Der Bootstrap-Prozess verwendet ausdrücklich die Strategie

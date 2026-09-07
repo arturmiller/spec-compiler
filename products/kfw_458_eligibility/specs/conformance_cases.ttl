@@ -4,7 +4,7 @@
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-kfw458:EligibleApplicantCase a sdo:ConformanceCase ;
+kfw458:EligibleApplicantCase a sdo:ConformanceCase, sdo:QuestionFlowCase ;
     dcterms:title "Eligible natural-person owner"@en ;
     sdo:forDecisionContract kfw458:ApplicantEligibilityDecision2026_07 ;
     sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;

@@ -77,7 +77,9 @@ Verpflichtung begründen. Fehlende Aussagen erzeugen weder Defaults noch Tests.
 
 [ADR 0016](architecture/decisions/0016-evolve-to-decision-and-obligation-compilation.md)
 definiert die Grenzen; [ADR 0017](architecture/decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.md)
-materialisiert den ersten vertikalen Schnitt. Das Decision-Profil normalisiert
+materialisiert den ersten vertikalen Schnitt und
+[ADR 0018](architecture/decisions/0018-select-next-fact-question-from-current-fact-gaps.md)
+ergänzt die deterministische Auswahl der nächsten Frage. Das Decision-Profil normalisiert
 die autorisierten Aussagen in ein typisiertes, unveränderliches **Explicit
 Decision and Obligation Model**. Für diese und weitere Schnitte gelten folgende
 Regeln:
@@ -158,8 +160,12 @@ kompilierten Vertrags sind keine Produktanforderungen.
 Der Request benennt den Decision Contract, die Rule Set Version und das
 Decision Date explizit und trägt die Case Facts an den kompilierten JSON
 Pointers. Das Result benennt Outcome, Condition Evaluations, decisive Rules,
-Fact Gaps, Provenance, menschliche Explanation und den unveränderten Scope
-Note. Protokoll und fachlicher Decision Contract bleiben getrennt versionierbar.
+Fact Gaps, höchstens eine Next Question, Provenance, menschliche Explanation
+und den unveränderten Scope Note. Ein Client ergänzt eine Antwort am
+ausgegebenen JSON Pointer und sendet den vollständigen akkumulierten Case in
+einem neuen Protokollaufruf. Protokoll und fachlicher Decision Contract bleiben
+getrennt versionierbar; Decision Protocol v1 schreibt weder Session State noch
+eine Benutzeroberfläche vor.
 
 ### Compiler Protocol v1
 
@@ -267,6 +273,40 @@ Der Compiler erzeugt aus diesem Modell `generated/decision-contract.json`,
 Black-box-Tests, Work Graph und Issue-Texte. Die erste Konvention umfasst keine
 automatische Quellenaufnahme, Disjunktionen, numerische Regeln, mehrere
 anwendbare Versionen, Obligationsaktivierung oder Evidence-Bewertung.
+
+## Question Selection Conventions v1
+
+Für jeden im Decision Contract verwendeten Rule-Condition-Pfad muss die Spec
+genau eine **Fact Question** mit explizitem Fragetext und einer innerhalb des
+Contracts eindeutigen positiven Priorität enthalten. Der Compiler leitet weder
+Fragetext aus Labels ab noch verwendet er RDF-, Datei- oder Rule-Reihenfolge als
+verdeckte Priorität.
+
+Eine **Next Question** wird nur für ein nach Decision Conventions v1 noch
+`unknown`es Decision Result erzeugt. Kandidaten sind ausschließlich Fact
+Questions, deren Conditions im aktuellen Result als Fact Gaps ausgewiesen sind.
+Unter ihnen wird deterministisch die kleinste numerische Priorität gewählt.
+Sobald mindestens eine Condition verletzt und das Result damit `ineligible`
+ist oder alle Conditions erfüllt und es `eligible` ist, enthält das Result
+keine Next Question. Damit ist jede ausgegebene Antwort geeignet, den aktuellen
+Entscheidungszustand entweder unmittelbar zu bestimmen oder zur nächsten
+verbleibenden Lücke fortzuschreiben.
+
+Die Next Question enthält ihre Identität, den autorisierten Fragetext,
+Condition, Fact Property, Input JSON Pointer und das im aktuellen Profil
+boolesche Antwortschema. Ihre Begründung nennt Rule, Source Citation, Source
+Revision, Locator und autorisierte Source Statement. Diese Provenienz folgt aus
+der expliziten Rule-Condition-Citation-Kette; Auswahl und Rangfolge folgen aus
+Question Selection Conventions v1.
+
+Genau ein **Question Flow Case** pro Decision Contract liefert einen
+vollständigen positiven Satz autorisierter Antworten. Der generierte
+Black-box-Test beginnt ohne Facts, ruft dasselbe Decision Product wiederholt
+über Decision Protocol v1 auf, trägt jede Antwort am ausgegebenen JSON Pointer
+ein und verlangt nach jedem Schritt entweder die nächste begründete Frage oder
+ein determiniertes Result. Die Konvention umfasst keinen Session State, keine
+UI, keine Kosten- oder Informationsgewinnoptimierung und keine nicht-booleschen
+Antwortschemas.
 
 ## OpenAPI und Verhalten
 

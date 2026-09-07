@@ -2,6 +2,7 @@
   "profile": "decision-obligation-v1",
   "decision_protocol_version": 1,
   "decision_conventions_version": 1,
+  "question_selection_conventions_version": 1,
   "product": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibilityEvaluator",
   "decision_contract": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision2026_07",
   "rule_set": {
@@ -26,6 +27,7 @@
     }
   },
   "scope_note": "This result covers only the modeled natural-person applicant-eligibility question for KfW product 458. It does not assess the measure, calculate funding, provide advice, or represent a KfW commitment or approval.",
+  "question_flow_case": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibleApplicantCase",
   "source_revisions": [
     {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
@@ -46,7 +48,12 @@
         "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
         "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#buildingInGermany",
         "input_json_pointer": "/case/project/buildingInGermany",
-        "expected_boolean": true
+        "expected_boolean": true,
+        "question": {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionBuildingInGermany",
+          "text": "Is the residential building located in Germany?",
+          "priority": 60
+        }
       },
       "source": {
         "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",
@@ -61,7 +68,12 @@
         "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
         "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#existingResidentialBuilding",
         "input_json_pointer": "/case/project/existingResidentialBuilding",
-        "expected_boolean": true
+        "expected_boolean": true,
+        "question": {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionExistingResidentialBuilding",
+          "text": "Is the project for an existing residential building?",
+          "priority": 50
+        }
       },
       "source": {
         "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",
@@ -76,7 +88,12 @@
         "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
         "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#naturalPerson",
         "input_json_pointer": "/case/applicant/naturalPerson",
-        "expected_boolean": true
+        "expected_boolean": true,
+        "question": {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionNaturalPerson",
+          "text": "Is the applicant a natural person (private individual)?",
+          "priority": 10
+        }
       },
       "source": {
         "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",
@@ -91,7 +108,12 @@
         "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNoUsufructRight",
         "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#hasUsufructRight",
         "input_json_pointer": "/case/applicant/hasUsufructRight",
-        "expected_boolean": false
+        "expected_boolean": false,
+        "question": {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionUsufructRight",
+          "text": "Has a usufruct right to the residential building been established for the applicant?",
+          "priority": 40
+        }
       },
       "source": {
         "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationUsufructExclusion",
@@ -106,7 +128,12 @@
         "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
         "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#ownershipViaGbR",
         "input_json_pointer": "/case/applicant/ownershipViaGbR",
-        "expected_boolean": false
+        "expected_boolean": false,
+        "question": {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwnershipViaGbR",
+          "text": "Is a GbR entered as owner, or is the applicant one of its partners?",
+          "priority": 30
+        }
       },
       "source": {
         "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationGbRExclusion",
@@ -121,7 +148,12 @@
         "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
         "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#owner",
         "input_json_pointer": "/case/applicant/owner",
-        "expected_boolean": true
+        "expected_boolean": true,
+        "question": {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwner",
+          "text": "Is the applicant an owner of the residential building?",
+          "priority": 20
+        }
       },
       "source": {
         "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",

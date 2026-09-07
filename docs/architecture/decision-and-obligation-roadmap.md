@@ -124,6 +124,8 @@ The pilot produces:
 - `ineligible` when a source-backed applicant exclusion or failed necessary
   applicant condition entails that conclusion;
 - `unknown` when one or more named Fact Gaps prevent a unique conclusion;
+- one source-justified Next Question, selected deterministically from the
+  current Fact Gaps while the outcome remains `unknown`;
 - an error for input outside the pilot boundary, conflicting Facts, ambiguous
   Rules, or an unpinned Rule Set Version.
 
@@ -145,7 +147,7 @@ explicitly pinned. Dynamic version selection is deferred to Issue #5.
 | Issue | Vertical result | Dependency |
 | --- | --- | --- |
 | [#2](https://github.com/arturmiller/spec-compiler/issues/2) | **Implemented:** compile the pinned pilot end to end into `eligible`, `ineligible`, and `unknown` Decision Results with source provenance through Decision Protocol v1. | This roadmap |
-| [#3](https://github.com/arturmiller/spec-compiler/issues/3) | Derive the next decision-relevant question from a Fact Gap. | #2 |
+| [#3](https://github.com/arturmiller/spec-compiler/issues/3) | **Implemented:** derive one source-justified Next Question from current Fact Gaps and prove repeated answer submission to a determinate result. | #2 |
 | [#4](https://github.com/arturmiller/spec-compiler/issues/4) | Evaluate Conditions separately from Evidence Requirements. | #2 |
 | [#5](https://github.com/arturmiller/spec-compiler/issues/5) | Select exactly one applicable Rule Set Version from an explicit Decision Date. | #2 |
 | [#6](https://github.com/arturmiller/spec-compiler/issues/6) | Test core-ontology reuse with a cloud-compliance decision slice. | #3, #4, #5 |

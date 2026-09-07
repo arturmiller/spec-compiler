@@ -9,12 +9,15 @@
 | **Decision Contract** | The implementation-neutral contract that fixes the scoped question, Rule Set Version, outcomes, Rules, Conditions, provenance, and evaluation convention for a Decision Product. | Decision result, runtime protocol |
 | **Decision Product** | A separately executed software product that implements a Decision Contract behind Decision Protocol v1. | Spec Compiler, KfW approval service |
 | **Decision Request** | One Decision Protocol v1 JSON input naming the Decision Contract, Rule Set Version, Decision Date, and supplied Case Facts. | Application, questionnaire |
-| **Decision Result** | One machine-readable Decision Protocol v1 output containing the Outcome, Condition Evaluations, decisive Rules, Fact Gaps, Provenance, Explanation, and scope note. | Approval, advice |
+| **Decision Result** | One machine-readable Decision Protocol v1 output containing the Outcome, Condition Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Provenance, Explanation, and scope note. | Approval, advice |
 | **Rule Set** | A stable identity for a governed collection of related Rules across revisions. | Policy document, latest rules |
 | **Rule Set Version** | One immutable, explicitly identified revision of a Rule Set with declared applicability. | Current version, latest version |
 | **Rule** | A normative proposition in a Spec that relates one or more Conditions to an explicit conclusion or Obligation. | Business logic, heuristic |
 | **Fact** | An explicitly supplied assertion about the Case evaluated by a Decision. | Assumption, answer |
 | **Fact Gap** | The recorded absence of a Fact required to evaluate a Condition. | Unknown Fact, false Fact |
+| **Fact Question** | An authored prompt tied to exactly one Condition and its input Fact, with an explicit priority used by Question Selection Conventions v1. | Generated wording, form field |
+| **Next Question** | The single Fact Question selected from current Fact Gaps for an undetermined Decision Result; determinate results have none. | Any missing field, questionnaire |
+| **Question Flow Case** | A complete positive Conformance Case whose Facts provide authored answers for the generated multi-step question-flow proof. | Session transcript, UI script |
 | **Condition** | A truth-valued predicate referenced by a Rule and evaluated only from explicit Facts and named conventions. | Check, requirement |
 | **Condition Evaluation** | The result `satisfied`, `violated`, or `unknown` for one Condition within one Decision. | Decision result |
 | **Decision** | The act of evaluating one explicitly scoped question for one Case against exactly one applicable Rule Set Version; its serialized observation is a Decision Result. | Recommendation, approval, result document |
@@ -63,6 +66,12 @@
   conclusion or **Obligation**.
 - A **Condition** has exactly one **Condition Evaluation** within a **Decision**.
 - An unknown **Condition Evaluation** identifies at least one **Fact Gap**.
+- One **Fact Question** elicits the Fact for exactly one **Condition**. An
+  undetermined **Decision Result** selects at most one **Next Question** from
+  its current **Fact Gaps** by the explicit priority convention.
+- A client answers a **Next Question** by adding the Fact to the complete
+  **Case** and submitting another **Decision Request**; the protocol retains no
+  session state.
 - A **Source** has one or more **Source Revisions**; a **Source Citation** points
   to exactly one revision.
 - Every derived **Decision Outcome**, **Obligation**, and **Evidence
@@ -83,6 +92,12 @@
 >
 > **Domain expert:** "Only if that gap prevents a unique outcome. A separate,
 > satisfied exclusion Rule could already entail `ineligible`."
+>
+> **Developer:** "Which question should we ask next?"
+>
+> **Domain expert:** "Only the **Fact Question** for a current **Fact Gap**.
+> **Question Selection Conventions v1** choose the lowest authored priority,
+> and a determinate result has no **Next Question**."
 >
 > **Developer:** "And `eligible` means KfW will approve the application?"
 >

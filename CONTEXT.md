@@ -21,13 +21,18 @@ accepts a bounded path toward **Decision and Obligation Compilation**.
 [ADR 0017](docs/architecture/decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.md)
 implements its first profile with source-backed Rules, Conditions, Fact Gaps,
 Decision Results, and Provenance without weakening the existing provenance
-invariant. Obligation activation and evidence evaluation remain later slices.
+invariant. [ADR 0018](docs/architecture/decisions/0018-select-next-fact-question-from-current-fact-gaps.md)
+adds explicit Fact Questions and deterministic Next Question selection from
+current Fact Gaps. Obligation activation and evidence evaluation remain later
+slices.
 
 The first implementation slice is the **KfW 458 Applicant Eligibility Pilot**.
 It is invoked through Decision Protocol v1 and compiles a pinned Rule Set
 Version into a Decision Contract, generated proofs, and observable eligible,
-ineligible, or unknown Decision Results. Its scope and pinned source revision
-are defined in the
+ineligible, or unknown Decision Results. An unknown result carries one
+source-justified Next Question; repeated complete Case submissions advance to
+another justified question or a determinate outcome. Its scope and pinned
+source revision are defined in the
 [Decision and Obligation Compilation roadmap](docs/architecture/decision-and-obligation-roadmap.md).
 
 ## Domain language
@@ -43,6 +48,9 @@ ontology terms, code, and generated work items use that language.
   to that Spec or to a named, versioned convention.
 - A missing decision fact yields an explicit Fact Gap and may yield an
   Undetermined Decision Outcome. It is not inferred as false.
+- A Next Question is selected only from current Fact Gaps while the Decision
+  Outcome is undetermined. Its authored priority is explicit and determinate
+  outcomes never request another Fact.
 - Ambiguous specs, conflicting facts, ambiguous rule-set applicability, or
   multiple incompatible conclusions are errors, not Undetermined outcomes.
 - The Spec Compiler remains one software system. Decision and Obligation

@@ -563,7 +563,14 @@ def build_site(jar: Path) -> None:
         (
             "Decision and Obligation Core Ontology",
             DECISION_REFERENCE_OUTPUT,
-            (SDO.DecisionContract, SDO.RuleSetVersion, SDO.Condition, SDO.SourceCitation),
+            (
+                SDO.DecisionContract,
+                SDO.RuleSetVersion,
+                SDO.Condition,
+                SDO.FactQuestion,
+                SDO.QuestionFlowCase,
+                SDO.SourceCitation,
+            ),
         ),
         (
             "Funding Domain Ontology",

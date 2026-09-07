@@ -57,6 +57,11 @@ sdo:FactGap a owl:Class ;
     rdfs:label "Sachverhaltslücke"@de ;
     rdfs:comment "Absence of a Fact required to evaluate a Condition; it is not a false Fact."@en .
 
+sdo:FactQuestion a owl:Class ;
+    rdfs:label "Fact question"@en ;
+    rdfs:label "Sachverhaltsfrage"@de ;
+    rdfs:comment "An authored prompt that can elicit one Fact required to evaluate a Condition."@en .
+
 sdo:DecisionResult a owl:Class ;
     rdfs:label "Decision result"@en ;
     rdfs:label "Entscheidungsergebnis"@de .
@@ -73,6 +78,12 @@ sdo:ConformanceCase a owl:Class ;
     rdfs:subClassOf sdo:Case ;
     rdfs:label "Conformance case"@en ;
     rdfs:label "Konformitätsfall"@de .
+
+sdo:QuestionFlowCase a owl:Class ;
+    rdfs:subClassOf sdo:ConformanceCase ;
+    rdfs:label "question flow case"@en ;
+    rdfs:label "Frageablauf-Konformitätsfall"@de ;
+    rdfs:comment "A complete positive Conformance Case whose Facts are supplied as answers in the generated multi-step question-flow proof."@en .
 
 sdo:Source a owl:Class ;
     rdfs:label "Source"@en ;
@@ -169,6 +180,12 @@ sdo:forCondition a owl:ObjectProperty ;
     rdfs:domain sdo:CaseFact ;
     rdfs:range sdo:Condition .
 
+sdo:elicitsCondition a owl:ObjectProperty ;
+    rdfs:label "elicits condition fact for"@en ;
+    rdfs:label "erfragt Sachverhalt für Bedingung"@de ;
+    rdfs:domain sdo:FactQuestion ;
+    rdfs:range sdo:Condition .
+
 sdo:requiresAllRules a owl:DatatypeProperty ;
     rdfs:label "requires all rules"@en ;
     rdfs:label "erfordert alle Regeln"@de ;
@@ -186,6 +203,19 @@ sdo:booleanValue a owl:DatatypeProperty ;
     rdfs:label "boolescher Wert"@de ;
     rdfs:domain sdo:CaseFact ;
     rdfs:range xsd:boolean .
+
+sdo:questionText a owl:DatatypeProperty ;
+    rdfs:label "question text"@en ;
+    rdfs:label "Fragetext"@de ;
+    rdfs:domain sdo:FactQuestion ;
+    rdfs:range xsd:string .
+
+sdo:questionPriority a owl:DatatypeProperty ;
+    rdfs:label "question priority"@en ;
+    rdfs:label "Fragepriorität"@de ;
+    rdfs:comment "A positive integer; lower values are selected before higher values when their Conditions both have Fact Gaps."@en ;
+    rdfs:domain sdo:FactQuestion ;
+    rdfs:range xsd:positiveInteger .
 
 sdo:outcomeCode a owl:DatatypeProperty ;
     rdfs:label "outcome code"@en ;

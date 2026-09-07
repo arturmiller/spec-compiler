@@ -107,6 +107,30 @@ def evaluate(contract: dict, request: dict) -> dict:
         }
         for rule_id in decisive_rules
     ]
+    next_question = None
+    if outcome_role == "unknown":
+        next_rule = min(
+            (rule_by_id[rule_id] for rule_id in unknown),
+            key=lambda rule: rule["condition"]["question"]["priority"],
+        )
+        condition = next_rule["condition"]
+        question = condition["question"]
+        source = next_rule["source"]
+        next_question = {
+            "id": question["id"],
+            "text": question["text"],
+            "condition": condition["id"],
+            "fact_property": condition["fact_property"],
+            "input_json_pointer": condition["input_json_pointer"],
+            "answer_schema": {"type": "boolean"},
+            "justification": {
+                "rule": next_rule["id"],
+                "source_citation": source["citation"],
+                "source_revision": source["source_revision"],
+                "source_locator": source["locator"],
+                "source_statement": source["statement"],
+            },
+        }
     if outcome_role == "positive":
         explanation = (
             f"{outcome['code']}: all {len(contract['rules'])} modeled applicant "
@@ -128,6 +152,7 @@ def evaluate(contract: dict, request: dict) -> dict:
         "condition_evaluations": evaluations,
         "decisive_rules": decisive_rules,
         "fact_gaps": fact_gaps,
+        "next_question": next_question,
         "provenance": provenance,
         "explanation": explanation,
         "scope_note": contract["scope_note"],

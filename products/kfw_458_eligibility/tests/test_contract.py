@@ -96,6 +96,43 @@ def _expected_result(case):
     return outcome, evaluations, decisive, gaps, provenance
 
 
+def _expected_next_question(evaluations):
+    if any(item["state"] == "violated" for item in evaluations):
+        return None
+    unknown_rules = [
+        rule
+        for rule in CONTRACT["rules"]
+        if any(
+            item["rule"] == rule["id"] and item["state"] == "unknown"
+            for item in evaluations
+        )
+    ]
+    if not unknown_rules:
+        return None
+    rule = min(
+        unknown_rules,
+        key=lambda item: item["condition"]["question"]["priority"],
+    )
+    condition = rule["condition"]
+    question = condition["question"]
+    source = rule["source"]
+    return {
+        "id": question["id"],
+        "text": question["text"],
+        "condition": condition["id"],
+        "fact_property": condition["fact_property"],
+        "input_json_pointer": condition["input_json_pointer"],
+        "answer_schema": {"type": "boolean"},
+        "justification": {
+            "rule": rule["id"],
+            "source_citation": source["citation"],
+            "source_revision": source["source_revision"],
+            "source_locator": source["locator"],
+            "source_statement": source["statement"],
+        },
+    }
+
+
 def _run_case(case):
     result = run_decision(PRODUCT_ROOT, _request_for_case(case))
     assert result.returncode == 0, result.output
@@ -103,11 +140,24 @@ def _run_case(case):
 
 
 def test_generated_contract_covers_all_declared_outcomes():
+    assert CONTRACT["question_selection_conventions_version"] == 1
     assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
         outcome["id"] for outcome in CONTRACT["outcomes"].values()
     }
     assert all(rule["source"]["statement"] for rule in CONTRACT["rules"])
     assert all(rule["source"]["locator"] for rule in CONTRACT["rules"])
+    priorities = [
+        rule["condition"]["question"]["priority"]
+        for rule in CONTRACT["rules"]
+    ]
+    assert len(priorities) == len(set(priorities))
+    flow_case = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["id"] == CONTRACT["question_flow_case"]
+    )
+    assert flow_case["expected_outcome"] == CONTRACT["outcomes"]["positive"]["id"]
+    assert len(flow_case["facts"]) == len(CONTRACT["rules"])
 
 
 def test_decision_product_runtime():
@@ -132,6 +182,7 @@ def test_declared_decision_outcome(case):
     assert payload["condition_evaluations"] == evaluations
     assert payload["decisive_rules"] == decisive
     assert payload["fact_gaps"] == gaps
+    assert payload["next_question"] == _expected_next_question(evaluations)
 
 
 @pytest.mark.parametrize(
@@ -146,3 +197,76 @@ def test_decision_result_provenance(case):
     assert isinstance(payload["explanation"], str) and payload["explanation"].strip()
     assert outcome["code"] in payload["explanation"].lower()
     assert payload["scope_note"] == CONTRACT["scope_note"]
+
+
+def test_question_driven_interaction_reaches_final_outcome():
+    flow_case = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["id"] == CONTRACT["question_flow_case"]
+    )
+    answers = {fact["condition"]: fact["value"] for fact in flow_case["facts"]}
+    ordered_rules = sorted(
+        CONTRACT["rules"],
+        key=lambda rule: rule["condition"]["question"]["priority"],
+    )
+    request = _request_for_case({**flow_case, "facts": []})
+    answered = set()
+
+    for rule in ordered_rules:
+        result = run_decision(PRODUCT_ROOT, request)
+        assert result.returncode == 0, result.output
+        payload = result.json_output()
+        assert payload["outcome"] == CONTRACT["outcomes"]["unknown"]["code"]
+        assert not any(
+            item["state"] == "violated"
+            for item in payload["condition_evaluations"]
+        )
+        question = payload["next_question"]
+        assert question == _expected_next_question(
+            payload["condition_evaluations"]
+        )
+        assert question["condition"] == rule["condition"]["id"]
+        assert question["condition"] not in answered
+        assert question["condition"] in {
+            gap["condition"] for gap in payload["fact_gaps"]
+        }
+        assert question["justification"]["source_statement"]
+        assert question["justification"]["source_citation"]
+        _set_json_pointer(
+            request,
+            question["input_json_pointer"],
+            answers[question["condition"]],
+        )
+        answered.add(question["condition"])
+
+    result = run_decision(PRODUCT_ROOT, request)
+    assert result.returncode == 0, result.output
+    payload = result.json_output()
+    assert payload["outcome"] == CONTRACT["outcomes"]["positive"]["code"]
+    assert payload["fact_gaps"] == []
+    assert payload["next_question"] is None
+
+
+def test_determinate_outcome_does_not_ask_an_irrelevant_question():
+    negative = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["expected_outcome"] == CONTRACT["outcomes"]["negative"]["id"]
+    )
+    removable = next(
+        fact
+        for fact in negative["facts"]
+        if fact["value"]
+        == RULES_BY_CONDITION[fact["condition"]]["condition"]["expected_boolean"]
+    )
+    partial = {
+        **negative,
+        "facts": [fact for fact in negative["facts"] if fact is not removable],
+    }
+
+    payload = _run_case(partial)
+
+    assert payload["outcome"] == CONTRACT["outcomes"]["negative"]["code"]
+    assert payload["fact_gaps"]
+    assert payload["next_question"] is None

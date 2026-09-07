@@ -61,6 +61,11 @@ kfw458:ConditionNaturalPerson a sdo:Condition ;
     sco:inputJsonPointer "/case/applicant/naturalPerson" ;
     sdo:expectedBoolean true .
 
+kfw458:QuestionNaturalPerson a sdo:FactQuestion ;
+    sdo:elicitsCondition kfw458:ConditionNaturalPerson ;
+    sdo:questionText "Is the applicant a natural person (private individual)?" ;
+    sdo:questionPriority 10 .
+
 kfw458:RuleOwner a sdo:Rule ;
     sdo:condition kfw458:ConditionOwner ;
     sdo:sourceCitation kfw458:CitationEligibleApplicants .
@@ -69,6 +74,11 @@ kfw458:ConditionOwner a sdo:Condition ;
     sdo:factProperty funding:owner ;
     sco:inputJsonPointer "/case/applicant/owner" ;
     sdo:expectedBoolean true .
+
+kfw458:QuestionOwner a sdo:FactQuestion ;
+    sdo:elicitsCondition kfw458:ConditionOwner ;
+    sdo:questionText "Is the applicant an owner of the residential building?" ;
+    sdo:questionPriority 20 .
 
 kfw458:RuleNotOwnershipViaGbR a sdo:Rule ;
     sdo:condition kfw458:ConditionNotOwnershipViaGbR ;
@@ -79,6 +89,11 @@ kfw458:ConditionNotOwnershipViaGbR a sdo:Condition ;
     sco:inputJsonPointer "/case/applicant/ownershipViaGbR" ;
     sdo:expectedBoolean false .
 
+kfw458:QuestionOwnershipViaGbR a sdo:FactQuestion ;
+    sdo:elicitsCondition kfw458:ConditionNotOwnershipViaGbR ;
+    sdo:questionText "Is a GbR entered as owner, or is the applicant one of its partners?" ;
+    sdo:questionPriority 30 .
+
 kfw458:RuleNoUsufructRight a sdo:Rule ;
     sdo:condition kfw458:ConditionNoUsufructRight ;
     sdo:sourceCitation kfw458:CitationUsufructExclusion .
@@ -87,6 +102,11 @@ kfw458:ConditionNoUsufructRight a sdo:Condition ;
     sdo:factProperty funding:hasUsufructRight ;
     sco:inputJsonPointer "/case/applicant/hasUsufructRight" ;
     sdo:expectedBoolean false .
+
+kfw458:QuestionUsufructRight a sdo:FactQuestion ;
+    sdo:elicitsCondition kfw458:ConditionNoUsufructRight ;
+    sdo:questionText "Has a usufruct right to the residential building been established for the applicant?" ;
+    sdo:questionPriority 40 .
 
 kfw458:RuleExistingResidentialBuilding a sdo:Rule ;
     sdo:condition kfw458:ConditionExistingResidentialBuilding ;
@@ -97,6 +117,11 @@ kfw458:ConditionExistingResidentialBuilding a sdo:Condition ;
     sco:inputJsonPointer "/case/project/existingResidentialBuilding" ;
     sdo:expectedBoolean true .
 
+kfw458:QuestionExistingResidentialBuilding a sdo:FactQuestion ;
+    sdo:elicitsCondition kfw458:ConditionExistingResidentialBuilding ;
+    sdo:questionText "Is the project for an existing residential building?" ;
+    sdo:questionPriority 50 .
+
 kfw458:RuleBuildingInGermany a sdo:Rule ;
     sdo:condition kfw458:ConditionBuildingInGermany ;
     sdo:sourceCitation kfw458:CitationEligibleApplicants .
@@ -105,3 +130,8 @@ kfw458:ConditionBuildingInGermany a sdo:Condition ;
     sdo:factProperty funding:buildingInGermany ;
     sco:inputJsonPointer "/case/project/buildingInGermany" ;
     sdo:expectedBoolean true .
+
+kfw458:QuestionBuildingInGermany a sdo:FactQuestion ;
+    sdo:elicitsCondition kfw458:ConditionBuildingInGermany ;
+    sdo:questionText "Is the residential building located in Germany?" ;
+    sdo:questionPriority 60 .

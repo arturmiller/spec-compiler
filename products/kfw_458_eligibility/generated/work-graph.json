@@ -3,6 +3,7 @@
   "compiler_conventions_version": 1,
   "decision_conventions_version": 1,
   "decision_protocol_version": 1,
+  "question_selection_conventions_version": 1,
   "work_items": [
     {
       "id": "kfw-458.decision-runtime",
@@ -71,6 +72,31 @@
       "excluded": [
         "Automatic source-document ingestion",
         "A claim that the authored Spec completely transcribes the external source"
+      ]
+    },
+    {
+      "id": "kfw-458.question-flow",
+      "title": "Ask the next decision-relevant Fact Question",
+      "goal": "Advance an unknown Case through source-backed questions to a determinate outcome.",
+      "depends_on": [
+        "kfw-458.result-provenance"
+      ],
+      "obligations": [
+        "Only a Fact Gap that currently prevents a unique outcome can produce the next question.",
+        "The lowest-priority unresolved authored Fact Question is selected deterministically.",
+        "The question identifies its Condition, input pointer, and supporting Rule and Source Citation.",
+        "Submitting each authored answer advances to the next justified question or a final outcome.",
+        "A determinate outcome never includes a next question."
+      ],
+      "sources": [
+        "`specs/`: Fact Questions, priorities, Conditions, and Question Flow Case",
+        "Question Selection Conventions v1: select the lowest-priority current Fact Gap",
+        "Decision Conventions v1: violated Conditions make the outcome determinate"
+      ],
+      "test": "products/kfw_458_eligibility/tests/test_contract.py::test_question_driven_interaction_reaches_final_outcome",
+      "excluded": [
+        "Questions unrelated to a Rule Condition",
+        "Session state, a conversational user interface, or adaptive question optimization"
       ]
     }
   ]

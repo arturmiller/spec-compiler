@@ -20,6 +20,7 @@ COMPILER_CONVENTIONS_VERSION = 1
 RUNTIME_PROTOCOL_VERSION = 1
 DECISION_CONVENTIONS_VERSION = 1
 DECISION_PROTOCOL_VERSION = 1
+QUESTION_SELECTION_CONVENTIONS_VERSION = 1
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
 SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
@@ -54,11 +55,19 @@ class DecisionSource:
 
 
 @dataclass(frozen=True)
+class FactQuestion:
+    identifier: str
+    text: str
+    priority: int
+
+
+@dataclass(frozen=True)
 class DecisionCondition:
     identifier: str
     fact_property: str
     input_json_pointer: str
     expected_boolean: bool
+    question: FactQuestion
 
 
 @dataclass(frozen=True)
@@ -93,6 +102,7 @@ class ExplicitDecisionAndObligationModel:
     scope_note: str
     rules: tuple[DecisionRule, ...]
     conformance_cases: tuple[DecisionConformanceCase, ...]
+    question_flow_case: str
 
 
 def one(graph: Graph, subject, predicate):
@@ -361,6 +371,17 @@ def _required_text(graph: Graph, subject, predicate, description: str) -> str:
     return value
 
 
+def _positive_integer_value(value, description: str) -> int:
+    converted = value.toPython()
+    if (
+        not isinstance(converted, int)
+        or isinstance(converted, bool)
+        or converted <= 0
+    ):
+        raise ValueError(f"{description} must be an xsd:positiveInteger")
+    return converted
+
+
 def _json_pointer(value: str) -> str:
     if not value.startswith("/case/"):
         raise ValueError(
@@ -552,6 +573,8 @@ def read_decision_model(
     rules = []
     pointers = set()
     conditions = set()
+    questions = set()
+    question_priorities = set()
     for rule_node in rule_nodes:
         if (rule_node, RDF.type, SDO.Rule) not in graph:
             raise ValueError(f"Rule Set member {rule_node} must be an sdo:Rule")
@@ -572,6 +595,35 @@ def read_decision_model(
                 f"Decision Conditions must not share input pointer {pointer}"
             )
         pointers.add(pointer)
+        question_nodes = list(
+            graph.subjects(SDO.elicitsCondition, condition_node)
+        )
+        if len(question_nodes) != 1:
+            raise ValueError(
+                f"Decision Condition {condition_node} must have exactly one "
+                f"sdo:FactQuestion, got {len(question_nodes)}"
+            )
+        question_node = question_nodes[0]
+        if (question_node, RDF.type, SDO.FactQuestion) not in graph:
+            raise ValueError(
+                f"Question {question_node} must be an sdo:FactQuestion"
+            )
+        question_id = str(question_node)
+        if question_id in questions:
+            raise ValueError(
+                f"Fact Question {question_node} elicits more than one Condition"
+            )
+        questions.add(question_id)
+        question_priority = _positive_integer_value(
+            one(graph, question_node, SDO.questionPriority),
+            f"Fact Question {question_node} priority",
+        )
+        if question_priority in question_priorities:
+            raise ValueError(
+                "Fact Question priorities must be unique within a Decision "
+                f"Contract: {question_priority}"
+            )
+        question_priorities.add(question_priority)
         condition = DecisionCondition(
             identifier=condition_id,
             fact_property=str(one(graph, condition_node, SDO.factProperty)),
@@ -579,6 +631,16 @@ def read_decision_model(
             expected_boolean=_boolean_value(
                 one(graph, condition_node, SDO.expectedBoolean),
                 f"Decision Condition {condition_node} expectedBoolean",
+            ),
+            question=FactQuestion(
+                identifier=question_id,
+                text=_required_text(
+                    graph,
+                    question_node,
+                    SDO.questionText,
+                    f"Fact Question {question_node} text",
+                ),
+                priority=question_priority,
             ),
         )
         citation = one(graph, rule_node, SDO.sourceCitation)
@@ -597,6 +659,7 @@ def read_decision_model(
             "Decision Contract must declare conformance cases for all outcomes"
         )
     cases = []
+    question_flow_case_ids = []
     for case_node in case_nodes:
         if (case_node, RDF.type, SDO.ConformanceCase) not in graph:
             raise ValueError(
@@ -672,12 +735,32 @@ def read_decision_model(
                 facts=immutable_facts,
             )
         )
+        if (case_node, RDF.type, SDO.QuestionFlowCase) in graph:
+            question_flow_case_ids.append(str(case_node))
     immutable_cases = tuple(cases)
     covered_outcomes = {case.expected_outcome for case in immutable_cases}
     if covered_outcomes != outcomes:
         missing = sorted(outcomes - covered_outcomes)
         raise ValueError(
             f"Decision Contract conformance cases do not cover outcomes: {missing}"
+        )
+    if len(question_flow_case_ids) != 1:
+        raise ValueError(
+            "Decision Contract must declare exactly one sdo:QuestionFlowCase, "
+            f"got {len(question_flow_case_ids)}"
+        )
+    question_flow_case = next(
+        case
+        for case in immutable_cases
+        if case.identifier == question_flow_case_ids[0]
+    )
+    if question_flow_case.expected_outcome != positive_outcome:
+        raise ValueError(
+            "Question Flow Case must have the Decision Contract's positive outcome"
+        )
+    if {condition for condition, _ in question_flow_case.facts} != conditions:
+        raise ValueError(
+            "Question Flow Case must supply exactly one Fact for every Condition"
         )
 
     return ExplicitDecisionAndObligationModel(
@@ -698,6 +781,7 @@ def read_decision_model(
         ),
         rules=immutable_rules,
         conformance_cases=immutable_cases,
+        question_flow_case=question_flow_case.identifier,
     )
 
 
@@ -793,6 +877,11 @@ def build_decision_contract(
                     "fact_property": rule.condition.fact_property,
                     "input_json_pointer": rule.condition.input_json_pointer,
                     "expected_boolean": rule.condition.expected_boolean,
+                    "question": {
+                        "id": rule.condition.question.identifier,
+                        "text": rule.condition.question.text,
+                        "priority": rule.condition.question.priority,
+                    },
                 },
                 "source": {
                     "citation": source.citation,
@@ -807,6 +896,9 @@ def build_decision_contract(
         "profile": "decision-obligation-v1",
         "decision_protocol_version": DECISION_PROTOCOL_VERSION,
         "decision_conventions_version": DECISION_CONVENTIONS_VERSION,
+        "question_selection_conventions_version": (
+            QUESTION_SELECTION_CONVENTIONS_VERSION
+        ),
         "product": model.product,
         "decision_contract": model.decision_contract,
         "rule_set": {
@@ -831,6 +923,7 @@ def build_decision_contract(
             },
         },
         "scope_note": model.scope_note,
+        "question_flow_case": model.question_flow_case,
         "source_revisions": [
             source_revisions[key] for key in sorted(source_revisions)
         ],
@@ -853,6 +946,7 @@ def build_decision_contract(
 def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
     runtime_id = "kfw-458.decision-runtime"
     evaluation_id = "kfw-458.applicant-eligibility"
+    provenance_id = "kfw-458.result-provenance"
     return [
         {
             "id": runtime_id,
@@ -898,7 +992,7 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
             ],
         },
         {
-            "id": "kfw-458.result-provenance",
+            "id": provenance_id,
             "title": "Explain the decision with source provenance",
             "goal": "Expose decisive Rules, source statements, and Fact Gaps in every result.",
             "depends_on": [evaluation_id],
@@ -917,6 +1011,35 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
             "excluded": [
                 "Automatic source-document ingestion",
                 "A claim that the authored Spec completely transcribes the external source",
+            ],
+        },
+        {
+            "id": "kfw-458.question-flow",
+            "title": "Ask the next decision-relevant Fact Question",
+            "goal": (
+                "Advance an unknown Case through source-backed questions to a "
+                "determinate outcome."
+            ),
+            "depends_on": [provenance_id],
+            "obligations": [
+                "Only a Fact Gap that currently prevents a unique outcome can produce the next question.",
+                "The lowest-priority unresolved authored Fact Question is selected deterministically.",
+                "The question identifies its Condition, input pointer, and supporting Rule and Source Citation.",
+                "Submitting each authored answer advances to the next justified question or a final outcome.",
+                "A determinate outcome never includes a next question.",
+            ],
+            "sources": [
+                "`specs/`: Fact Questions, priorities, Conditions, and Question Flow Case",
+                "Question Selection Conventions v1: select the lowest-priority current Fact Gap",
+                "Decision Conventions v1: violated Conditions make the outcome determinate",
+            ],
+            "test": (
+                f"{test_path}::"
+                "test_question_driven_interaction_reaches_final_outcome"
+            ),
+            "excluded": [
+                "Questions unrelated to a Rule Condition",
+                "Session state, a conversational user interface, or adaptive question optimization",
             ],
         },
     ]
@@ -1527,6 +1650,43 @@ def _expected_result(case):
     return outcome, evaluations, decisive, gaps, provenance
 
 
+def _expected_next_question(evaluations):
+    if any(item["state"] == "violated" for item in evaluations):
+        return None
+    unknown_rules = [
+        rule
+        for rule in CONTRACT["rules"]
+        if any(
+            item["rule"] == rule["id"] and item["state"] == "unknown"
+            for item in evaluations
+        )
+    ]
+    if not unknown_rules:
+        return None
+    rule = min(
+        unknown_rules,
+        key=lambda item: item["condition"]["question"]["priority"],
+    )
+    condition = rule["condition"]
+    question = condition["question"]
+    source = rule["source"]
+    return {
+        "id": question["id"],
+        "text": question["text"],
+        "condition": condition["id"],
+        "fact_property": condition["fact_property"],
+        "input_json_pointer": condition["input_json_pointer"],
+        "answer_schema": {"type": "boolean"},
+        "justification": {
+            "rule": rule["id"],
+            "source_citation": source["citation"],
+            "source_revision": source["source_revision"],
+            "source_locator": source["locator"],
+            "source_statement": source["statement"],
+        },
+    }
+
+
 def _run_case(case):
     result = run_decision(PRODUCT_ROOT, _request_for_case(case))
     assert result.returncode == 0, result.output
@@ -1534,11 +1694,24 @@ def _run_case(case):
 
 
 def test_generated_contract_covers_all_declared_outcomes():
+    assert CONTRACT["question_selection_conventions_version"] == 1
     assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
         outcome["id"] for outcome in CONTRACT["outcomes"].values()
     }
     assert all(rule["source"]["statement"] for rule in CONTRACT["rules"])
     assert all(rule["source"]["locator"] for rule in CONTRACT["rules"])
+    priorities = [
+        rule["condition"]["question"]["priority"]
+        for rule in CONTRACT["rules"]
+    ]
+    assert len(priorities) == len(set(priorities))
+    flow_case = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["id"] == CONTRACT["question_flow_case"]
+    )
+    assert flow_case["expected_outcome"] == CONTRACT["outcomes"]["positive"]["id"]
+    assert len(flow_case["facts"]) == len(CONTRACT["rules"])
 
 
 def test_decision_product_runtime():
@@ -1563,6 +1736,7 @@ def test_declared_decision_outcome(case):
     assert payload["condition_evaluations"] == evaluations
     assert payload["decisive_rules"] == decisive
     assert payload["fact_gaps"] == gaps
+    assert payload["next_question"] == _expected_next_question(evaluations)
 
 
 @pytest.mark.parametrize(
@@ -1577,6 +1751,79 @@ def test_decision_result_provenance(case):
     assert isinstance(payload["explanation"], str) and payload["explanation"].strip()
     assert outcome["code"] in payload["explanation"].lower()
     assert payload["scope_note"] == CONTRACT["scope_note"]
+
+
+def test_question_driven_interaction_reaches_final_outcome():
+    flow_case = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["id"] == CONTRACT["question_flow_case"]
+    )
+    answers = {fact["condition"]: fact["value"] for fact in flow_case["facts"]}
+    ordered_rules = sorted(
+        CONTRACT["rules"],
+        key=lambda rule: rule["condition"]["question"]["priority"],
+    )
+    request = _request_for_case({**flow_case, "facts": []})
+    answered = set()
+
+    for rule in ordered_rules:
+        result = run_decision(PRODUCT_ROOT, request)
+        assert result.returncode == 0, result.output
+        payload = result.json_output()
+        assert payload["outcome"] == CONTRACT["outcomes"]["unknown"]["code"]
+        assert not any(
+            item["state"] == "violated"
+            for item in payload["condition_evaluations"]
+        )
+        question = payload["next_question"]
+        assert question == _expected_next_question(
+            payload["condition_evaluations"]
+        )
+        assert question["condition"] == rule["condition"]["id"]
+        assert question["condition"] not in answered
+        assert question["condition"] in {
+            gap["condition"] for gap in payload["fact_gaps"]
+        }
+        assert question["justification"]["source_statement"]
+        assert question["justification"]["source_citation"]
+        _set_json_pointer(
+            request,
+            question["input_json_pointer"],
+            answers[question["condition"]],
+        )
+        answered.add(question["condition"])
+
+    result = run_decision(PRODUCT_ROOT, request)
+    assert result.returncode == 0, result.output
+    payload = result.json_output()
+    assert payload["outcome"] == CONTRACT["outcomes"]["positive"]["code"]
+    assert payload["fact_gaps"] == []
+    assert payload["next_question"] is None
+
+
+def test_determinate_outcome_does_not_ask_an_irrelevant_question():
+    negative = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["expected_outcome"] == CONTRACT["outcomes"]["negative"]["id"]
+    )
+    removable = next(
+        fact
+        for fact in negative["facts"]
+        if fact["value"]
+        == RULES_BY_CONDITION[fact["condition"]]["condition"]["expected_boolean"]
+    )
+    partial = {
+        **negative,
+        "facts": [fact for fact in negative["facts"] if fact is not removable],
+    }
+
+    payload = _run_case(partial)
+
+    assert payload["outcome"] == CONTRACT["outcomes"]["negative"]["code"]
+    assert payload["fact_gaps"]
+    assert payload["next_question"] is None
 '''
 
 
@@ -1850,6 +2097,9 @@ def generate_decision_contract(
                 "compiler_conventions_version": COMPILER_CONVENTIONS_VERSION,
                 "decision_conventions_version": DECISION_CONVENTIONS_VERSION,
                 "decision_protocol_version": DECISION_PROTOCOL_VERSION,
+                "question_selection_conventions_version": (
+                    QUESTION_SELECTION_CONVENTIONS_VERSION
+                ),
                 "work_items": work_items,
             },
             indent=2,

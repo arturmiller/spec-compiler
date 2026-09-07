@@ -29,7 +29,7 @@ The toolchain must:
   artifacts, failure behavior, and deterministic fixpoints as black boxes;
 - invoke Decision Products through Decision Protocol v1 and verify eligible,
   ineligible, and unknown Decision Results including Fact Gaps, explanation,
-  scope, and source provenance;
+  scope, source provenance, and a deterministic source-justified Next Question;
 - keep bootstrap provenance and implementation-neutral transformation
   obligations separate;
 - validate and publish the separated contract, decision-core, and funding
@@ -41,10 +41,11 @@ deployment system, or an autonomous coding-agent orchestrator.
 
 ADR 0016 accepts a bounded evolution toward **Decision and Obligation
 Compilation**. ADR 0017 implements its first compiler profile and source-pinned
-**KfW 458 Applicant Eligibility Pilot**. The capability remains inside the Spec
+**KfW 458 Applicant Eligibility Pilot**; ADR 0018 adds explicit Fact Questions
+and Question Selection Conventions v1. The capability remains inside the Spec
 Compiler rather than becoming a second software system; obligation activation,
-evidence evaluation, question derivation, and dynamic version selection remain
-later slices in the [roadmap](decision-and-obligation-roadmap.md).
+evidence evaluation, and dynamic version selection remain later slices in the
+[roadmap](decision-and-obligation-roadmap.md).
 
 ### 1.2 Quality goals
 
@@ -99,8 +100,8 @@ Detailed quality scenarios are in section 10.
 | Compiler conformance | Separate SQL API and KfW 458 fixtures declare their profile-specific expected artifacts and are compiled twice by G1 |
 | Ontology publication | Three canonical OWL/RDFS vocabularies plus a separately generated SQL API example graph; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
 | Version control | Generated products are ignored except the versioned `sql_api_example` and `kfw_458_eligibility` reference bundles |
-| Decision compilation | One `schema:SoftwareApplication` conforming to `sco:DecisionProtocolV1`, one explicit `sdo:DecisionContract`, one pinned `sdo:RuleSetVersion`, boolean Conditions with JSON Pointers, `requiresAllRules`, three outcomes, complete Source Citations, and authored conformance cases |
-| Decision protocol | One UTF-8 JSON Decision Request on stdin and one JSON Decision Result on stdout; no HTTP or product-language requirement |
+| Decision compilation | One `schema:SoftwareApplication` conforming to `sco:DecisionProtocolV1`, one explicit `sdo:DecisionContract`, one pinned `sdo:RuleSetVersion`, boolean Conditions with JSON Pointers, one explicitly worded and prioritized Fact Question per used Condition, `requiresAllRules`, three outcomes, complete Source Citations, authored Conformance Cases, and one complete positive Question Flow Case |
+| Decision protocol | One UTF-8 JSON Decision Request on stdin and one JSON Decision Result on stdout; repeated complete Case submissions may follow a returned Next Question; no HTTP, session, UI, or product-language requirement |
 
 Python and pytest constrain the toolchain. FastAPI, Pydantic, and Uvicorn are
 choices of the reference product only and do not constrain other products.
@@ -126,7 +127,7 @@ the Work Graph, issue Markdown, and tests are a file-based handoff.
 | Spec author | Turtle files in `products/<name>/specs/` | Compiler diagnostics |
 | Product developer or coding agent | Reads Work Graph, issues, expected OpenAPI, and tests | Writes implementation-owned files in the Product Bundle |
 | Generated Product | `product.toml`, OpenAPI 3.1 JSON, HTTP, contracted SQLite file | Process state, HTTP responses, data-store state |
-| Decision Product | Decision Protocol v1 manifest and one JSON Decision Request | JSON Decision Result, exit status, standard error, process cleanup |
+| Decision Product | Decision Protocol v1 manifest and one JSON Decision Request | JSON Decision Result with at most one Next Question, exit status, standard error, process cleanup |
 | Compiler Product | Compiler Protocol v1 manifest and an input Product Bundle | Exit status, combined process output, generated files |
 | Operating system | Process, loopback network, temporary files | Exit status and cleanup behavior |
 | Reviewer or CI | Poe/uv commands | Generated artifacts and pytest result |
@@ -154,7 +155,7 @@ implementation; the directory itself is not an executable system.
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
 | Compiler bootstrap | Materialize G1 deterministically from G0 at the declared implementation path, then invoke the independent G1 through its own manifest and compare repeated outputs. |
 | Ontology publication | Keep three canonical vocabularies and product example graphs separate, validate public terms and bilingual labels, derive visualization-only SQL API connections, and deploy searchable WIDOCO/WebVOWL outputs. |
-| Decision and obligation evolution | Compile source-backed Decisions through a separate CLI protocol and typed model; preserve three-valued incompleteness without treating ambiguity as unknown and keep core terms separate from Funding Domain Ontology terms. |
+| Decision and obligation evolution | Compile source-backed Decisions through a separate CLI protocol and typed model; preserve three-valued incompleteness, select the next explicit Fact Question only from current Fact Gaps, and keep core terms separate from Funding Domain Ontology terms. |
 
 See the accepted decisions in section 9 for rationale and consequences.
 
@@ -181,10 +182,10 @@ views for this section.
 | --- | --- | --- |
 | CLI and Output Coordinator | `parse_args()`, `main()` | Validate the Product Bundle path and coordinate compilation and writes. |
 | RDF/SHACL Obligation Reader | `read_obligation_model()` and parsing helpers | Merge SQL-profile Turtle files, validate them, and build the Explicit Obligation Model. |
-| Decision Contract Reader | `read_decision_model()` and parsing helpers | Validate Decision Protocol conformance, decision semantics, source identity, conformance cases, and build the typed Explicit Decision and Obligation Model. |
+| Decision Contract Reader | `read_decision_model()` and parsing helpers | Validate Decision Protocol conformance, decision semantics, source identity, Fact Questions and priorities, Conformance Cases, the Question Flow Case, and build the typed Explicit Decision and Obligation Model. |
 | Deterministic Fixture Synthesizer | `deterministic_value()` | Derive reproducible valid values from supported Shape boundaries. |
 | OpenAPI Contract Renderer | `build_openapi()` | Produce `generated/expected-openapi.json`. |
-| Decision Contract Renderer | `build_decision_contract()` | Produce `generated/decision-contract.json` from the typed decision model. |
+| Decision Contract Renderer | `build_decision_contract()` | Produce `generated/decision-contract.json`, including authored Fact Questions and the Question Flow Case identity, from the typed decision model. |
 | Work Graph Compiler | `build_work_items()` | Produce obligations, sources, dependencies, exclusions, and proof references. |
 | Issue Template Renderer | `render_issue()` | Produce natural-language Markdown without an LLM. |
 | Contract Test Renderers | `TEST_TEMPLATE`, `DECISION_TEST_TEMPLATE`, `COMPILER_TEST_TEMPLATE` | Produce profile-specific black-box pytest source. |
@@ -192,8 +193,9 @@ views for this section.
 The SQL profile's Explicit Obligation Model remains an in-memory Python
 dictionary. The Decision profile's **Explicit Decision and Obligation Model**
 is a frozen dataclass graph that carries its Decision Contract, Rule Set
-Version, Rules, Conditions, outcomes, Conformance Cases, scope, and Source
-Provenance. Both are shared in-memory data, not deployable building blocks.
+Version, Rules, Conditions, Fact Questions, outcomes, Conformance Cases,
+Question Flow Case, scope, and Source Provenance. Both are shared in-memory
+data, not deployable building blocks.
 Obligations and Evidence Requirements remain future extensions of the typed
 model.
 
@@ -210,7 +212,7 @@ model.
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
 | HTTP Obligation Verifier | Generated behavior test | Call the live endpoint and directly assert required fields, types, bounds, closure, and stored values. |
-| Decision Result Verifier | Generated KfW 458 contract test | Send authored Conformance Cases and assert outcomes, Condition Evaluations, Fact Gaps, decisive Rules, Provenance, Explanation, and scope. |
+| Decision Result Verifier | Generated KfW 458 contract test | Send authored Conformance Cases, assert outcomes and result evidence, and repeatedly submit Question Flow Case answers while verifying deterministic, source-justified Next Questions. |
 | Runtime Regression Tests | `tools/tests/test_contract_runtime.py`, `tools/tests/test_decision_runtime.py` | Prove protocol validation and that parent and child product processes are removed after timeout or test completion. |
 
 No component decomposition is documented for the reference Product Runtime. It
@@ -281,11 +283,16 @@ sequenceDiagram
     Operator->>Harness: Run generated decision proofs
     Harness->>Manifest: Read Decision Protocol v1 adapter
     Harness->>Contract: Build request from authored Conformance Case
-    Harness->>Product: Start process and write one UTF-8 JSON Decision Request
-    Product->>Contract: Evaluate pinned Rule Set Version
-    Product-->>Harness: One JSON Decision Result
-    Harness->>Harness: Assert outcome, evaluations, gaps, decisive Rules, Provenance, Explanation, and scope
-    Harness->>Product: Stop complete process tree
+    loop Until the Case has a determinate Decision Outcome
+        Harness->>Product: Start process and write complete Case as one JSON Decision Request
+        Product->>Contract: Evaluate pinned Rule Set Version and current Fact Gaps
+        Product-->>Harness: Decision Result with outcome and optional Next Question
+        Harness->>Harness: Assert result, question relevance, priority, and source justification
+        alt Next Question exists
+            Harness->>Harness: Add authored answer at returned JSON Pointer
+        end
+        Harness->>Product: Stop complete process tree
+    end
     Harness-->>Operator: Deterministic pytest result
 ```
 
@@ -294,7 +301,10 @@ that is its implementation choice. Decision Protocol v1 exposes only JSON and
 process behavior. A missing Fact is a Fact Gap; it is never converted to
 `false`. A violated Condition takes precedence over gaps under Decision
 Conventions v1, so a source-backed ineligible result can remain determinate
-despite unrelated missing Facts.
+despite unrelated missing Facts. Question Selection Conventions v1 select the
+lowest-priority Fact Question among current Fact Gaps only while the result is
+`unknown`. Each invocation is stateless; the harness resubmits the accumulated
+complete Case rather than relying on a product session.
 
 ### 6.4 Work Item execution
 
@@ -418,8 +428,9 @@ compiler error. The normative details are in
 - JSON is rendered with stable insertion order and indentation.
 - No LLM or external service participates in compilation.
 - `COMPILER_CONVENTIONS_VERSION`, `RUNTIME_PROTOCOL_VERSION`,
-  `DECISION_CONVENTIONS_VERSION`, and `DECISION_PROTOCOL_VERSION` expose
-  semantic compatibility versions in generated artifacts.
+  `DECISION_CONVENTIONS_VERSION`, `DECISION_PROTOCOL_VERSION`, and
+  `QUESTION_SELECTION_CONVENTIONS_VERSION` expose semantic compatibility
+  versions in generated artifacts.
 - Compiler-product Work Graphs expose `compiler_protocol_version` and validated
   Bootstrap Process provenance; generated proofs compare consecutive output
   snapshots byte for byte. Bootstrap provenance does not prescribe the product
@@ -440,9 +451,11 @@ dependencies are kept in separate environments.
 The compiler rejects duplicate singleton values, unsupported datatypes or
 cardinalities, unsafe identifiers and paths, inconsistent relations,
 untraceable Rules, incomplete source identity, contradictory Conformance Cases,
-ambiguous profile selection, unknown placeholders, and protocol-version
-mismatches. Runtime failures include captured process output. OpenAPI is
-validated before subset comparison; Decision Results must be JSON objects.
+missing or multiply assigned Fact Questions, duplicate or non-positive question
+priorities, an invalid Question Flow Case, ambiguous profile selection, unknown
+placeholders, and protocol-version mismatches. Runtime failures include
+captured process output. OpenAPI is validated before subset comparison;
+Decision Results must be JSON objects.
 
 ### 8.5 Generated artifacts
 
@@ -474,7 +487,10 @@ The [Decision and Obligation Compilation roadmap](decision-and-obligation-roadma
 defines the current and target semantics and ontology boundaries. The first
 profile implements `requiresAllRules` through Decision Conventions v1. Missing
 Case Facts produce explicit Fact Gaps and may produce an `unknown` Decision
-Outcome. Ambiguous Specs,
+Outcome. Question Selection Conventions v1 then select at most one explicit,
+source-justified Next Question from those current gaps. A client resubmits the
+complete accumulated Case through the unchanged Decision Protocol v1 boundary.
+Ambiguous Specs,
 conflicting Facts, ambiguous Rule Set Version applicability, and incompatible
 entailed outcomes remain errors. External Source Revisions are reached through
 Source Citations in authored Specs and do not bypass ADR 0001's permitted
@@ -501,6 +517,7 @@ requirement origins.
 | [0015](decisions/0015-use-resource-namespace-as-webvowl-base.md) | The SQL API visualization uses its resource namespace as the WebVOWL ontology base so authored example nodes are classified as internal. | Accepted; refines ADR 0014 |
 | [0016](decisions/0016-evolve-to-decision-and-obligation-compilation.md) | The Spec Compiler evolves through a source-backed decision and obligation capability with separate core and domain ontologies and a bounded KfW 458 applicant-eligibility pilot. | Accepted |
 | [0017](decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.md) | A typed decision model compiles the KfW 458 pilot into a Decision Contract and black-box proofs executed through Decision Protocol v1; decision core and funding vocabularies remain separate. | Accepted; implements and refines ADR 0016 and supersedes ADR 0003's single-reference-bundle consequence |
+| [0018](decisions/0018-select-next-fact-question-from-current-fact-gaps.md) | Question Selection Conventions v1 select one explicit Fact Question from current Fact Gaps and prove stateless progression through repeated Decision Protocol v1 requests. | Accepted; extends ADR 0017 and implements Issue #3 |
 
 ## 10. Quality requirements
 
@@ -517,6 +534,7 @@ requirement origins.
 | Q-9 | Compiler bootstrap | Given the Spec Compiler Self-Description Bundle, generated black-box proofs invoke G1 twice on each declared conformance fixture and require all generated and test files to be byte-identical. |
 | Q-10 | Ontology discoverability | Given a push to `main`, CI publishes three bilingual vocabulary references, RDF downloads, example resources, and separate searchable WebVOWL graphs with representative terms. |
 | Q-11 | Decision explainability | Given any KfW 458 Decision Result, a reviewer can identify the selected Rule Set Version, every decisive Rule and Condition Evaluation, any Fact Gap, and the Spec statement plus Source Citation that supports it. |
+| Q-12 | Question relevance and progress | Given an incomplete KfW 458 Case, the product returns the lowest-priority authored Fact Question from the current Fact Gaps with Rule and source justification; submitting authored answers repeatedly reaches a determinate result, while a determinate result returns no Next Question. |
 
 ## 11. Risks and technical debt
 
@@ -544,6 +562,8 @@ requirement origins.
 | A vocabulary inferred from one funding example may encode accidental domain semantics as reusable core. | Keep Funding Domain Ontology terms separate and require equivalent use in a second domain plus an ADR before promotion. |
 | Decision Conventions v1 supports only boolean Conditions combined by `requiresAllRules`. | Reject disjunctions, numeric rules, and unmodeled aggregation instead of approximating them; add a new versioned convention when another project demonstrates semantics. |
 | The compiler and generated tests share the same Decision Conventions implementation. | Authored eligible, ineligible, and unknown Conformance Cases catch disagreement with the Spec, but an independent oracle is still required before claiming formal correctness. |
+| Question priorities are static authored policy. | The order is reproducible but not optimized for cost, information gain, audience, or branching probability; introduce richer selection semantics only through an explicit later convention. |
+| The compiler, Decision Product reference implementation, and generated proof share Question Selection Conventions v1. | The authored Question Flow Case and negative-with-gap proof catch observable disagreement, but an independent implementation is still needed before claiming semantic diversity. |
 | The KfW source statement is manually curated. | The compiler proves identity and traceability, not transcription completeness or legal correctness; retain human review and the scope note. |
 
 ## 12. Glossary
@@ -581,12 +601,15 @@ requirement origins.
 | Decision and Obligation Compilation | Spec Compiler capability that derives source-backed Decision Contracts and proofs, and in later profiles obligations and evidence requirements, from explicit Specs. |
 | Decision Contract | Implementation-neutral contract for one scoped decision question, pinned Rule Set Version, outcomes, Rules, Conditions, provenance, and evaluation convention. |
 | Decision Request | Decision Protocol v1 JSON input naming contract, version, date, and Case Facts. |
-| Decision Result | Decision Protocol v1 JSON output containing outcome, evaluations, decisive Rules, gaps, provenance, explanation, and scope. |
+| Decision Result | Decision Protocol v1 JSON output containing outcome, evaluations, decisive Rules, gaps, at most one Next Question, provenance, explanation, and scope. |
 | Rule Set | Stable identity for a governed collection of related Rules across revisions. |
 | Rule Set Version | One immutable, explicitly identified revision of a Rule Set with declared applicability. |
 | Rule | Normative proposition in a Spec that relates Conditions to an explicit conclusion or Obligation. |
 | Fact | Explicitly supplied assertion about the Case evaluated by a Decision. |
 | Fact Gap | Recorded absence of a Fact required to evaluate a Condition; it is not a false Fact. |
+| Fact Question | Authored prompt tied to one Condition and input Fact, with an explicit priority. |
+| Next Question | At most one Fact Question selected from current Fact Gaps while the Decision Outcome remains undetermined. |
+| Question Flow Case | Complete positive Conformance Case supplying authored answers for the generated multi-step question-flow proof. |
 | Condition | Truth-valued predicate referenced by a Rule and evaluated from explicit Facts and named conventions. |
 | Condition Evaluation | `satisfied`, `violated`, or `unknown` result for one Condition within one Decision. |
 | Decision | Evaluation of one scoped question for one Case against exactly one applicable Rule Set Version. |
