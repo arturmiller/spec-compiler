@@ -16,7 +16,7 @@
     dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "funding" ;
     vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/funding/#" ;
-    owl:versionInfo "0.1.0-experimental" .
+    owl:versionInfo "0.2.0-experimental" .
 
 funding:FundingProgram a owl:Class ;
     rdfs:label "Funding program"@en ;
@@ -29,6 +29,11 @@ funding:Applicant a owl:Class ;
 funding:Project a owl:Class ;
     rdfs:label "Project"@en ;
     rdfs:label "Vorhaben"@de .
+
+funding:LandRegisterExcerpt a owl:Class ;
+    rdfs:subClassOf sdo:Evidence ;
+    rdfs:label "Land-register excerpt"@en ;
+    rdfs:label "Grundbuchauszug"@de .
 
 funding:ApplicantEligibilityDecision a owl:Class ;
     rdfs:subClassOf sdo:DecisionContract ;
@@ -76,6 +81,18 @@ funding:ownershipViaGbR a owl:DatatypeProperty ;
 funding:hasUsufructRight a owl:DatatypeProperty ;
     rdfs:label "has a usufruct right"@en ;
     rdfs:label "hat ein Nießbrauchrecht"@de ;
+    rdfs:domain funding:Applicant ;
+    rdfs:range xsd:boolean .
+
+funding:selfUsesResidentialProperty a owl:DatatypeProperty ;
+    rdfs:label "self-uses the residential property"@en ;
+    rdfs:label "nutzt die Wohnimmobilie selbst"@de ;
+    rdfs:domain funding:Applicant ;
+    rdfs:range xsd:boolean .
+
+funding:claimsClimateOrIncomeBonus a owl:DatatypeProperty ;
+    rdfs:label "claims a climate-speed or income bonus"@en ;
+    rdfs:label "beansprucht Klimageschwindigkeits- oder Einkommensbonus"@de ;
     rdfs:domain funding:Applicant ;
     rdfs:range xsd:boolean .
 

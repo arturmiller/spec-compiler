@@ -10,13 +10,20 @@ kfw458:EligibleApplicantCase a sdo:ConformanceCase, sdo:QuestionFlowCase ;
     sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
     sdo:decisionDate "2026-09-04"^^xsd:date ;
     sdo:expectsOutcome funding:Eligible ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementNotApplicable
+    ] ;
     sdo:hasFact
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionOwner ; sdo:booleanValue true ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue false ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
-        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ] .
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionSelfUsesResidentialProperty ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionClaimsClimateOrIncomeBonus ; sdo:booleanValue false ] .
 
 kfw458:IneligibleUsufructCase a sdo:ConformanceCase ;
     dcterms:title "Ineligible usufruct-only applicant"@en ;
@@ -24,13 +31,20 @@ kfw458:IneligibleUsufructCase a sdo:ConformanceCase ;
     sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
     sdo:decisionDate "2026-09-04"^^xsd:date ;
     sdo:expectsOutcome funding:Ineligible ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementNotApplicable
+    ] ;
     sdo:hasFact
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionOwner ; sdo:booleanValue true ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue true ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
-        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ] .
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionSelfUsesResidentialProperty ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionClaimsClimateOrIncomeBonus ; sdo:booleanValue false ] .
 
 kfw458:UnknownOwnershipCase a sdo:ConformanceCase ;
     dcterms:title "Unknown ownership status"@en ;
@@ -38,9 +52,88 @@ kfw458:UnknownOwnershipCase a sdo:ConformanceCase ;
     sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
     sdo:decisionDate "2026-09-04"^^xsd:date ;
     sdo:expectsOutcome funding:Unknown ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementNotApplicable
+    ] ;
     sdo:hasFact
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue false ],
         [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
-        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ] .
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionSelfUsesResidentialProperty ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionClaimsClimateOrIncomeBonus ; sdo:booleanValue false ] .
+
+kfw458:CompleteOwnerEvidenceCase a sdo:ConformanceCase ;
+    dcterms:title "Satisfied ownership condition with complete evidence"@en ;
+    sdo:forDecisionContract kfw458:ApplicantEligibilityDecision2026_07 ;
+    sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
+    sdo:decisionDate "2026-09-04"^^xsd:date ;
+    sdo:expectsOutcome funding:Eligible ;
+    sdo:hasEvidence kfw458:CompleteLandRegisterExcerpt ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementFulfilled
+    ] ;
+    sdo:hasFact
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionOwner ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionSelfUsesResidentialProperty ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionClaimsClimateOrIncomeBonus ; sdo:booleanValue true ] .
+
+kfw458:CompleteLandRegisterExcerpt a sdo:Evidence ;
+    sdo:evidenceType funding:LandRegisterExcerpt ;
+    sdo:hasEvidenceAssessment kfw458:AcceptedOwnershipEvidenceAssessment .
+
+kfw458:AcceptedOwnershipEvidenceAssessment a sdo:EvidenceAssessment ;
+    sdo:assessesEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
+    sdo:accepted true .
+
+kfw458:MissingOwnerEvidenceCase a sdo:ConformanceCase ;
+    dcterms:title "Satisfied ownership condition with missing evidence"@en ;
+    sdo:forDecisionContract kfw458:ApplicantEligibilityDecision2026_07 ;
+    sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
+    sdo:decisionDate "2026-09-04"^^xsd:date ;
+    sdo:expectsOutcome funding:Eligible ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementMissing
+    ] ;
+    sdo:hasFact
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionOwner ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionSelfUsesResidentialProperty ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionClaimsClimateOrIncomeBonus ; sdo:booleanValue true ] .
+
+kfw458:NonApplicableOwnerEvidenceCase a sdo:ConformanceCase ;
+    dcterms:title "Satisfied ownership condition without a claimed bonus"@en ;
+    sdo:forDecisionContract kfw458:ApplicantEligibilityDecision2026_07 ;
+    sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
+    sdo:decisionDate "2026-09-04"^^xsd:date ;
+    sdo:expectsOutcome funding:Eligible ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementNotApplicable
+    ] ;
+    sdo:hasFact
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionOwner ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionSelfUsesResidentialProperty ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionClaimsClimateOrIncomeBonus ; sdo:booleanValue false ] .

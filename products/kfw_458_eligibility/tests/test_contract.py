@@ -15,6 +15,21 @@ CONTRACT = json.loads(
 RULES_BY_CONDITION = {
     rule["condition"]["id"]: rule for rule in CONTRACT["rules"]
 }
+EVIDENCE_REQUIREMENTS_BY_ID = {
+    requirement["id"]: requirement
+    for requirement in CONTRACT["evidence_requirements"]
+}
+CONDITIONS_BY_ID = {
+    **{
+        condition_id: rule["condition"]
+        for condition_id, rule in RULES_BY_CONDITION.items()
+    },
+    **{
+        condition["id"]: condition
+        for requirement in CONTRACT["evidence_requirements"]
+        for condition in requirement["applicability_conditions"]
+    },
+}
 
 
 def _set_json_pointer(document, pointer, value):
@@ -31,12 +46,13 @@ def _request_for_case(case):
         "rule_set_version": CONTRACT["rule_set"]["version"],
         "decision_date": case["decision_date"],
         "case": {},
+        "evidence": json.loads(json.dumps(case.get("evidence", []))),
     }
     for fact in case["facts"]:
-        rule = RULES_BY_CONDITION[fact["condition"]]
+        condition = CONDITIONS_BY_ID[fact["condition"]]
         _set_json_pointer(
             request,
-            rule["condition"]["input_json_pointer"],
+            condition["input_json_pointer"],
             fact["value"],
         )
     return request
@@ -133,6 +149,72 @@ def _expected_next_question(evaluations):
     }
 
 
+def _expected_evidence_evaluations(case):
+    facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
+    result = []
+    for requirement in CONTRACT["evidence_requirements"]:
+        applicability = []
+        for condition in requirement["applicability_conditions"]:
+            actual = facts.get(condition["id"])
+            if actual is None:
+                state = "unknown"
+            elif actual == condition["expected_boolean"]:
+                state = "satisfied"
+            else:
+                state = "violated"
+            applicability.append({"condition": condition["id"], "state": state})
+        classifications = []
+        for evidence in sorted(case.get("evidence", []), key=lambda item: item["id"]):
+            assessments = {
+                assessment["evidence_requirement"]: assessment["accepted"]
+                for assessment in evidence["assessments"]
+            }
+            if evidence["evidence_type"] != requirement["required_evidence_type"]:
+                classification = "not_relevant"
+            elif requirement["id"] not in assessments:
+                classification = "unassessed"
+            elif assessments[requirement["id"]]:
+                classification = "accepted"
+            else:
+                classification = "rejected"
+            classifications.append(
+                {
+                    "evidence": evidence["id"],
+                    "evidence_type": evidence["evidence_type"],
+                    "classification": classification,
+                }
+            )
+        if not all(item["state"] == "satisfied" for item in applicability):
+            status = "not_applicable"
+        elif any(item["classification"] == "accepted" for item in classifications):
+            status = "fulfilled"
+        else:
+            status = "missing"
+        source = requirement["source"]
+        result.append(
+            {
+                "evidence_requirement": requirement["id"],
+                "supports_condition": requirement["supports_condition"],
+                "required_evidence_type": requirement["required_evidence_type"],
+                "applicability_conditions": applicability,
+                "status": status,
+                "supplied_evidence": classifications,
+                "provenance": {
+                    "source_citation": source["citation"],
+                    "source_revision": source["source_revision"],
+                    "source_locator": source["locator"],
+                    "source_statement": source["statement"],
+                },
+                "explanation": (
+                    f"{status}: Evidence Requirement {requirement['id']} supports "
+                    f"Condition {requirement['supports_condition']}. "
+                    f"{source['statement']}"
+                ),
+            }
+        )
+    return result
+
+
 def _run_case(case):
     result = run_decision(PRODUCT_ROOT, _request_for_case(case))
     assert result.returncode == 0, result.output
@@ -141,6 +223,7 @@ def _run_case(case):
 
 def test_generated_contract_covers_all_declared_outcomes():
     assert CONTRACT["question_selection_conventions_version"] == 1
+    assert CONTRACT["evidence_evaluation_conventions_version"] == 1
     assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
         outcome["id"] for outcome in CONTRACT["outcomes"].values()
     }
@@ -157,7 +240,24 @@ def test_generated_contract_covers_all_declared_outcomes():
         if case["id"] == CONTRACT["question_flow_case"]
     )
     assert flow_case["expected_outcome"] == CONTRACT["outcomes"]["positive"]["id"]
-    assert len(flow_case["facts"]) == len(CONTRACT["rules"])
+    assert {
+        fact["condition"]
+        for fact in flow_case["facts"]
+        if fact["condition"] in RULES_BY_CONDITION
+    } == set(RULES_BY_CONDITION)
+    for requirement in CONTRACT["evidence_requirements"]:
+        assert {
+            expectation["status"]
+            for case in CONTRACT["conformance_cases"]
+            for expectation in case["expected_evidence_statuses"]
+            if expectation["evidence_requirement"] == requirement["id"]
+        } == {"fulfilled", "missing", "not_applicable"}
+    assert all(
+        requirement["source"]["statement"]
+        and requirement["source"]["locator"]
+        and requirement["source"]["citation"]
+        for requirement in CONTRACT["evidence_requirements"]
+    )
 
 
 def test_decision_product_runtime():
@@ -183,6 +283,9 @@ def test_declared_decision_outcome(case):
     assert payload["decisive_rules"] == decisive
     assert payload["fact_gaps"] == gaps
     assert payload["next_question"] == _expected_next_question(evaluations)
+    assert payload["evidence_requirement_evaluations"] == (
+        _expected_evidence_evaluations(case)
+    )
 
 
 @pytest.mark.parametrize(
@@ -199,6 +302,99 @@ def test_decision_result_provenance(case):
     assert payload["scope_note"] == CONTRACT["scope_note"]
 
 
+@pytest.mark.skipif(
+    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
+)
+def test_evidence_requirements_are_evaluated_separately():
+    requirement = CONTRACT["evidence_requirements"][0]
+    supporting_condition = requirement["supports_condition"]
+    cases_by_status = {
+        expectation["status"]: case
+        for case in CONTRACT["conformance_cases"]
+        for expectation in case["expected_evidence_statuses"]
+        if expectation["evidence_requirement"] == requirement["id"]
+        if {
+            fact["condition"]: fact["value"] for fact in case["facts"]
+        }.get(supporting_condition)
+        == RULES_BY_CONDITION[supporting_condition]["condition"]["expected_boolean"]
+    }
+    assert set(cases_by_status) == {"fulfilled", "missing", "not_applicable"}
+    results = {
+        status: _run_case(case)
+        for status, case in cases_by_status.items()
+    }
+
+    for status, payload in results.items():
+        supporting_evaluation = next(
+            item
+            for item in payload["condition_evaluations"]
+            if item["condition"] == supporting_condition
+        )
+        assert supporting_evaluation["state"] == "satisfied"
+        evidence_evaluation = payload["evidence_requirement_evaluations"][0]
+        assert evidence_evaluation["status"] == status
+        assert evidence_evaluation["provenance"] == {
+            "source_citation": requirement["source"]["citation"],
+            "source_revision": requirement["source"]["source_revision"],
+            "source_locator": requirement["source"]["locator"],
+            "source_statement": requirement["source"]["statement"],
+        }
+        assert requirement["source"]["statement"] in evidence_evaluation["explanation"]
+
+    assert results["fulfilled"]["outcome"] == results["missing"]["outcome"]
+    assert results["fulfilled"]["evidence_requirement_evaluations"][0][
+        "supplied_evidence"
+    ][0]["classification"] == "accepted"
+    assert results["missing"]["evidence_requirement_evaluations"][0][
+        "supplied_evidence"
+    ] == []
+
+    complete_request = _request_for_case(cases_by_status["fulfilled"])
+    variants = []
+    rejected = json.loads(json.dumps(complete_request))
+    rejected["evidence"][0]["assessments"][0]["accepted"] = False
+    variants.append(("rejected", rejected))
+    unassessed = json.loads(json.dumps(complete_request))
+    unassessed["evidence"][0]["assessments"] = []
+    variants.append(("unassessed", unassessed))
+    not_relevant = json.loads(json.dumps(complete_request))
+    not_relevant["evidence"][0]["evidence_type"] = "urn:test:other-evidence-type"
+    variants.append(("not_relevant", not_relevant))
+    for classification, request in variants:
+        result = run_decision(PRODUCT_ROOT, request)
+        assert result.returncode == 0, result.output
+        payload = result.json_output()
+        assert payload["outcome"] == CONTRACT["outcomes"]["positive"]["code"]
+        evidence_evaluation = payload["evidence_requirement_evaluations"][0]
+        assert evidence_evaluation["status"] == "missing"
+        assert evidence_evaluation["supplied_evidence"][0]["classification"] == classification
+
+
+@pytest.mark.skipif(
+    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
+)
+def test_unaccepted_supplied_evidence_does_not_fulfill_requirement():
+    complete = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if any(
+            expectation["status"] == "fulfilled"
+            for expectation in case["expected_evidence_statuses"]
+        )
+    )
+    request = _request_for_case(complete)
+    request["evidence"][0]["assessments"][0]["accepted"] = False
+
+    result = run_decision(PRODUCT_ROOT, request)
+    assert result.returncode == 0, result.output
+    payload = result.json_output()
+
+    assert payload["outcome"] == CONTRACT["outcomes"]["positive"]["code"]
+    evidence_evaluation = payload["evidence_requirement_evaluations"][0]
+    assert evidence_evaluation["status"] == "missing"
+    assert evidence_evaluation["supplied_evidence"][0]["classification"] == "rejected"
+
+
 def test_question_driven_interaction_reaches_final_outcome():
     flow_case = next(
         case
@@ -210,7 +406,16 @@ def test_question_driven_interaction_reaches_final_outcome():
         CONTRACT["rules"],
         key=lambda rule: rule["condition"]["question"]["priority"],
     )
-    request = _request_for_case({**flow_case, "facts": []})
+    request = _request_for_case(
+        {
+            **flow_case,
+            "facts": [
+                fact
+                for fact in flow_case["facts"]
+                if fact["condition"] not in RULES_BY_CONDITION
+            ],
+        }
+    )
     answered = set()
 
     for rule in ordered_rules:

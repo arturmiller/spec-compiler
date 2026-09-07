@@ -4,12 +4,12 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Decision and Obligation Compilation** | The Spec Compiler capability that derives source-backed Decision Contracts and proofs, and in later profiles obligations and evidence requirements, from explicit specifications. | Eligibility engine, rules bot |
-| **Explicit Decision and Obligation Model** | The typed, immutable normalized model containing only explicit decision semantics and provenance shared by deterministic renderers; the first profile does not yet activate obligations or evaluate evidence. | Universal domain model, knowledge base |
-| **Decision Contract** | The implementation-neutral contract that fixes the scoped question, Rule Set Version, outcomes, Rules, Conditions, provenance, and evaluation convention for a Decision Product. | Decision result, runtime protocol |
+| **Decision and Obligation Compilation** | The Spec Compiler capability that derives source-backed Decision Contracts, Evidence Requirement Evaluations, and proofs, with obligations reserved for later profiles, from explicit specifications. | Eligibility engine, rules bot |
+| **Explicit Decision and Obligation Model** | The typed, immutable normalized model containing only explicit decision, evidence, and provenance semantics shared by deterministic renderers; obligation activation remains deferred. | Universal domain model, knowledge base |
+| **Decision Contract** | The implementation-neutral contract that fixes the scoped question, Rule Set Version, outcomes, Rules, Conditions, Evidence Requirements, provenance, and evaluation conventions for a Decision Product. | Decision result, runtime protocol |
 | **Decision Product** | A separately executed software product that implements a Decision Contract behind Decision Protocol v1. | Spec Compiler, KfW approval service |
-| **Decision Request** | One Decision Protocol v1 JSON input naming the Decision Contract, Rule Set Version, Decision Date, and supplied Case Facts. | Application, questionnaire |
-| **Decision Result** | One machine-readable Decision Protocol v1 output containing the Outcome, Condition Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Provenance, Explanation, and scope note. | Approval, advice |
+| **Decision Request** | One Decision Protocol v1 JSON input naming the Decision Contract, Rule Set Version, Decision Date, supplied Case Facts, and optional supplied Evidence with Assessments. | Application, questionnaire |
+| **Decision Result** | One machine-readable Decision Protocol v1 output containing the Outcome, Condition Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Evidence Requirement Evaluations, Provenance, Explanation, and scope note. | Approval, advice |
 | **Rule Set** | A stable identity for a governed collection of related Rules across revisions. | Policy document, latest rules |
 | **Rule Set Version** | One immutable, explicitly identified revision of a Rule Set with declared applicability. | Current version, latest version |
 | **Rule** | A normative proposition in a Spec that relates one or more Conditions to an explicit conclusion or Obligation. | Business logic, heuristic |
@@ -31,6 +31,8 @@
 | **Obligation** | An explicitly sourced requirement that applies to a Case when its Rule applies. | Evidence, task |
 | **Evidence Requirement** | An explicitly sourced requirement for information or an artifact that can support a Fact or an Obligation's fulfillment. | Obligation, proof |
 | **Evidence** | Supplied information or an artifact offered in support of a Fact or fulfillment claim without being treated as conclusive by mere presence. | Guaranteed proof, requirement |
+| **Evidence Assessment** | An explicit acceptance or rejection of one supplied Evidence item for one Evidence Requirement. | Evidence presence, automatic validation |
+| **Evidence Requirement Evaluation** | The result `fulfilled`, `missing`, or `not_applicable` for one Evidence Requirement, including applicability states, Evidence classifications, explanation, and independent provenance. | Condition Evaluation, Decision Outcome |
 
 ## Provenance and time
 
@@ -48,7 +50,7 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **SHACL Contract Ontology** | The existing public `sco:` vocabulary for executable product and transformation contracts. | Decision ontology |
-| **Decision and Obligation Core Ontology** | The public `sdo:` vocabulary; its first version materializes domain-independent decision, rule, condition, case, provenance, and temporal concepts, while obligation and evidence vocabulary remains planned. | Funding ontology, universal ontology |
+| **Decision and Obligation Core Ontology** | The public `sdo:` vocabulary for domain-independent decision, rule, condition, case, evidence, provenance, and temporal concepts; obligation activation remains planned. | Funding ontology, universal ontology |
 | **Domain Ontology** | A vocabulary whose terms carry meaning specific to one problem domain and may use the core ontology without becoming part of it. | Core extension by default |
 | **Funding Domain Ontology** | The public `funding:` Domain Ontology for funding programs, applicants, projects, scoped eligibility facts, and funding-specific outcomes. | KfW ontology, core ontology |
 | **KfW 458 Applicant Eligibility Pilot** | The bounded first Case family that evaluates only natural-person applicant eligibility under the pinned July 2026 KfW 458 source revision. | KfW advisor, funding approval |
@@ -77,6 +79,11 @@
 - Every derived **Decision Outcome**, **Obligation**, and **Evidence
   Requirement** has **Provenance** to a Spec statement or named, versioned
   convention.
+- An **Evidence Requirement** has its own Source Citation and applicability
+  Conditions. A satisfied supported Condition does not fulfill it.
+- Under Evidence Evaluation Conventions v1, only matching **Evidence** with an
+  explicit accepted **Evidence Assessment** makes an applicable Evidence
+  Requirement Evaluation `fulfilled`; otherwise it is `missing`.
 - The **Funding Domain Ontology** may use the **Decision and Obligation Core
   Ontology**; neither is part of the **SHACL Contract Ontology**.
 

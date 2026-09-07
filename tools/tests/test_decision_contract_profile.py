@@ -69,8 +69,67 @@ def test_missing_case_fact_is_preserved_as_unknown_instead_of_false():
         if case.expected_outcome == str(FUNDING.Unknown)
     )
 
-    assert len(unknown.facts) == 5
+    rule_conditions = {rule.condition.identifier for rule in model.rules}
+    assert len(
+        [condition for condition, _ in unknown.facts if condition in rule_conditions]
+    ) == 5
     assert str(KFW458.ConditionOwner) not in dict(unknown.facts)
+
+
+def test_evidence_requirement_is_separate_and_independently_sourced():
+    model = read_decision_model(PRODUCT_ROOT, _graph())
+    requirement = model.evidence_requirements[0]
+    owner_rule = next(
+        rule
+        for rule in model.rules
+        if rule.condition.identifier == str(KFW458.ConditionOwner)
+    )
+    cases_by_status = {
+        status: case
+        for case in model.conformance_cases
+        for requirement_id, status in case.expected_evidence_statuses
+        if requirement_id == requirement.identifier
+        and dict(case.facts).get(str(KFW458.ConditionOwner)) is True
+    }
+
+    assert requirement.supports_condition == str(KFW458.ConditionOwner)
+    assert requirement.source.citation == str(
+        KFW458.CitationOwnershipEvidenceForApplicantBonus
+    )
+    assert requirement.source.citation != owner_rule.source.citation
+    assert set(cases_by_status) == {"fulfilled", "missing", "not_applicable"}
+    assert cases_by_status["fulfilled"].expected_outcome == str(FUNDING.Eligible)
+    assert cases_by_status["missing"].expected_outcome == str(FUNDING.Eligible)
+    assert cases_by_status["fulfilled"].evidence[0].assessments[0].accepted is True
+    assert cases_by_status["missing"].evidence == ()
+
+
+def test_evidence_requirement_without_its_own_source_is_rejected():
+    graph = _graph()
+    graph.remove(
+        (
+            KFW458.OwnershipEvidenceRequirementForApplicantBonus,
+            SDO.evidenceSourceCitation,
+            None,
+        )
+    )
+
+    with pytest.raises(ValueError, match="Expected exactly one.*evidenceSourceCitation"):
+        read_decision_model(PRODUCT_ROOT, graph)
+
+
+def test_fulfilled_evidence_expectation_requires_an_accepted_assessment():
+    graph = _graph()
+    graph.set(
+        (
+            KFW458.AcceptedOwnershipEvidenceAssessment,
+            SDO.accepted,
+            Literal(False),
+        )
+    )
+
+    with pytest.raises(ValueError, match="Evidence Evaluation Conventions v1 derive missing"):
+        read_decision_model(PRODUCT_ROOT, graph)
 
 
 def test_rule_without_source_citation_is_rejected():

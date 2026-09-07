@@ -11,7 +11,7 @@ from pathlib import Path
 from pprint import pformat
 import re
 
-from rdflib import Graph, Namespace, RDF
+from rdflib import Graph, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, OWL, SH, XSD
 
 ROOT = Path(__file__).parents[1]
@@ -21,6 +21,7 @@ RUNTIME_PROTOCOL_VERSION = 1
 DECISION_CONVENTIONS_VERSION = 1
 DECISION_PROTOCOL_VERSION = 1
 QUESTION_SELECTION_CONVENTIONS_VERSION = 1
+EVIDENCE_EVALUATION_CONVENTIONS_VERSION = 1
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
 SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
@@ -78,11 +79,43 @@ class DecisionRule:
 
 
 @dataclass(frozen=True)
+class EvidenceApplicabilityCondition:
+    identifier: str
+    fact_property: str
+    input_json_pointer: str
+    expected_boolean: bool
+
+
+@dataclass(frozen=True)
+class EvidenceRequirement:
+    identifier: str
+    supports_condition: str
+    applicability_conditions: tuple[EvidenceApplicabilityCondition, ...]
+    required_evidence_type: str
+    source: DecisionSource
+
+
+@dataclass(frozen=True)
+class EvidenceAssessment:
+    evidence_requirement: str
+    accepted: bool
+
+
+@dataclass(frozen=True)
+class SuppliedEvidence:
+    identifier: str
+    evidence_type: str
+    assessments: tuple[EvidenceAssessment, ...]
+
+
+@dataclass(frozen=True)
 class DecisionConformanceCase:
     identifier: str
     decision_date: str
     expected_outcome: str
     facts: tuple[tuple[str, bool], ...]
+    evidence: tuple[SuppliedEvidence, ...]
+    expected_evidence_statuses: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True)
@@ -101,6 +134,7 @@ class ExplicitDecisionAndObligationModel:
     unknown_outcome_code: str
     scope_note: str
     rules: tuple[DecisionRule, ...]
+    evidence_requirements: tuple[EvidenceRequirement, ...]
     conformance_cases: tuple[DecisionConformanceCase, ...]
     question_flow_case: str
 
@@ -476,6 +510,31 @@ def _decision_outcome_for_case(
     return positive_outcome
 
 
+def _evidence_status_for_case(
+    requirement: EvidenceRequirement,
+    facts: tuple[tuple[str, bool], ...],
+    evidence: tuple[SuppliedEvidence, ...],
+) -> str:
+    """Apply Evidence Evaluation Conventions v1 to one authored Case."""
+    values = dict(facts)
+    applicable = all(
+        values.get(condition.identifier) == condition.expected_boolean
+        for condition in requirement.applicability_conditions
+    )
+    if not applicable:
+        return "not_applicable"
+    for item in evidence:
+        if item.evidence_type != requirement.required_evidence_type:
+            continue
+        if any(
+            assessment.evidence_requirement == requirement.identifier
+            and assessment.accepted
+            for assessment in item.assessments
+        ):
+            return "fulfilled"
+    return "missing"
+
+
 def read_decision_model(
     product_root: Path, graph: Graph | None = None
 ) -> ExplicitDecisionAndObligationModel:
@@ -653,6 +712,95 @@ def read_decision_model(
         )
     immutable_rules = tuple(rules)
 
+    evidence_requirement_nodes = sorted(
+        graph.objects(contract, SDO.hasEvidenceRequirement), key=str
+    )
+    evidence_requirements = []
+    evidence_conditions = {}
+    for requirement_node in evidence_requirement_nodes:
+        if (requirement_node, RDF.type, SDO.EvidenceRequirement) not in graph:
+            raise ValueError(
+                f"Decision Contract member {requirement_node} must be an "
+                "sdo:EvidenceRequirement"
+            )
+        supports_condition = str(
+            one(graph, requirement_node, SDO.supportsCondition)
+        )
+        if supports_condition not in conditions:
+            raise ValueError(
+                f"Evidence Requirement {requirement_node} must support a "
+                "Condition used by a Rule"
+            )
+        required_evidence_type_node = one(
+            graph, requirement_node, SDO.requiredEvidenceType
+        )
+        if not isinstance(required_evidence_type_node, URIRef):
+            raise ValueError(
+                f"Required Evidence type {required_evidence_type_node} must be "
+                "an IRI"
+            )
+        applicability_nodes = sorted(
+            graph.objects(requirement_node, SDO.applicabilityCondition), key=str
+        )
+        if not applicability_nodes:
+            raise ValueError(
+                f"Evidence Requirement {requirement_node} must declare at least "
+                "one applicability Condition"
+            )
+        applicability_conditions = []
+        for condition_node in applicability_nodes:
+            if (condition_node, RDF.type, SDO.Condition) not in graph:
+                raise ValueError(
+                    f"Evidence applicability member {condition_node} must be an "
+                    "sdo:Condition"
+                )
+            condition_id = str(condition_node)
+            if condition_id in conditions:
+                raise ValueError(
+                    f"Evidence applicability Condition {condition_node} must be "
+                    "separate from Rule Conditions"
+                )
+            if condition_id in evidence_conditions:
+                condition = evidence_conditions[condition_id]
+            else:
+                pointer = _json_pointer(
+                    str(one(graph, condition_node, SCO.inputJsonPointer))
+                )
+                if pointer in pointers:
+                    raise ValueError(
+                        f"Conditions must not share input pointer {pointer}"
+                    )
+                pointers.add(pointer)
+                condition = EvidenceApplicabilityCondition(
+                    identifier=condition_id,
+                    fact_property=str(
+                        one(graph, condition_node, SDO.factProperty)
+                    ),
+                    input_json_pointer=pointer,
+                    expected_boolean=_boolean_value(
+                        one(graph, condition_node, SDO.expectedBoolean),
+                        f"Evidence applicability Condition {condition_node} "
+                        "expectedBoolean",
+                    ),
+                )
+                evidence_conditions[condition_id] = condition
+            applicability_conditions.append(condition)
+        citation = one(graph, requirement_node, SDO.evidenceSourceCitation)
+        evidence_requirements.append(
+            EvidenceRequirement(
+                identifier=str(requirement_node),
+                supports_condition=supports_condition,
+                applicability_conditions=tuple(applicability_conditions),
+                required_evidence_type=str(required_evidence_type_node),
+                source=_read_decision_source(graph, citation),
+            )
+        )
+    immutable_evidence_requirements = tuple(evidence_requirements)
+    evidence_requirement_ids = {
+        requirement.identifier for requirement in immutable_evidence_requirements
+    }
+    all_conditions = conditions | set(evidence_conditions)
+
     case_nodes = sorted(graph.objects(contract, SDO.hasConformanceCase), key=str)
     if not case_nodes:
         raise ValueError(
@@ -696,7 +844,7 @@ def read_decision_model(
                     f"Conformance case fact {fact} must be an sdo:CaseFact"
                 )
             condition = str(one(graph, fact, SDO.forCondition))
-            if condition not in conditions:
+            if condition not in all_conditions:
                 raise ValueError(
                     f"Conformance case {case_node} references unknown Condition {condition}"
                 )
@@ -715,6 +863,146 @@ def read_decision_model(
                 )
             )
         immutable_facts = tuple(sorted(facts))
+        evidence = []
+        evidence_ids = set()
+        for evidence_node in sorted(
+            graph.objects(case_node, SDO.hasEvidence), key=str
+        ):
+            if (evidence_node, RDF.type, SDO.Evidence) not in graph:
+                raise ValueError(
+                    f"Supplied Evidence {evidence_node} must be an sdo:Evidence"
+                )
+            evidence_id = str(evidence_node)
+            if evidence_id in evidence_ids:
+                raise ValueError(
+                    f"Conformance case {case_node} supplies duplicate Evidence "
+                    f"{evidence_node}"
+                )
+            evidence_ids.add(evidence_id)
+            evidence_type = one(graph, evidence_node, SDO.evidenceType)
+            if not isinstance(evidence_type, URIRef):
+                raise ValueError(
+                    f"Supplied Evidence type {evidence_type} must be an IRI"
+                )
+            assessments = []
+            assessed_requirements = set()
+            for assessment_node in sorted(
+                graph.objects(evidence_node, SDO.hasEvidenceAssessment), key=str
+            ):
+                if (
+                    assessment_node,
+                    RDF.type,
+                    SDO.EvidenceAssessment,
+                ) not in graph:
+                    raise ValueError(
+                        f"Evidence assessment {assessment_node} must be an "
+                        "sdo:EvidenceAssessment"
+                    )
+                assessed_requirement = str(
+                    one(
+                        graph,
+                        assessment_node,
+                        SDO.assessesEvidenceRequirement,
+                    )
+                )
+                if assessed_requirement not in evidence_requirement_ids:
+                    raise ValueError(
+                        f"Evidence assessment {assessment_node} references an "
+                        "unknown Evidence Requirement"
+                    )
+                if assessed_requirement in assessed_requirements:
+                    raise ValueError(
+                        f"Evidence {evidence_node} has conflicting assessments "
+                        f"for {assessed_requirement}"
+                    )
+                assessed_requirements.add(assessed_requirement)
+                assessments.append(
+                    EvidenceAssessment(
+                        evidence_requirement=assessed_requirement,
+                        accepted=_boolean_value(
+                            one(graph, assessment_node, SDO.accepted),
+                            f"Evidence assessment {assessment_node} accepted",
+                        ),
+                    )
+                )
+            evidence.append(
+                SuppliedEvidence(
+                    identifier=evidence_id,
+                    evidence_type=str(evidence_type),
+                    assessments=tuple(assessments),
+                )
+            )
+        immutable_evidence = tuple(evidence)
+        expected_evidence_statuses = []
+        expected_requirements = set()
+        status_by_node = {
+            str(SDO.EvidenceRequirementFulfilled): "fulfilled",
+            str(SDO.EvidenceRequirementMissing): "missing",
+            str(SDO.EvidenceRequirementNotApplicable): "not_applicable",
+        }
+        for expectation_node in graph.objects(
+            case_node, SDO.hasEvidenceExpectation
+        ):
+            if (
+                expectation_node,
+                RDF.type,
+                SDO.EvidenceExpectation,
+            ) not in graph:
+                raise ValueError(
+                    f"Evidence expectation {expectation_node} must be an "
+                    "sdo:EvidenceExpectation"
+                )
+            expected_requirement = str(
+                one(
+                    graph,
+                    expectation_node,
+                    SDO.expectsEvidenceRequirement,
+                )
+            )
+            if expected_requirement not in evidence_requirement_ids:
+                raise ValueError(
+                    f"Evidence expectation {expectation_node} references an "
+                    "unknown Evidence Requirement"
+                )
+            if expected_requirement in expected_requirements:
+                raise ValueError(
+                    f"Conformance case {case_node} has conflicting Evidence "
+                    f"Expectations for {expected_requirement}"
+                )
+            expected_requirements.add(expected_requirement)
+            status_node = str(
+                one(graph, expectation_node, SDO.expectedEvidenceStatus)
+            )
+            if status_node not in status_by_node:
+                raise ValueError(
+                    f"Evidence expectation {expectation_node} uses an "
+                    "unsupported Evidence Requirement status"
+                )
+            expected_evidence_statuses.append(
+                (expected_requirement, status_by_node[status_node])
+            )
+        if expected_requirements != evidence_requirement_ids:
+            missing = sorted(evidence_requirement_ids - expected_requirements)
+            raise ValueError(
+                f"Conformance case {case_node} lacks Evidence Expectations for "
+                f"{missing}"
+            )
+        immutable_expected_evidence_statuses = tuple(
+            sorted(expected_evidence_statuses)
+        )
+        for requirement in immutable_evidence_requirements:
+            expected_status = dict(immutable_expected_evidence_statuses)[
+                requirement.identifier
+            ]
+            derived_status = _evidence_status_for_case(
+                requirement, immutable_facts, immutable_evidence
+            )
+            if expected_status != derived_status:
+                raise ValueError(
+                    f"Conformance case {case_node} expects Evidence Requirement "
+                    f"status {expected_status}, but Evidence Evaluation "
+                    f"Conventions v1 derive {derived_status}"
+                )
         derived_outcome = _decision_outcome_for_case(
             immutable_rules,
             immutable_facts,
@@ -733,6 +1021,8 @@ def read_decision_model(
                 decision_date=decision_date,
                 expected_outcome=expected_outcome,
                 facts=immutable_facts,
+                evidence=immutable_evidence,
+                expected_evidence_statuses=immutable_expected_evidence_statuses,
             )
         )
         if (case_node, RDF.type, SDO.QuestionFlowCase) in graph:
@@ -744,6 +1034,22 @@ def read_decision_model(
         raise ValueError(
             f"Decision Contract conformance cases do not cover outcomes: {missing}"
         )
+    required_evidence_statuses = {"fulfilled", "missing", "not_applicable"}
+    for requirement in immutable_evidence_requirements:
+        covered_evidence_statuses = {
+            status
+            for case in immutable_cases
+            for requirement_id, status in case.expected_evidence_statuses
+            if requirement_id == requirement.identifier
+        }
+        if covered_evidence_statuses != required_evidence_statuses:
+            missing = sorted(
+                required_evidence_statuses - covered_evidence_statuses
+            )
+            raise ValueError(
+                f"Conformance cases do not cover Evidence Requirement "
+                f"{requirement.identifier} statuses: {missing}"
+            )
     if len(question_flow_case_ids) != 1:
         raise ValueError(
             "Decision Contract must declare exactly one sdo:QuestionFlowCase, "
@@ -758,9 +1064,11 @@ def read_decision_model(
         raise ValueError(
             "Question Flow Case must have the Decision Contract's positive outcome"
         )
-    if {condition for condition, _ in question_flow_case.facts} != conditions:
+    if not conditions.issubset(
+        {condition for condition, _ in question_flow_case.facts}
+    ):
         raise ValueError(
-            "Question Flow Case must supply exactly one Fact for every Condition"
+            "Question Flow Case must supply one Fact for every Rule Condition"
         )
 
     return ExplicitDecisionAndObligationModel(
@@ -780,6 +1088,7 @@ def read_decision_model(
             graph, contract, SDO.scopeNote, "Decision Contract scope note"
         ),
         rules=immutable_rules,
+        evidence_requirements=immutable_evidence_requirements,
         conformance_cases=immutable_cases,
         question_flow_case=question_flow_case.identifier,
     )
@@ -892,12 +1201,52 @@ def build_decision_contract(
             }
         )
 
+    evidence_requirements = []
+    for requirement in model.evidence_requirements:
+        source = requirement.source
+        source_revisions[source.source_revision] = {
+            "id": source.source_revision,
+            "source": source.source,
+            "title": source.title,
+            "identifier": source.identifier,
+            "version": source.version,
+            "valid_from": source.valid_from,
+            "content_url": source.content_url,
+            "content_sha256": source.content_sha256,
+            "byte_size": source.byte_size,
+        }
+        evidence_requirements.append(
+            {
+                "id": requirement.identifier,
+                "supports_condition": requirement.supports_condition,
+                "applicability_conditions": [
+                    {
+                        "id": condition.identifier,
+                        "fact_property": condition.fact_property,
+                        "input_json_pointer": condition.input_json_pointer,
+                        "expected_boolean": condition.expected_boolean,
+                    }
+                    for condition in requirement.applicability_conditions
+                ],
+                "required_evidence_type": requirement.required_evidence_type,
+                "source": {
+                    "citation": source.citation,
+                    "source_revision": source.source_revision,
+                    "locator": source.locator,
+                    "statement": source.statement,
+                },
+            }
+        )
+
     return {
         "profile": "decision-obligation-v1",
         "decision_protocol_version": DECISION_PROTOCOL_VERSION,
         "decision_conventions_version": DECISION_CONVENTIONS_VERSION,
         "question_selection_conventions_version": (
             QUESTION_SELECTION_CONVENTIONS_VERSION
+        ),
+        "evidence_evaluation_conventions_version": (
+            EVIDENCE_EVALUATION_CONVENTIONS_VERSION
         ),
         "product": model.product,
         "decision_contract": model.decision_contract,
@@ -928,6 +1277,7 @@ def build_decision_contract(
             source_revisions[key] for key in sorted(source_revisions)
         ],
         "rules": rules,
+        "evidence_requirements": evidence_requirements,
         "conformance_cases": [
             {
                 "id": case.identifier,
@@ -936,6 +1286,29 @@ def build_decision_contract(
                 "facts": [
                     {"condition": condition, "value": value}
                     for condition, value in case.facts
+                ],
+                "evidence": [
+                    {
+                        "id": evidence.identifier,
+                        "evidence_type": evidence.evidence_type,
+                        "assessments": [
+                            {
+                                "evidence_requirement": (
+                                    assessment.evidence_requirement
+                                ),
+                                "accepted": assessment.accepted,
+                            }
+                            for assessment in evidence.assessments
+                        ],
+                    }
+                    for evidence in case.evidence
+                ],
+                "expected_evidence_statuses": [
+                    {
+                        "evidence_requirement": requirement,
+                        "status": status,
+                    }
+                    for requirement, status in case.expected_evidence_statuses
                 ],
             }
             for case in model.conformance_cases
@@ -947,7 +1320,7 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
     runtime_id = "kfw-458.decision-runtime"
     evaluation_id = "kfw-458.applicant-eligibility"
     provenance_id = "kfw-458.result-provenance"
-    return [
+    work_items = [
         {
             "id": runtime_id,
             "title": "Provide the Decision Protocol v1 interface",
@@ -1042,7 +1415,40 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
                 "Session state, a conversational user interface, or adaptive question optimization",
             ],
         },
+        {
+            "id": "kfw-458.evidence-evaluation",
+            "title": "Evaluate Evidence Requirements separately from Conditions",
+            "goal": (
+                "Report whether each applicable Evidence Requirement is "
+                "fulfilled without changing the underlying Decision Outcome."
+            ),
+            "depends_on": [provenance_id],
+            "obligations": [
+                "Each Evidence Requirement is evaluated as fulfilled, missing, or not_applicable.",
+                "A satisfied Rule Condition remains separate from fulfillment of its Evidence Requirement.",
+                "Supplied Evidence is classified as accepted, rejected, unassessed, or not_relevant for each Evidence Requirement.",
+                "Only matching Evidence with an explicit accepted Evidence Assessment fulfills a Requirement.",
+                "Each Evidence Requirement evaluation exposes its independent Source Citation and explanation.",
+                "The fulfilled, missing, and not-applicable conformance Cases pass end to end.",
+            ],
+            "sources": [
+                "`specs/`: Evidence Requirements, applicability Conditions, Evidence, Assessments, expectations, and Source Citations",
+                "Evidence Evaluation Conventions v1: all-condition applicability and explicit-assessment fulfillment",
+                "Decision Conventions v1: Evidence evaluation does not affect Rule Condition truth or Decision Outcome",
+            ],
+            "test": (
+                f"{test_path}::"
+                "test_evidence_requirements_are_evaluated_separately"
+            ),
+            "excluded": [
+                "Document file formats, upload protocols, or storage",
+                "Automatic document-content or authenticity verification",
+            ],
+        },
     ]
+    if not contract["evidence_requirements"]:
+        work_items.pop()
+    return work_items
 
 
 def build_work_items(contract: dict, test_path: str) -> list[dict]:
@@ -1569,6 +1975,21 @@ CONTRACT = json.loads(
 RULES_BY_CONDITION = {
     rule["condition"]["id"]: rule for rule in CONTRACT["rules"]
 }
+EVIDENCE_REQUIREMENTS_BY_ID = {
+    requirement["id"]: requirement
+    for requirement in CONTRACT["evidence_requirements"]
+}
+CONDITIONS_BY_ID = {
+    **{
+        condition_id: rule["condition"]
+        for condition_id, rule in RULES_BY_CONDITION.items()
+    },
+    **{
+        condition["id"]: condition
+        for requirement in CONTRACT["evidence_requirements"]
+        for condition in requirement["applicability_conditions"]
+    },
+}
 
 
 def _set_json_pointer(document, pointer, value):
@@ -1585,12 +2006,13 @@ def _request_for_case(case):
         "rule_set_version": CONTRACT["rule_set"]["version"],
         "decision_date": case["decision_date"],
         "case": {},
+        "evidence": json.loads(json.dumps(case.get("evidence", []))),
     }
     for fact in case["facts"]:
-        rule = RULES_BY_CONDITION[fact["condition"]]
+        condition = CONDITIONS_BY_ID[fact["condition"]]
         _set_json_pointer(
             request,
-            rule["condition"]["input_json_pointer"],
+            condition["input_json_pointer"],
             fact["value"],
         )
     return request
@@ -1687,6 +2109,72 @@ def _expected_next_question(evaluations):
     }
 
 
+def _expected_evidence_evaluations(case):
+    facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
+    result = []
+    for requirement in CONTRACT["evidence_requirements"]:
+        applicability = []
+        for condition in requirement["applicability_conditions"]:
+            actual = facts.get(condition["id"])
+            if actual is None:
+                state = "unknown"
+            elif actual == condition["expected_boolean"]:
+                state = "satisfied"
+            else:
+                state = "violated"
+            applicability.append({"condition": condition["id"], "state": state})
+        classifications = []
+        for evidence in sorted(case.get("evidence", []), key=lambda item: item["id"]):
+            assessments = {
+                assessment["evidence_requirement"]: assessment["accepted"]
+                for assessment in evidence["assessments"]
+            }
+            if evidence["evidence_type"] != requirement["required_evidence_type"]:
+                classification = "not_relevant"
+            elif requirement["id"] not in assessments:
+                classification = "unassessed"
+            elif assessments[requirement["id"]]:
+                classification = "accepted"
+            else:
+                classification = "rejected"
+            classifications.append(
+                {
+                    "evidence": evidence["id"],
+                    "evidence_type": evidence["evidence_type"],
+                    "classification": classification,
+                }
+            )
+        if not all(item["state"] == "satisfied" for item in applicability):
+            status = "not_applicable"
+        elif any(item["classification"] == "accepted" for item in classifications):
+            status = "fulfilled"
+        else:
+            status = "missing"
+        source = requirement["source"]
+        result.append(
+            {
+                "evidence_requirement": requirement["id"],
+                "supports_condition": requirement["supports_condition"],
+                "required_evidence_type": requirement["required_evidence_type"],
+                "applicability_conditions": applicability,
+                "status": status,
+                "supplied_evidence": classifications,
+                "provenance": {
+                    "source_citation": source["citation"],
+                    "source_revision": source["source_revision"],
+                    "source_locator": source["locator"],
+                    "source_statement": source["statement"],
+                },
+                "explanation": (
+                    f"{status}: Evidence Requirement {requirement['id']} supports "
+                    f"Condition {requirement['supports_condition']}. "
+                    f"{source['statement']}"
+                ),
+            }
+        )
+    return result
+
+
 def _run_case(case):
     result = run_decision(PRODUCT_ROOT, _request_for_case(case))
     assert result.returncode == 0, result.output
@@ -1695,6 +2183,7 @@ def _run_case(case):
 
 def test_generated_contract_covers_all_declared_outcomes():
     assert CONTRACT["question_selection_conventions_version"] == 1
+    assert CONTRACT["evidence_evaluation_conventions_version"] == 1
     assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
         outcome["id"] for outcome in CONTRACT["outcomes"].values()
     }
@@ -1711,7 +2200,24 @@ def test_generated_contract_covers_all_declared_outcomes():
         if case["id"] == CONTRACT["question_flow_case"]
     )
     assert flow_case["expected_outcome"] == CONTRACT["outcomes"]["positive"]["id"]
-    assert len(flow_case["facts"]) == len(CONTRACT["rules"])
+    assert {
+        fact["condition"]
+        for fact in flow_case["facts"]
+        if fact["condition"] in RULES_BY_CONDITION
+    } == set(RULES_BY_CONDITION)
+    for requirement in CONTRACT["evidence_requirements"]:
+        assert {
+            expectation["status"]
+            for case in CONTRACT["conformance_cases"]
+            for expectation in case["expected_evidence_statuses"]
+            if expectation["evidence_requirement"] == requirement["id"]
+        } == {"fulfilled", "missing", "not_applicable"}
+    assert all(
+        requirement["source"]["statement"]
+        and requirement["source"]["locator"]
+        and requirement["source"]["citation"]
+        for requirement in CONTRACT["evidence_requirements"]
+    )
 
 
 def test_decision_product_runtime():
@@ -1737,6 +2243,9 @@ def test_declared_decision_outcome(case):
     assert payload["decisive_rules"] == decisive
     assert payload["fact_gaps"] == gaps
     assert payload["next_question"] == _expected_next_question(evaluations)
+    assert payload["evidence_requirement_evaluations"] == (
+        _expected_evidence_evaluations(case)
+    )
 
 
 @pytest.mark.parametrize(
@@ -1753,6 +2262,99 @@ def test_decision_result_provenance(case):
     assert payload["scope_note"] == CONTRACT["scope_note"]
 
 
+@pytest.mark.skipif(
+    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
+)
+def test_evidence_requirements_are_evaluated_separately():
+    requirement = CONTRACT["evidence_requirements"][0]
+    supporting_condition = requirement["supports_condition"]
+    cases_by_status = {
+        expectation["status"]: case
+        for case in CONTRACT["conformance_cases"]
+        for expectation in case["expected_evidence_statuses"]
+        if expectation["evidence_requirement"] == requirement["id"]
+        if {
+            fact["condition"]: fact["value"] for fact in case["facts"]
+        }.get(supporting_condition)
+        == RULES_BY_CONDITION[supporting_condition]["condition"]["expected_boolean"]
+    }
+    assert set(cases_by_status) == {"fulfilled", "missing", "not_applicable"}
+    results = {
+        status: _run_case(case)
+        for status, case in cases_by_status.items()
+    }
+
+    for status, payload in results.items():
+        supporting_evaluation = next(
+            item
+            for item in payload["condition_evaluations"]
+            if item["condition"] == supporting_condition
+        )
+        assert supporting_evaluation["state"] == "satisfied"
+        evidence_evaluation = payload["evidence_requirement_evaluations"][0]
+        assert evidence_evaluation["status"] == status
+        assert evidence_evaluation["provenance"] == {
+            "source_citation": requirement["source"]["citation"],
+            "source_revision": requirement["source"]["source_revision"],
+            "source_locator": requirement["source"]["locator"],
+            "source_statement": requirement["source"]["statement"],
+        }
+        assert requirement["source"]["statement"] in evidence_evaluation["explanation"]
+
+    assert results["fulfilled"]["outcome"] == results["missing"]["outcome"]
+    assert results["fulfilled"]["evidence_requirement_evaluations"][0][
+        "supplied_evidence"
+    ][0]["classification"] == "accepted"
+    assert results["missing"]["evidence_requirement_evaluations"][0][
+        "supplied_evidence"
+    ] == []
+
+    complete_request = _request_for_case(cases_by_status["fulfilled"])
+    variants = []
+    rejected = json.loads(json.dumps(complete_request))
+    rejected["evidence"][0]["assessments"][0]["accepted"] = False
+    variants.append(("rejected", rejected))
+    unassessed = json.loads(json.dumps(complete_request))
+    unassessed["evidence"][0]["assessments"] = []
+    variants.append(("unassessed", unassessed))
+    not_relevant = json.loads(json.dumps(complete_request))
+    not_relevant["evidence"][0]["evidence_type"] = "urn:test:other-evidence-type"
+    variants.append(("not_relevant", not_relevant))
+    for classification, request in variants:
+        result = run_decision(PRODUCT_ROOT, request)
+        assert result.returncode == 0, result.output
+        payload = result.json_output()
+        assert payload["outcome"] == CONTRACT["outcomes"]["positive"]["code"]
+        evidence_evaluation = payload["evidence_requirement_evaluations"][0]
+        assert evidence_evaluation["status"] == "missing"
+        assert evidence_evaluation["supplied_evidence"][0]["classification"] == classification
+
+
+@pytest.mark.skipif(
+    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
+)
+def test_unaccepted_supplied_evidence_does_not_fulfill_requirement():
+    complete = next(
+        case
+        for case in CONTRACT["conformance_cases"]
+        if any(
+            expectation["status"] == "fulfilled"
+            for expectation in case["expected_evidence_statuses"]
+        )
+    )
+    request = _request_for_case(complete)
+    request["evidence"][0]["assessments"][0]["accepted"] = False
+
+    result = run_decision(PRODUCT_ROOT, request)
+    assert result.returncode == 0, result.output
+    payload = result.json_output()
+
+    assert payload["outcome"] == CONTRACT["outcomes"]["positive"]["code"]
+    evidence_evaluation = payload["evidence_requirement_evaluations"][0]
+    assert evidence_evaluation["status"] == "missing"
+    assert evidence_evaluation["supplied_evidence"][0]["classification"] == "rejected"
+
+
 def test_question_driven_interaction_reaches_final_outcome():
     flow_case = next(
         case
@@ -1764,7 +2366,16 @@ def test_question_driven_interaction_reaches_final_outcome():
         CONTRACT["rules"],
         key=lambda rule: rule["condition"]["question"]["priority"],
     )
-    request = _request_for_case({**flow_case, "facts": []})
+    request = _request_for_case(
+        {
+            **flow_case,
+            "facts": [
+                fact
+                for fact in flow_case["facts"]
+                if fact["condition"] not in RULES_BY_CONDITION
+            ],
+        }
+    )
     answered = set()
 
     for rule in ordered_rules:
@@ -2099,6 +2710,9 @@ def generate_decision_contract(
                 "decision_protocol_version": DECISION_PROTOCOL_VERSION,
                 "question_selection_conventions_version": (
                     QUESTION_SELECTION_CONVENTIONS_VERSION
+                ),
+                "evidence_evaluation_conventions_version": (
+                    EVIDENCE_EVALUATION_CONVENTIONS_VERSION
                 ),
                 "work_items": work_items,
             },

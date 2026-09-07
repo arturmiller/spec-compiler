@@ -32,3 +32,8 @@ kfw458:CitationUsufructExclusion a sdo:SourceCitation ;
     sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
     sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', second explicit exclusion" ;
     sdo:sourceStatement "A person for whom a usufruct right to a residential building has been established is not an eligible applicant." .
+
+kfw458:CitationOwnershipEvidenceForApplicantBonus a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
+    sdo:sourceLocator "PDF page 8, section 'Nachweise', first paragraph" ;
+    sdo:sourceStatement "Self-using owners claiming the climate-speed bonus or income bonus must submit a land-register excerpt as evidence of ownership." .

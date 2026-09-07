@@ -272,7 +272,7 @@ Der erste Decision-Schnitt unterstützt ausschließlich einen expliziten
 Der Compiler erzeugt aus diesem Modell `generated/decision-contract.json`,
 Black-box-Tests, Work Graph und Issue-Texte. Die erste Konvention umfasst keine
 automatische Quellenaufnahme, Disjunktionen, numerische Regeln, mehrere
-anwendbare Versionen, Obligationsaktivierung oder Evidence-Bewertung.
+anwendbare Versionen oder Obligationsaktivierung.
 
 ## Question Selection Conventions v1
 
@@ -307,6 +307,35 @@ ein und verlangt nach jedem Schritt entweder die nächste begründete Frage oder
 ein determiniertes Result. Die Konvention umfasst keinen Session State, keine
 UI, keine Kosten- oder Informationsgewinnoptimierung und keine nicht-booleschen
 Antwortschemas.
+
+## Evidence Evaluation Conventions v1
+
+Eine **Evidence Requirement** ist von der durch sie gestützten Condition
+getrennt. Sie nennt ausdrücklich die gestützte Rule Condition, mindestens eine
+eigene Applicability Condition, den erforderlichen Evidence Type und eine
+eigene Source Citation. Provenienz wird nicht von der Rule geerbt.
+
+Alle Applicability Conditions müssen `satisfied` sein, damit die Evidence
+Requirement auf den gelieferten Case anwendbar ist. Andernfalls lautet ihr
+Status `not_applicable`; die einzelnen Zustände `violated` beziehungsweise
+`unknown` bleiben im Result sichtbar, sodass ein fehlender Fact weiterhin
+nicht als `false` gilt. Ist die Requirement anwendbar, lautet ihr Status nur
+dann `fulfilled`, wenn mindestens eine gelieferte Evidence den erforderlichen
+Typ besitzt und eine explizite akzeptierte Evidence Assessment für genau diese
+Requirement trägt. Andernfalls lautet er `missing`.
+
+Für jede Evidence Requirement klassifiziert das Result jede gelieferte
+Evidence als `accepted`, `rejected`, `unassessed` oder `not_relevant`. Diese
+Auswertung ändert weder Rule Condition Evaluations noch den Decision Outcome.
+Jede Requirement Evaluation enthält ihre eigene Source Citation, Source
+Revision, Locator, Source Statement und Explanation.
+
+Sobald ein Decision Contract Evidence Requirements enthält, müssen autorisierte
+Conformance Cases für jede von ihnen einen erwarteten Status angeben und
+zusammen `fulfilled`, `missing` sowie `not_applicable` abdecken. Die Konvention beschreibt ausschließlich semantische
+Evidence-Identität, -Typen und -Assessments im vorhandenen JSON-Austausch. Sie
+schreibt kein Dateiformat, keinen Dokumentinhalt, Upload, Speicherort, UI oder
+Verfahren zur Echtheitsprüfung vor.
 
 ## OpenAPI und Verhalten
 

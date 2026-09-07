@@ -73,6 +73,14 @@ Auswahl verlangt weder Session State noch UI. Der mitgelieferte Scope Note
 stellt klar, dass das Pilotresultat weder Beratung
 noch KfW-Zusage oder Förderentscheidung ist.
 
+Evidence Evaluation Conventions v1 halten eine erfüllte Rule Condition und die
+zugehörige Nachweisanforderung getrennt. Das KfW-458-Beispiel wertet den
+Grundbuchauszug für selbstnutzende Eigentümer mit Bonusanspruch unabhängig als
+`fulfilled`, `missing` oder `not_applicable` aus und klassifiziert gelieferte
+Evidence nur anhand expliziter Assessments. Der Resultatpfad enthält eine eigene
+Source Citation; Dateiformat, Upload, Speicherung und automatische
+Dokumentenprüfung bleiben außerhalb des Vertrags.
+
 Der Bootstrap-Prozess verwendet ausdrücklich die Strategie
 `sco:ModifyExistingImplementation`. Dadurch ist die vorhandene Python-
 Implementierung die technische Ausgangsbasis für G1, ohne Python zur

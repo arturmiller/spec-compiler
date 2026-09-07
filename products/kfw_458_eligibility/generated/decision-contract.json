@@ -3,6 +3,7 @@
   "decision_protocol_version": 1,
   "decision_conventions_version": 1,
   "question_selection_conventions_version": 1,
+  "evidence_evaluation_conventions_version": 1,
   "product": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibilityEvaluator",
   "decision_contract": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision2026_07",
   "rule_set": {
@@ -163,14 +164,45 @@
       }
     }
   ],
+  "evidence_requirements": [
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+      "supports_condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+      "applicability_conditions": [
+        {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
+          "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#claimsClimateOrIncomeBonus",
+          "input_json_pointer": "/case/applicant/claimsClimateOrIncomeBonus",
+          "expected_boolean": true
+        },
+        {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#selfUsesResidentialProperty",
+          "input_json_pointer": "/case/applicant/selfUsesResidentialProperty",
+          "expected_boolean": true
+        }
+      ],
+      "required_evidence_type": "https://arturmiller.github.io/spec-compiler/ontology/funding/#LandRegisterExcerpt",
+      "source": {
+        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationOwnershipEvidenceForApplicantBonus",
+        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+        "locator": "PDF page 8, section 'Nachweise', first paragraph",
+        "statement": "Self-using owners claiming the climate-speed bonus or income bonus must submit a land-register excerpt as evidence of ownership."
+      }
+    }
+  ],
   "conformance_cases": [
     {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibleApplicantCase",
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CompleteOwnerEvidenceCase",
       "decision_date": "2026-09-04",
       "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
       "facts": [
         {
           "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
           "value": true
         },
         {
@@ -192,6 +224,74 @@
         {
           "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
           "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "value": true
+        }
+      ],
+      "evidence": [
+        {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CompleteLandRegisterExcerpt",
+          "evidence_type": "https://arturmiller.github.io/spec-compiler/ontology/funding/#LandRegisterExcerpt",
+          "assessments": [
+            {
+              "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+              "accepted": true
+            }
+          ]
+        }
+      ],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "status": "fulfilled"
+        }
+      ]
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibleApplicantCase",
+      "decision_date": "2026-09-04",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNoUsufructRight",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "value": false
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "status": "not_applicable"
         }
       ]
     },
@@ -205,6 +305,10 @@
           "value": true
         },
         {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
+          "value": false
+        },
+        {
           "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
           "value": true
         },
@@ -223,16 +327,31 @@
         {
           "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
           "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "value": false
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "status": "not_applicable"
         }
       ]
     },
     {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#UnknownOwnershipCase",
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#MissingOwnerEvidenceCase",
       "decision_date": "2026-09-04",
-      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Unknown",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
       "facts": [
         {
           "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
           "value": true
         },
         {
@@ -250,6 +369,109 @@
         {
           "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
           "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "value": true
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "status": "missing"
+        }
+      ]
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#NonApplicableOwnerEvidenceCase",
+      "decision_date": "2026-09-04",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNoUsufructRight",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "value": true
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "status": "not_applicable"
+        }
+      ]
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#UnknownOwnershipCase",
+      "decision_date": "2026-09-04",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Unknown",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNoUsufructRight",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "value": false
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "status": "not_applicable"
         }
       ]
     }

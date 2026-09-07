@@ -23,8 +23,10 @@ implements its first profile with source-backed Rules, Conditions, Fact Gaps,
 Decision Results, and Provenance without weakening the existing provenance
 invariant. [ADR 0018](docs/architecture/decisions/0018-select-next-fact-question-from-current-fact-gaps.md)
 adds explicit Fact Questions and deterministic Next Question selection from
-current Fact Gaps. Obligation activation and evidence evaluation remain later
-slices.
+current Fact Gaps. [ADR 0019](docs/architecture/decisions/0019-evaluate-evidence-requirements-separately-from-conditions.md)
+adds independently sourced Evidence Requirements, explicit Evidence
+Assessments, and Evidence Requirement Evaluations without changing Condition
+truth or Decision Outcomes. Obligation activation remains a later slice.
 
 The first implementation slice is the **KfW 458 Applicant Eligibility Pilot**.
 It is invoked through Decision Protocol v1 and compiles a pinned Rule Set
@@ -34,6 +36,9 @@ source-justified Next Question; repeated complete Case submissions advance to
 another justified question or a determinate outcome. Its scope and pinned
 source revision are defined in the
 [Decision and Obligation Compilation roadmap](docs/architecture/decision-and-obligation-roadmap.md).
+For self-using owners claiming the modeled bonuses, the same Decision Result
+also reports the independent ownership Evidence Requirement as `fulfilled`,
+`missing`, or `not_applicable` and classifies supplied Evidence.
 
 ## Domain language
 
@@ -51,6 +56,10 @@ ontology terms, code, and generated work items use that language.
 - A Next Question is selected only from current Fact Gaps while the Decision
   Outcome is undetermined. Its authored priority is explicit and determinate
   outcomes never request another Fact.
+- A satisfied Condition does not fulfill an Evidence Requirement. Only matching
+  Evidence with an explicit accepted Evidence Assessment can do so under
+  Evidence Evaluation Conventions v1; the requirement keeps its own Source
+  Citation.
 - Ambiguous specs, conflicting facts, ambiguous rule-set applicability, or
   multiple incompatible conclusions are errors, not Undetermined outcomes.
 - The Spec Compiler remains one software system. Decision and Obligation

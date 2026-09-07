@@ -16,7 +16,7 @@
     dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "sdo" ;
     vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision/#" ;
-    owl:versionInfo "0.1.0-experimental" .
+    owl:versionInfo "0.2.0-experimental" .
 
 sdo:DecisionContract a owl:Class ;
     rdfs:label "Decision contract"@en ;
@@ -85,6 +85,42 @@ sdo:QuestionFlowCase a owl:Class ;
     rdfs:label "Frageablauf-Konformitätsfall"@de ;
     rdfs:comment "A complete positive Conformance Case whose Facts are supplied as answers in the generated multi-step question-flow proof."@en .
 
+sdo:EvidenceRequirement a owl:Class ;
+    rdfs:label "Evidence requirement"@en ;
+    rdfs:label "Nachweisanforderung"@de ;
+    rdfs:comment "An independently sourced requirement for Evidence that supports a Condition without determining that Condition's truth."@en .
+
+sdo:Evidence a owl:Class ;
+    rdfs:label "Evidence"@en ;
+    rdfs:label "Nachweis"@de ;
+    rdfs:comment "Supplied information or an artifact offered for an Evidence Requirement; presence alone does not establish fulfillment."@en .
+
+sdo:EvidenceAssessment a owl:Class ;
+    rdfs:label "Evidence assessment"@en ;
+    rdfs:label "Nachweisbewertung"@de ;
+    rdfs:comment "An explicit acceptance or rejection of one supplied Evidence item for one Evidence Requirement."@en .
+
+sdo:EvidenceExpectation a owl:Class ;
+    rdfs:label "Evidence expectation"@en ;
+    rdfs:label "Nachweiserwartung"@de ;
+    rdfs:comment "The expected Evidence Requirement status in a Conformance Case."@en .
+
+sdo:EvidenceRequirementStatus a owl:Class ;
+    rdfs:label "Evidence requirement status"@en ;
+    rdfs:label "Status der Nachweisanforderung"@de .
+
+sdo:EvidenceRequirementFulfilled a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;
+    rdfs:label "fulfilled"@en ;
+    rdfs:label "erfüllt"@de .
+
+sdo:EvidenceRequirementMissing a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;
+    rdfs:label "missing"@en ;
+    rdfs:label "fehlend"@de .
+
+sdo:EvidenceRequirementNotApplicable a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;
+    rdfs:label "not applicable"@en ;
+    rdfs:label "nicht anwendbar"@de .
+
 sdo:Source a owl:Class ;
     rdfs:label "Source"@en ;
     rdfs:label "Quelle"@de .
@@ -125,6 +161,78 @@ sdo:sourceCitation a owl:ObjectProperty ;
     rdfs:label "Quellenfundstelle"@de ;
     rdfs:domain sdo:Rule ;
     rdfs:range sdo:SourceCitation .
+
+sdo:hasEvidenceRequirement a owl:ObjectProperty ;
+    rdfs:label "has evidence requirement"@en ;
+    rdfs:label "hat Nachweisanforderung"@de ;
+    rdfs:domain sdo:DecisionContract ;
+    rdfs:range sdo:EvidenceRequirement .
+
+sdo:supportsCondition a owl:ObjectProperty ;
+    rdfs:label "supports condition"@en ;
+    rdfs:label "stützt Bedingung"@de ;
+    rdfs:domain sdo:EvidenceRequirement ;
+    rdfs:range sdo:Condition .
+
+sdo:applicabilityCondition a owl:ObjectProperty ;
+    rdfs:label "applicability condition"@en ;
+    rdfs:label "Anwendbarkeitsbedingung"@de ;
+    rdfs:domain sdo:EvidenceRequirement ;
+    rdfs:range sdo:Condition .
+
+sdo:requiredEvidenceType a owl:ObjectProperty ;
+    rdfs:label "required evidence type"@en ;
+    rdfs:label "erforderlicher Nachweistyp"@de ;
+    rdfs:domain sdo:EvidenceRequirement ;
+    rdfs:range owl:Class .
+
+sdo:evidenceSourceCitation a owl:ObjectProperty ;
+    rdfs:label "evidence source citation"@en ;
+    rdfs:label "Quellenfundstelle der Nachweisanforderung"@de ;
+    rdfs:domain sdo:EvidenceRequirement ;
+    rdfs:range sdo:SourceCitation .
+
+sdo:hasEvidence a owl:ObjectProperty ;
+    rdfs:label "has evidence"@en ;
+    rdfs:label "hat Nachweis"@de ;
+    rdfs:domain sdo:Case ;
+    rdfs:range sdo:Evidence .
+
+sdo:evidenceType a owl:ObjectProperty ;
+    rdfs:label "evidence type"@en ;
+    rdfs:label "Nachweistyp"@de ;
+    rdfs:domain sdo:Evidence ;
+    rdfs:range owl:Class .
+
+sdo:hasEvidenceAssessment a owl:ObjectProperty ;
+    rdfs:label "has evidence assessment"@en ;
+    rdfs:label "hat Nachweisbewertung"@de ;
+    rdfs:domain sdo:Evidence ;
+    rdfs:range sdo:EvidenceAssessment .
+
+sdo:assessesEvidenceRequirement a owl:ObjectProperty ;
+    rdfs:label "assesses evidence requirement"@en ;
+    rdfs:label "bewertet Nachweisanforderung"@de ;
+    rdfs:domain sdo:EvidenceAssessment ;
+    rdfs:range sdo:EvidenceRequirement .
+
+sdo:hasEvidenceExpectation a owl:ObjectProperty ;
+    rdfs:label "has evidence expectation"@en ;
+    rdfs:label "hat Nachweiserwartung"@de ;
+    rdfs:domain sdo:ConformanceCase ;
+    rdfs:range sdo:EvidenceExpectation .
+
+sdo:expectsEvidenceRequirement a owl:ObjectProperty ;
+    rdfs:label "expects evidence requirement"@en ;
+    rdfs:label "erwartet Nachweisanforderung"@de ;
+    rdfs:domain sdo:EvidenceExpectation ;
+    rdfs:range sdo:EvidenceRequirement .
+
+sdo:expectedEvidenceStatus a owl:ObjectProperty ;
+    rdfs:label "expected evidence status"@en ;
+    rdfs:label "erwartet Nachweisstatus"@de ;
+    rdfs:domain sdo:EvidenceExpectation ;
+    rdfs:range sdo:EvidenceRequirementStatus .
 
 sdo:citesSourceRevision a owl:ObjectProperty ;
     rdfs:label "cites source revision"@en ;
@@ -202,6 +310,12 @@ sdo:booleanValue a owl:DatatypeProperty ;
     rdfs:label "boolean value"@en ;
     rdfs:label "boolescher Wert"@de ;
     rdfs:domain sdo:CaseFact ;
+    rdfs:range xsd:boolean .
+
+sdo:accepted a owl:DatatypeProperty ;
+    rdfs:label "accepted"@en ;
+    rdfs:label "akzeptiert"@de ;
+    rdfs:domain sdo:EvidenceAssessment ;
     rdfs:range xsd:boolean .
 
 sdo:questionText a owl:DatatypeProperty ;

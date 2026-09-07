@@ -13,15 +13,17 @@ explicit provenance, deterministic generation, black-box product verification,
 and failure on ambiguity.
 
 This roadmap fixes vocabulary, semantic boundaries, ontology ownership, a first
-pilot, and non-goals. It distinguishes the implemented Issue #2 subset from
-later obligation, evidence, question-selection, and version-selection slices.
+pilot, and non-goals. It distinguishes the implemented decision,
+question-selection, and evidence-evaluation slices from later obligation and
+version-selection slices.
 
 ## Semantic model
 
 The typed, immutable **Explicit Decision and Obligation Model** now exists
 alongside the SQL-oriented Explicit Obligation Model. Issue #2 materializes the
 decision, rule, condition, case, fact-gap, and provenance subset. Obligations
-and evidence remain accepted target semantics for later slices.
+and Issue #4 adds the evidence-requirement subset. Obligation activation
+remains an accepted target semantic for a later slice.
 
 | Concern | Accepted semantics |
 | --- | --- |
@@ -55,8 +57,9 @@ The ontology boundary is semantic, not merely a file split.
 The `sdo:` and `funding:` namespaces are published as separate authored
 vocabularies with their own WIDOCO references and WebVOWL graphs. The Decision
 and Obligation Core Ontology does not import the SHACL Contract Ontology merely
-because both are compiled by the same system. Obligation and evidence terms are
-added only when their slices establish executable semantics.
+because both are compiled by the same system. Evidence terms are present
+because Issue #4 establishes executable semantics; Obligation terms are added
+only when their slice does the same.
 
 A domain concept may be promoted to the core only after at least two distinct
 domains use it with the same semantics and the promotion is recorded as an
@@ -83,7 +86,7 @@ amount, KfW approval, available budget, or legal entitlement.
 | Publisher | KfW Bankengruppe |
 | Stand / identifier | 07/2026; Bestellnummer 600 000 5131 |
 | Declared validity | Valid from 2026-07-21 |
-| Authoritative rule passage for the pilot | PDF page 2, “Wer kann Anträge stellen?” and its explicit exclusions |
+| Authoritative passages for the pilot | PDF page 2, “Wer kann Anträge stellen?” and its explicit exclusions; PDF page 8, “Nachweise”, first paragraph, for the independently cited ownership Evidence Requirement |
 | Version catalogue | [KfW product 458 document archive](https://www.kfw.de/partner/KfW-Partnerportal/Service/Dokumente-zum-Produkt/458/index.jsp) |
 | Retrieved document | [KfW Merkblatt 458](https://www.kfw.de/PDF/Download-Center/F%C3%B6rderprogramme-%28Inlandsf%C3%B6rderung%29/PDF-Dokumente/6000005131_M_458.pdf) |
 | Retrieval date | 2026-09-04 |
@@ -94,8 +97,10 @@ amount, KfW approval, available budget, or legal entitlement.
 The official KfW document catalogue identifies a July 2026 revision and retains
 earlier revisions separately. The retrieved PDF itself declares Stand 07/2026,
 Bestellnummer 600 000 5131, and validity from 2026-07-21. Its page 2 contains the
-selected applicant categories and explicit exclusions. The recorded length and
-SHA-256 identify the exact bytes reviewed on 2026-09-04.
+selected applicant categories and explicit exclusions. Page 8 separately
+requires self-using owners claiming the climate-speed or income bonus to submit
+a land-register excerpt as ownership Evidence. The recorded length and SHA-256
+identify the exact bytes reviewed on 2026-09-04 and reverified on 2026-09-07.
 
 The Merkblatt states that the program is based on the BEG EM guideline, but the
 pilot deliberately compiles only the product-specific applicant passage. If a
@@ -126,6 +131,9 @@ The pilot produces:
 - `unknown` when one or more named Fact Gaps prevent a unique conclusion;
 - one source-justified Next Question, selected deterministically from the
   current Fact Gaps while the outcome remains `unknown`;
+- an independent ownership Evidence Requirement Evaluation of `fulfilled`,
+  `missing`, or `not_applicable`, with classifications for supplied Evidence
+  and its own page-8 Source Citation;
 - an error for input outside the pilot boundary, conflicting Facts, ambiguous
   Rules, or an unpinned Rule Set Version.
 
@@ -136,7 +144,8 @@ explicitly pinned. Dynamic version selection is deferred to Issue #5.
 
 - technical eligibility of a heating system or measure;
 - subsidy rates, bonuses, eligible costs, calculations, and combinations;
-- application timing, contracts, forms, Evidence submission, or approval;
+- application timing, contracts, forms, document upload/storage, automated
+  document-content or authenticity validation, or approval;
 - automatic ingestion, interpretation, or monitoring of KfW documents;
 - coverage of other KfW, BAFA, state, federal, or EU programs;
 - legal, financial, or funding advice and any promise of approval;
@@ -148,7 +157,7 @@ explicitly pinned. Dynamic version selection is deferred to Issue #5.
 | --- | --- | --- |
 | [#2](https://github.com/arturmiller/spec-compiler/issues/2) | **Implemented:** compile the pinned pilot end to end into `eligible`, `ineligible`, and `unknown` Decision Results with source provenance through Decision Protocol v1. | This roadmap |
 | [#3](https://github.com/arturmiller/spec-compiler/issues/3) | **Implemented:** derive one source-justified Next Question from current Fact Gaps and prove repeated answer submission to a determinate result. | #2 |
-| [#4](https://github.com/arturmiller/spec-compiler/issues/4) | Evaluate Conditions separately from Evidence Requirements. | #2 |
+| [#4](https://github.com/arturmiller/spec-compiler/issues/4) | **Implemented:** evaluate Conditions separately from independently sourced Evidence Requirements; classify supplied Evidence and prove `fulfilled`, `missing`, and `not_applicable` through Decision Protocol v1. | #2 |
 | [#5](https://github.com/arturmiller/spec-compiler/issues/5) | Select exactly one applicable Rule Set Version from an explicit Decision Date. | #2 |
 | [#6](https://github.com/arturmiller/spec-compiler/issues/6) | Test core-ontology reuse with a cloud-compliance decision slice. | #3, #4, #5 |
 

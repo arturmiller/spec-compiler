@@ -24,9 +24,13 @@ kfw458:ApplicantEligibilityDecision2026_07
     sdo:negativeOutcome funding:Ineligible ;
     sdo:unknownOutcome funding:Unknown ;
     sdo:scopeNote "This result covers only the modeled natural-person applicant-eligibility question for KfW product 458. It does not assess the measure, calculate funding, provide advice, or represent a KfW commitment or approval." ;
+    sdo:hasEvidenceRequirement kfw458:OwnershipEvidenceRequirementForApplicantBonus ;
     sdo:hasConformanceCase
         kfw458:EligibleApplicantCase,
+        kfw458:CompleteOwnerEvidenceCase,
         kfw458:IneligibleUsufructCase,
+        kfw458:MissingOwnerEvidenceCase,
+        kfw458:NonApplicableOwnerEvidenceCase,
         kfw458:UnknownOwnershipCase .
 
 funding:Eligible a sdo:DecisionOutcome ;
@@ -135,3 +139,22 @@ kfw458:QuestionBuildingInGermany a sdo:FactQuestion ;
     sdo:elicitsCondition kfw458:ConditionBuildingInGermany ;
     sdo:questionText "Is the residential building located in Germany?" ;
     sdo:questionPriority 60 .
+
+kfw458:OwnershipEvidenceRequirementForApplicantBonus
+    a sdo:EvidenceRequirement ;
+    sdo:supportsCondition kfw458:ConditionOwner ;
+    sdo:applicabilityCondition
+        kfw458:ConditionSelfUsesResidentialProperty,
+        kfw458:ConditionClaimsClimateOrIncomeBonus ;
+    sdo:requiredEvidenceType funding:LandRegisterExcerpt ;
+    sdo:evidenceSourceCitation kfw458:CitationOwnershipEvidenceForApplicantBonus .
+
+kfw458:ConditionSelfUsesResidentialProperty a sdo:Condition ;
+    sdo:factProperty funding:selfUsesResidentialProperty ;
+    sco:inputJsonPointer "/case/applicant/selfUsesResidentialProperty" ;
+    sdo:expectedBoolean true .
+
+kfw458:ConditionClaimsClimateOrIncomeBonus a sdo:Condition ;
+    sdo:factProperty funding:claimsClimateOrIncomeBonus ;
+    sco:inputJsonPointer "/case/applicant/claimsClimateOrIncomeBonus" ;
+    sdo:expectedBoolean true .

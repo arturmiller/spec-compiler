@@ -4,6 +4,7 @@
   "decision_conventions_version": 1,
   "decision_protocol_version": 1,
   "question_selection_conventions_version": 1,
+  "evidence_evaluation_conventions_version": 1,
   "work_items": [
     {
       "id": "kfw-458.decision-runtime",
@@ -97,6 +98,32 @@
       "excluded": [
         "Questions unrelated to a Rule Condition",
         "Session state, a conversational user interface, or adaptive question optimization"
+      ]
+    },
+    {
+      "id": "kfw-458.evidence-evaluation",
+      "title": "Evaluate Evidence Requirements separately from Conditions",
+      "goal": "Report whether each applicable Evidence Requirement is fulfilled without changing the underlying Decision Outcome.",
+      "depends_on": [
+        "kfw-458.result-provenance"
+      ],
+      "obligations": [
+        "Each Evidence Requirement is evaluated as fulfilled, missing, or not_applicable.",
+        "A satisfied Rule Condition remains separate from fulfillment of its Evidence Requirement.",
+        "Supplied Evidence is classified as accepted, rejected, unassessed, or not_relevant for each Evidence Requirement.",
+        "Only matching Evidence with an explicit accepted Evidence Assessment fulfills a Requirement.",
+        "Each Evidence Requirement evaluation exposes its independent Source Citation and explanation.",
+        "The fulfilled, missing, and not-applicable conformance Cases pass end to end."
+      ],
+      "sources": [
+        "`specs/`: Evidence Requirements, applicability Conditions, Evidence, Assessments, expectations, and Source Citations",
+        "Evidence Evaluation Conventions v1: all-condition applicability and explicit-assessment fulfillment",
+        "Decision Conventions v1: Evidence evaluation does not affect Rule Condition truth or Decision Outcome"
+      ],
+      "test": "products/kfw_458_eligibility/tests/test_contract.py::test_evidence_requirements_are_evaluated_separately",
+      "excluded": [
+        "Document file formats, upload protocols, or storage",
+        "Automatic document-content or authenticity verification"
       ]
     }
   ]

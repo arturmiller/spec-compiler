@@ -569,13 +569,21 @@ def build_site(jar: Path) -> None:
                 SDO.Condition,
                 SDO.FactQuestion,
                 SDO.QuestionFlowCase,
+                SDO.EvidenceRequirement,
+                SDO.EvidenceAssessment,
                 SDO.SourceCitation,
             ),
         ),
         (
             "Funding Domain Ontology",
             FUNDING_REFERENCE_OUTPUT,
-            (FUNDING.FundingProgram, FUNDING.Applicant, FUNDING.Project, FUNDING.Eligible),
+            (
+                FUNDING.FundingProgram,
+                FUNDING.Applicant,
+                FUNDING.Project,
+                FUNDING.LandRegisterExcerpt,
+                FUNDING.Eligible,
+            ),
         ),
     ):
         webvowl_page = (reference_output / "webvowl" / "index.html").read_text(
