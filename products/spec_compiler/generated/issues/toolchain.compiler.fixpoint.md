@@ -12,7 +12,7 @@ Produce byte-identical artifacts on consecutive compilations.
 
 ## Obligations
 
-- Two compilations of the same Product Bundle produce byte-identical generated and test files.
+- Two compilations of each conformance fixture produce byte-identical generated and test files.
 
 ## Verification
 

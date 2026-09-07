@@ -1,0 +1,77 @@
+{
+  "generator": "spec-compiler",
+  "compiler_conventions_version": 1,
+  "decision_conventions_version": 1,
+  "decision_protocol_version": 1,
+  "work_items": [
+    {
+      "id": "kfw-458.decision-runtime",
+      "title": "Provide the Decision Protocol v1 interface",
+      "goal": "Make the decision product invocable as a technology-neutral black box.",
+      "depends_on": [],
+      "obligations": [
+        "The product can be invoked through its `product.toml` manifest.",
+        "It accepts one UTF-8 JSON Decision Request on standard input.",
+        "It returns one UTF-8 JSON Decision Result on standard output."
+      ],
+      "sources": [
+        "Decision Protocol v1: manifest-driven process and JSON transport",
+        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision2026_07`"
+      ],
+      "test": "products/kfw_458_eligibility/tests/test_contract.py::test_decision_product_runtime",
+      "excluded": [
+        "A particular implementation language or framework",
+        "HTTP or a conversational user interface"
+      ]
+    },
+    {
+      "id": "kfw-458.applicant-eligibility",
+      "title": "Evaluate KfW 458 applicant eligibility",
+      "goal": "Return the specified applicant-eligibility outcome for each explicit Case.",
+      "depends_on": [
+        "kfw-458.decision-runtime"
+      ],
+      "obligations": [
+        "All declared Conditions are evaluated as satisfied, violated, or unknown.",
+        "A violated required Rule yields the declared negative outcome.",
+        "A Fact Gap without a violated Rule yields the declared unknown outcome.",
+        "Only all satisfied Rules yield the declared positive outcome.",
+        "The eligible, ineligible, and unknown conformance Cases pass end to end."
+      ],
+      "sources": [
+        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision2026_07`",
+        "`specs/`: Rules, Conditions, expected values, outcomes, and conformance Cases",
+        "Decision Conventions v1: explicit requires-all aggregation"
+      ],
+      "test": "products/kfw_458_eligibility/tests/test_contract.py::test_declared_decision_outcome",
+      "excluded": [
+        "Heating-system or measure eligibility",
+        "A funding amount, legal entitlement, or KfW approval"
+      ]
+    },
+    {
+      "id": "kfw-458.result-provenance",
+      "title": "Explain the decision with source provenance",
+      "goal": "Expose decisive Rules, source statements, and Fact Gaps in every result.",
+      "depends_on": [
+        "kfw-458.applicant-eligibility"
+      ],
+      "obligations": [
+        "Every decisive Rule identifies its Source Citation and Source Revision.",
+        "Every cited source statement and locator is present in the Decision Result.",
+        "Unknown results identify the exact missing Facts.",
+        "Every result contains a human-readable explanation and the scope note."
+      ],
+      "sources": [
+        "`specs/`: Rule-to-Source Citation relations and source statements",
+        "`specs/`: scope note",
+        "Decision Conventions v1: decisive Rule and Fact Gap projection"
+      ],
+      "test": "products/kfw_458_eligibility/tests/test_contract.py::test_decision_result_provenance",
+      "excluded": [
+        "Automatic source-document ingestion",
+        "A claim that the authored Spec completely transcribes the external source"
+      ]
+    }
+  ]
+}

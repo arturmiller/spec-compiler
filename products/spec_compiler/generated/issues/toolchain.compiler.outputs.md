@@ -13,10 +13,14 @@ Compile a valid Product Bundle through Compiler Protocol v1.
 ## Obligations
 
 - Input specs are discovered using `specs/*.ttl`.
-- A successful compilation emits `generated/expected-openapi.json`.
-- A successful compilation emits `generated/issues/*.md`.
-- A successful compilation emits `generated/work-graph.json`.
-- A successful compilation emits `tests/test_contract.py`.
+- The `Kfw458Fixture` conformance fixture emits `generated/decision-contract.json`.
+- The `Kfw458Fixture` conformance fixture emits `generated/issues/*.md`.
+- The `Kfw458Fixture` conformance fixture emits `generated/work-graph.json`.
+- The `Kfw458Fixture` conformance fixture emits `tests/test_contract.py`.
+- The `SqlApiFixture` conformance fixture emits `generated/expected-openapi.json`.
+- The `SqlApiFixture` conformance fixture emits `generated/issues/*.md`.
+- The `SqlApiFixture` conformance fixture emits `generated/work-graph.json`.
+- The `SqlApiFixture` conformance fixture emits `tests/test_contract.py`.
 
 ## Verification
 

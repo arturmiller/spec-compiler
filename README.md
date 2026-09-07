@@ -1,8 +1,9 @@
 # Spec Compiler
 
-Dieses kleine Beispiel beantwortet eine konkrete Frage: Kann ein RDF-Vertrag
-ein Artikelobjekt mit einem GET-Endpunkt und einer SQLite-Tabelle verbinden und
-daraus reproduzierbare, implementationsneutrale Verträge und Tests erzeugen?
+Dieses Projekt untersucht, wie explizite RDF-Verträge für unterschiedliche
+Softwaredomänen in reproduzierbare, implementationsneutrale Verträge und Tests
+kompiliert werden. Zwei vertikale Referenzprodukte prüfen heute einen
+SQL/OpenAPI-Vertrag und eine source-backed KfW-458-Antragstellerentscheidung.
 
 ## Ausführen
 
@@ -27,13 +28,17 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
 - `products/sql_api_example/`: versioniertes Referenzprodukt mit Produktcode,
   `specs/`, Laufzeitmanifest, deterministisch erzeugten `tests/`, erwarteter
   OpenAPI-Spezifikation und `generated/`-Arbeitsaufträgen.
+- `products/kfw_458_eligibility/`: versioniertes Referenzprodukt mit manuell
+  kuratierten Rules und Source Citations, Decision Protocol v1, kompiliertem
+  Decision Contract sowie Black-box-Fällen für `eligible`, `ineligible` und
+  `unknown`.
 - `products/spec_compiler/`: Self-Description Bundle, dessen Specs
   die allgemeine Softwareanwendung, ihre Konformität zu Compiler Protocol v1
   und ihren separat austauschbaren Transformationsvertrag beschreiben. Ein
   getrennter Bootstrap-Prozess bezeichnet die vorhandene G0-Implementierung als
-  Seed für eine spätere, codegenerierte G1-Implementierung.
-- `ontology/shacl-contract.ttl`: kanonische, öffentliche Definition des
-  experimentellen Vertragsvokabulars.
+  Seed für G1. SQL API und KfW 458 sind getrennte Conformance Fixtures.
+- `ontology/`: kanonische, öffentliche Definitionen der getrennten SHACL
+  Contract, Decision and Obligation Core und Funding Domain Ontologies.
 - `docs/generation-principles.md`: Regeln gegen erfundene
   Implementierungsanforderungen.
 
@@ -51,7 +56,17 @@ materialisiert aus seinem Seed deterministisch den eigenständigen Compiler `G1`
 unter `products/spec_compiler/src/spec_compiler.py`. Das Produktmanifest startet
 G1 mit seinem eigenen `pyproject.toml` und Lockfile. Die generierten
 Black-box-Tests führen G1 auf einem isolierten Product Bundle zweimal aus;
-beide Läufe müssen byte-identische Vertragsartefakte erreichen.
+beide Läufe müssen byte-identische Vertragsartefakte erreichen. Das gilt für
+beide deklarierten Conformance Fixtures und damit für beide Compilerprofile.
+
+Das Decision-Profil kompiliert einen expliziten `sdo:DecisionContract`, eine
+gepinnte Rule Set Version und vollständige Source Provenance nach
+`generated/decision-contract.json`. Das Decision Product erhält über sein
+Manifest einen UTF-8-JSON-Request auf stdin und liefert genau ein JSON-Resultat
+auf stdout. Der Vertrag fordert kein HTTP, Python oder RDF im Produkt. Ein
+fehlender Fact wird als Fact Gap und nicht als `false` behandelt. Der
+mitgelieferte Scope Note stellt klar, dass das Pilotresultat weder Beratung
+noch KfW-Zusage oder Förderentscheidung ist.
 
 Der Bootstrap-Prozess verwendet ausdrücklich die Strategie
 `sco:ModifyExistingImplementation`. Dadurch ist die vorhandene Python-
@@ -72,12 +87,13 @@ uv run --extra dev poe ontology-site
 
 Das Ergebnis liegt unversioniert unter `build/ontology-site/`. Der erste Lauf
 lädt das gepinnte WIDOCO-JAR in `.cache/widoco/` und prüft dessen SHA-256. Die
-Startseite verlinkt die englische und deutsche WIDOCO-Referenz, den interaktiven
-WebVOWL-Graphen mit Entitätssuche, die Turtle-Serialisierung und getrennte
+Startseite verlinkt englische und deutsche WIDOCO-Referenzen, interaktive
+WebVOWL-Graphen mit Entitätssuche, Turtle-Serialisierungen und getrennte
 Beispielspezifikationen.
 
-WebVOWL wird in zwei getrennten Sichten veröffentlicht: `/ontology/webvowl/`
-zeigt ausschließlich das allgemeine `sco:*`-Vokabular;
+WebVOWL wird in getrennten Sichten veröffentlicht: `/ontology/webvowl/` zeigt
+das `sco:*`-Vokabular, `/ontology/decision/webvowl/` den wiederverwendbaren
+`sdo:*`-Kern und `/ontology/funding/webvowl/` das `funding:*`-Vokabular;
 `/examples/sql-api/webvowl/` zeigt das fachliche SQL-API-Beispiel mit
 `article:Article`, `article:description` und `article:price`. Eine ausschließlich
 für WebVOWL abgeleitete OWL-Projektion verbindet außerdem `GetArticleEndpoint`
@@ -95,11 +111,12 @@ Requests und veröffentlicht sie nach erfolgreichen Tests bei Pushes auf `main`
 deployment → Source** einmalig **GitHub Actions** ausgewählt werden.
 
 Die experimentellen IRIs beginnen mit
-`https://arturmiller.github.io/spec-compiler/`; das Vokabular verwendet den
-dereferenzierbaren Fragment-Namespace `.../ontology/#`. Ein stabiler Redirect über
+`https://arturmiller.github.io/spec-compiler/`; die Vokabulare verwenden die
+dereferenzierbaren Fragment-Namespaces `.../ontology/#`,
+`.../ontology/decision/#` und `.../ontology/funding/#`. Ein stabiler Redirect über
 w3id.org bleibt eine spätere Option, falls das Vokabular produktiv wird.
-Auch die getrennten Toolchain- und SQL-API-Ressourcen-Namespaces besitzen unter
-`resources/toolchain/` und `resources/sql-api/` eigene HTML- und Turtle-Ziele.
+Auch die getrennten Toolchain-, SQL-API- und KfW-458-Ressourcen-Namespaces
+besitzen eigene HTML- und Turtle-Ziele.
 
 `generated/expected-openapi.json` beschreibt den aus den Specs erwarteten
 HTTP-Vertrag. Der OpenAPI-Test ruft das Dokument der laufenden Implementierung
@@ -111,7 +128,8 @@ Arbeitsauftrag enthält Ziel, Verpflichtungen, Abhängigkeiten, Abgrenzung und d
 exakten generierten Pytest-Node, der seinen Abschluss nachweist. Die Texte
 entstehen aus festen Vorlagen; ein Sprachmodell ist nur für Änderungen am
 jeweiligen Produkt vorgesehen. Git ignoriert neue Einträge unter `products/`;
-nur `sql_api_example` wird als nachvollziehbares Beispiel eingecheckt.
+`sql_api_example` und `kfw_458_eligibility` werden als nachvollziehbare
+Beispiele eingecheckt.
 
 Damit sind Werkzeug und Ergebnisse klar getrennt: `tools/` enthält die
 Transformation von Specs zu Verträgen, Tests und Arbeitsaufträgen;

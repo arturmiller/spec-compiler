@@ -2,6 +2,8 @@
 from pathlib import Path
 import shutil
 
+import pytest
+
 from tools.compiler_runtime import run_compiler
 
 COMPILER_ROOT = Path(__file__).parents[1]
@@ -9,11 +11,20 @@ CONTRACT = {'name': 'SpecCompiler',
  'contract': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilationV1',
  'protocol': 'https://arturmiller.github.io/spec-compiler/ontology/#CompilerProtocolV1',
  'input_spec_pattern': 'specs/*.ttl',
- 'valid_fixture_product': '../sql_api_example',
- 'generated_artifacts': ['generated/expected-openapi.json',
-                         'generated/issues/*.md',
-                         'generated/work-graph.json',
-                         'tests/test_contract.py'],
+ 'conformance_fixtures': [{'name': 'Kfw458Fixture',
+                           'fixture': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#Kfw458Fixture',
+                           'product': '../kfw_458_eligibility',
+                           'generated_artifacts': ['generated/decision-contract.json',
+                                                   'generated/issues/*.md',
+                                                   'generated/work-graph.json',
+                                                   'tests/test_contract.py']},
+                          {'name': 'SqlApiFixture',
+                           'fixture': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SqlApiFixture',
+                           'product': '../sql_api_example',
+                           'generated_artifacts': ['generated/expected-openapi.json',
+                                                   'generated/issues/*.md',
+                                                   'generated/work-graph.json',
+                                                   'tests/test_contract.py']}],
  'rejects_missing_specs': True,
  'deterministic_output': True,
  'bootstrap': {'process': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerBootstrapV1',
@@ -34,23 +45,33 @@ def _snapshot(product_root):
     }
 
 
-def _copy_fixture(tmp_path):
-    source = (COMPILER_ROOT / CONTRACT["valid_fixture_product"]).resolve()
+def _copy_fixture(tmp_path, fixture):
+    source = (COMPILER_ROOT / fixture["product"]).resolve()
     target = tmp_path / "input-product"
     shutil.copytree(source, target)
     return target
 
 
-def test_compiler_generates_declared_artifacts(tmp_path):
-    product_root = _copy_fixture(tmp_path)
+@pytest.mark.parametrize(
+    "fixture",
+    CONTRACT["conformance_fixtures"],
+    ids=lambda fixture: fixture["name"],
+)
+def test_compiler_generates_declared_artifacts(tmp_path, fixture):
+    product_root = _copy_fixture(tmp_path, fixture)
     result = run_compiler(COMPILER_ROOT, product_root)
     assert result.returncode == 0, result.output
-    for pattern in CONTRACT["generated_artifacts"]:
+    for pattern in fixture["generated_artifacts"]:
         assert list(product_root.glob(pattern)), f"No generated artifact matches {pattern}"
 
 
-def test_compiler_output_reaches_a_byte_identical_fixpoint(tmp_path):
-    product_root = _copy_fixture(tmp_path)
+@pytest.mark.parametrize(
+    "fixture",
+    CONTRACT["conformance_fixtures"],
+    ids=lambda fixture: fixture["name"],
+)
+def test_compiler_output_reaches_a_byte_identical_fixpoint(tmp_path, fixture):
+    product_root = _copy_fixture(tmp_path, fixture)
     first = run_compiler(COMPILER_ROOT, product_root)
     assert first.returncode == 0, first.output
     first_snapshot = _snapshot(product_root)
@@ -67,7 +88,12 @@ def test_compiler_rejects_a_bundle_without_specs(tmp_path):
     assert "No Turtle specs found" in result.output
 
 
-def test_bootstrapped_compiler_is_independently_executable(tmp_path):
+@pytest.mark.parametrize(
+    "fixture",
+    CONTRACT["conformance_fixtures"],
+    ids=lambda fixture: fixture["name"],
+)
+def test_bootstrapped_compiler_is_independently_executable(tmp_path, fixture):
     if not CONTRACT["bootstrap"]:
         return
     implementation = COMPILER_ROOT / CONTRACT["bootstrap"]["implementation_artifact"]
@@ -77,8 +103,8 @@ def test_bootstrapped_compiler_is_independently_executable(tmp_path):
         encoding="utf-8"
     )
 
-    fixture_root = _copy_fixture(tmp_path)
+    fixture_root = _copy_fixture(tmp_path, fixture)
     result = run_compiler(COMPILER_ROOT, fixture_root)
     assert result.returncode == 0, result.output
-    for pattern in CONTRACT["generated_artifacts"]:
+    for pattern in fixture["generated_artifacts"]:
         assert list(fixture_root.glob(pattern)), f"No G1 artifact matches {pattern}"

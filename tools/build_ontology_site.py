@@ -16,8 +16,12 @@ from rdflib.namespace import DCTERMS, OWL, RDFS, SH
 
 ROOT = Path(__file__).parents[1]
 ONTOLOGY = ROOT / "ontology" / "shacl-contract.ttl"
+DECISION_ONTOLOGY = ROOT / "ontology" / "decision-obligation.ttl"
+FUNDING_ONTOLOGY = ROOT / "ontology" / "funding.ttl"
 OUTPUT = ROOT / "build" / "ontology-site"
 REFERENCE_OUTPUT = OUTPUT / "ontology"
+DECISION_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "decision"
+FUNDING_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "funding"
 SQL_API_OUTPUT = OUTPUT / "examples" / "sql-api"
 CACHE = ROOT / ".cache" / "widoco"
 WIDOCO_VERSION = "1.4.25"
@@ -30,6 +34,12 @@ WIDOCO_SHA256 = "be57a270fffb91e55810fa308717e704a44e2e7c027a3d68125a49da6c8b4e2
 ONTOLOGY_IRI = "https://arturmiller.github.io/spec-compiler/ontology/"
 VOCABULARY_IRI = ONTOLOGY_IRI + "#"
 SCO = Namespace(VOCABULARY_IRI)
+DECISION_ONTOLOGY_IRI = ONTOLOGY_IRI + "decision/"
+DECISION_VOCABULARY_IRI = DECISION_ONTOLOGY_IRI + "#"
+SDO = Namespace(DECISION_VOCABULARY_IRI)
+FUNDING_ONTOLOGY_IRI = ONTOLOGY_IRI + "funding/"
+FUNDING_VOCABULARY_IRI = FUNDING_ONTOLOGY_IRI + "#"
+FUNDING = Namespace(FUNDING_VOCABULARY_IRI)
 SQL_API_IRI = "https://arturmiller.github.io/spec-compiler/resources/sql-api/"
 ARTICLE = Namespace(SQL_API_IRI + "#")
 SQL_API_VISUALIZATION_IRI = SQL_API_IRI + "visualization/"
@@ -37,7 +47,16 @@ SQL_API_VISUALIZATION = Namespace(SQL_API_VISUALIZATION_IRI + "#")
 RESOURCE_PUBLICATIONS = {
     "spec_compiler": ("toolchain", "Spec Compiler resources"),
     "sql_api_example": ("sql-api", "SQL API example resources"),
+    "kfw_458_eligibility": (
+        "funding/kfw-458",
+        "KfW 458 applicant eligibility resources",
+    ),
 }
+ONTOLOGY_PUBLICATIONS = (
+    (ONTOLOGY, ONTOLOGY_IRI, VOCABULARY_IRI),
+    (DECISION_ONTOLOGY, DECISION_ONTOLOGY_IRI, DECISION_VOCABULARY_IRI),
+    (FUNDING_ONTOLOGY, FUNDING_ONTOLOGY_IRI, FUNDING_VOCABULARY_IRI),
+)
 
 
 def _sha256(path: Path) -> str:
@@ -70,41 +89,54 @@ def _widoco_jar(explicit: Path | None) -> Path:
 
 
 def validate_publication_sources() -> None:
-    ontology = Graph().parse(ONTOLOGY, format="turtle")
-    ontology_resource = URIRef(ONTOLOGY_IRI)
-    if (ontology_resource, RDF.type, OWL.Ontology) not in ontology:
-        raise ValueError(f"{ONTOLOGY} must declare {ONTOLOGY_IRI} as owl:Ontology")
-
-    definitions = {
-        subject
-        for subject in ontology.subjects()
-        if str(subject).startswith(VOCABULARY_IRI)
-    }
+    definitions = set()
     unlabeled = []
-    for subject in definitions:
-        languages = {
-            label.language for label in ontology.objects(subject, RDFS.label)
-        }
-        missing_languages = {"de", "en"} - languages
-        if missing_languages:
-            unlabeled.append(
-                f"{subject} (missing {', '.join(sorted(missing_languages))})"
+    for ontology_path, ontology_iri, vocabulary_iri in ONTOLOGY_PUBLICATIONS:
+        ontology = Graph().parse(ontology_path, format="turtle")
+        ontology_resource = URIRef(ontology_iri)
+        if (ontology_resource, RDF.type, OWL.Ontology) not in ontology:
+            raise ValueError(
+                f"{ontology_path} must declare {ontology_iri} as owl:Ontology"
             )
+        ontology_definitions = {
+            subject
+            for subject in ontology.subjects()
+            if str(subject).startswith(vocabulary_iri)
+        }
+        definitions.update(ontology_definitions)
+        for subject in ontology_definitions:
+            languages = {
+                label.language for label in ontology.objects(subject, RDFS.label)
+            }
+            missing_languages = {"de", "en"} - languages
+            if missing_languages:
+                unlabeled.append(
+                    f"{subject} (missing {', '.join(sorted(missing_languages))})"
+                )
     unlabeled.sort()
     if unlabeled:
         raise ValueError(f"Public ontology terms lack rdfs:label: {unlabeled}")
 
     used_terms = set()
-    for spec_file in sorted((ROOT / "products").glob("*/specs/*.ttl")):
-        text = spec_file.read_text(encoding="utf-8")
+    authored_graphs = sorted((ROOT / "products").glob("*/specs/*.ttl")) + sorted(
+        (ROOT / "ontology").glob("*.ttl")
+    )
+    public_namespaces = tuple(
+        vocabulary_iri for _, _, vocabulary_iri in ONTOLOGY_PUBLICATIONS
+    )
+    for authored_graph in authored_graphs:
+        text = authored_graph.read_text(encoding="utf-8")
         if "https://example.org/" in text:
-            raise ValueError(f"Example namespace remains in public spec: {spec_file}")
-        graph = Graph().parse(spec_file, format="turtle")
+            raise ValueError(
+                f"Example namespace remains in public RDF source: {authored_graph}"
+            )
+        graph = Graph().parse(authored_graph, format="turtle")
         for triple in graph:
             used_terms.update(
                 value
                 for value in triple
-                if str(value).startswith(VOCABULARY_IRI)
+                if isinstance(value, URIRef)
+                and str(value).startswith(public_namespaces)
             )
     undefined = sorted(str(term) for term in used_terms - definitions)
     if undefined:
@@ -132,7 +164,7 @@ def _write_landing_page() -> None:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SHACL Contract Ontology</title>
+  <title>Spec Compiler ontologies</title>
   <style>
     body { font: 18px/1.55 system-ui, sans-serif; max-width: 52rem; margin: 5rem auto; padding: 0 1.5rem; color: #17202a; }
     h1 { line-height: 1.15; }
@@ -144,16 +176,18 @@ def _write_landing_page() -> None:
   </style>
 </head>
 <body>
-  <h1>SHACL Contract Ontology</h1>
-  <p>Experimental vocabulary for executable product and transformation contracts.</p>
+  <h1>Spec Compiler ontologies</h1>
+  <p>Separate experimental vocabularies for executable contracts, reusable decision semantics, and funding-domain concepts.</p>
   <nav>
-    <a class="card" href="ontology/index-en.html"><strong>English reference</strong>Classes, properties, metadata and downloads</a>
-    <a class="card" href="ontology/index-de.html"><strong>Deutsche Referenz</strong>Klassen, Properties, Metadaten und Downloads</a>
-    <a class="card" href="ontology/webvowl/index.html"><strong>Interactive graph</strong>Explore and search the ontology with WebVOWL</a>
+    <a class="card" href="ontology/index-en.html"><strong>SHACL Contract Ontology</strong>Executable product and protocol contracts</a>
+    <a class="card" href="ontology/decision/index-en.html"><strong>Decision and Obligation Core Ontology</strong>Domain-independent decision semantics</a>
+    <a class="card" href="ontology/funding/index-en.html"><strong>Funding Domain Ontology</strong>Funding programs and scoped eligibility</a>
+    <a class="card" href="ontology/webvowl/index.html"><strong>Contract graph</strong>Explore the contract vocabulary with WebVOWL</a>
+    <a class="card" href="ontology/decision/webvowl/index.html"><strong>Decision graph</strong>Explore the core decision vocabulary</a>
+    <a class="card" href="ontology/funding/webvowl/index.html"><strong>Funding graph</strong>Explore the funding vocabulary</a>
     <a class="card" href="examples/sql-api/webvowl/index.html"><strong>SQL API example graph</strong>Explore Article, description and price separately</a>
-    <a class="card" href="ontology/ontology.ttl"><strong>Turtle</strong>Download the published ontology</a>
   </nav>
-  <p>Namespace: <code>https://arturmiller.github.io/spec-compiler/ontology/#</code></p>
+  <p>Namespaces: <code>.../ontology/#</code>, <code>.../ontology/decision/#</code>, and <code>.../ontology/funding/#</code></p>
   <p><a href="examples/">Published example specifications</a> · <a href="https://github.com/arturmiller/spec-compiler">Source repository</a></p>
 </body>
 </html>
@@ -162,18 +196,20 @@ def _write_landing_page() -> None:
     )
 
 
-def _write_reference_index() -> None:
-    (REFERENCE_OUTPUT / "index.html").write_text(
-        '''<!doctype html>
+def _write_reference_index(
+    output: Path, *, title: str, landing_page: str
+) -> None:
+    (output / "index.html").write_text(
+        f'''<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SHACL Contract Ontology reference</title>
-  <style>body { font: 18px/1.55 system-ui, sans-serif; max-width: 46rem; margin: 5rem auto; padding: 0 1.5rem; } li { margin: .7rem 0; } a { color: #075fa8; }</style>
+  <title>{title} reference</title>
+  <style>body {{ font: 18px/1.55 system-ui, sans-serif; max-width: 46rem; margin: 5rem auto; padding: 0 1.5rem; }} li {{ margin: .7rem 0; }} a {{ color: #075fa8; }}</style>
 </head>
 <body>
-  <h1>SHACL Contract Ontology reference</h1>
+  <h1>{title} reference</h1>
   <p>This document is the target of the public vocabulary namespace.</p>
   <ul>
     <li><a href="index-en.html">English reference</a></li>
@@ -181,7 +217,7 @@ def _write_reference_index() -> None:
     <li><a href="webvowl/index.html">Interactive WebVOWL graph and entity search</a></li>
     <li><a href="ontology.ttl">Turtle serialization</a></li>
   </ul>
-  <p><a href="../">Project ontology landing page</a></p>
+  <p><a href="{landing_page}">Project ontology landing page</a></p>
 </body>
 </html>
 ''',
@@ -215,19 +251,20 @@ def _publish_examples() -> None:
     for product_name, (public_path, title) in RESOURCE_PUBLICATIONS.items():
         resource_root = OUTPUT / "resources" / public_path
         resource_root.mkdir(parents=True, exist_ok=True)
+        site_root_href = "../" * (len(Path(public_path).parts) + 1)
         resource_graph = Graph()
         resource_links = []
         for spec_file, destination in publications[product_name]:
             resource_graph.parse(spec_file, format="turtle")
             resource_links.append(
-                f'<li><a href="../../examples/{destination.name}">'
+                f'<li><a href="{site_root_href}examples/{destination.name}">'
                 f"{destination.name}</a></li>"
             )
         resource_graph.serialize(
             destination=resource_root / "resources.ttl", format="turtle"
         )
         visualization_link = (
-            '<a href="../../examples/sql-api/webvowl/index.html">'
+            f'<a href="{site_root_href}examples/sql-api/webvowl/index.html">'
             "Interactive WebVOWL graph</a> · "
             if product_name == "sql_api_example"
             else ""
@@ -240,7 +277,7 @@ def _publish_examples() -> None:
             + "".join(resource_links)
             + "</ul><p><a href=\"resources.ttl\">Combined Turtle graph</a> · "
             + visualization_link
-            + "<a href=\"../../\">Back</a></p></body></html>\n",
+            + f'<a href="{site_root_href}">Back</a></p></body></html>\n',
             encoding="utf-8",
         )
 
@@ -447,8 +484,24 @@ def build_site(jar: Path) -> None:
         shutil.rmtree(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     _run_widoco(jar, ONTOLOGY, REFERENCE_OUTPUT)
+    _run_widoco(jar, DECISION_ONTOLOGY, DECISION_REFERENCE_OUTPUT)
+    _run_widoco(jar, FUNDING_ONTOLOGY, FUNDING_REFERENCE_OUTPUT)
     _write_landing_page()
-    _write_reference_index()
+    _write_reference_index(
+        REFERENCE_OUTPUT,
+        title="SHACL Contract Ontology",
+        landing_page="../",
+    )
+    _write_reference_index(
+        DECISION_REFERENCE_OUTPUT,
+        title="Decision and Obligation Core Ontology",
+        landing_page="../../",
+    )
+    _write_reference_index(
+        FUNDING_REFERENCE_OUTPUT,
+        title="Funding Domain Ontology",
+        landing_page="../../",
+    )
     _publish_examples()
     _build_sql_api_visualization(jar)
     (OUTPUT / ".nojekyll").write_text("", encoding="utf-8")
@@ -460,10 +513,24 @@ def build_site(jar: Path) -> None:
         REFERENCE_OUTPUT / "ontology.ttl",
         REFERENCE_OUTPUT / "webvowl" / "index.html",
         REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
+        DECISION_REFERENCE_OUTPUT / "index.html",
+        DECISION_REFERENCE_OUTPUT / "index-en.html",
+        DECISION_REFERENCE_OUTPUT / "index-de.html",
+        DECISION_REFERENCE_OUTPUT / "ontology.ttl",
+        DECISION_REFERENCE_OUTPUT / "webvowl" / "index.html",
+        DECISION_REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
+        FUNDING_REFERENCE_OUTPUT / "index.html",
+        FUNDING_REFERENCE_OUTPUT / "index-en.html",
+        FUNDING_REFERENCE_OUTPUT / "index-de.html",
+        FUNDING_REFERENCE_OUTPUT / "ontology.ttl",
+        FUNDING_REFERENCE_OUTPUT / "webvowl" / "index.html",
+        FUNDING_REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
         OUTPUT / "resources" / "toolchain" / "index.html",
         OUTPUT / "resources" / "toolchain" / "resources.ttl",
         OUTPUT / "resources" / "sql-api" / "index.html",
         OUTPUT / "resources" / "sql-api" / "resources.ttl",
+        OUTPUT / "resources" / "funding" / "kfw-458" / "index.html",
+        OUTPUT / "resources" / "funding" / "kfw-458" / "resources.ttl",
         SQL_API_OUTPUT / "index-en.html",
         SQL_API_OUTPUT / "index-de.html",
         SQL_API_OUTPUT / "webvowl" / "index.html",
@@ -492,6 +559,36 @@ def build_site(jar: Path) -> None:
         raise ValueError(
             f"Core ontology terms are absent from WebVOWL: {missing_visual_terms}"
         )
+    for label, reference_output, terms in (
+        (
+            "Decision and Obligation Core Ontology",
+            DECISION_REFERENCE_OUTPUT,
+            (SDO.DecisionContract, SDO.RuleSetVersion, SDO.Condition, SDO.SourceCitation),
+        ),
+        (
+            "Funding Domain Ontology",
+            FUNDING_REFERENCE_OUTPUT,
+            (FUNDING.FundingProgram, FUNDING.Applicant, FUNDING.Project, FUNDING.Eligible),
+        ),
+    ):
+        webvowl_page = (reference_output / "webvowl" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        if 'id="search-input-text"' not in webvowl_page:
+            raise ValueError(f"{label} WebVOWL site has no entity search input")
+        webvowl_document = json.loads(
+            (reference_output / "webvowl" / "data" / "ontology.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        serialized_document = json.dumps(webvowl_document)
+        missing_terms = [
+            str(term) for term in terms if str(term) not in serialized_document
+        ]
+        if missing_terms:
+            raise ValueError(
+                f"{label} terms are absent from WebVOWL: {missing_terms}"
+            )
     sql_api_webvowl = (SQL_API_OUTPUT / "webvowl" / "index.html").read_text(
         encoding="utf-8"
     )

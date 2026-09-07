@@ -1,9 +1,16 @@
 from pathlib import Path
 
-from rdflib import Graph
+from rdflib import Graph, Namespace
+from rdflib.namespace import RDF
 import pytest
 
 from tools.generate import read_compiler_contract
+
+
+SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
+RESOURCE = Namespace(
+    "https://arturmiller.github.io/spec-compiler/resources/test/#"
+)
 
 
 def _graph(
@@ -24,10 +31,13 @@ resource:ReplaceableImplementation a {product_type} ;
 
 resource:CompilationV1 a {contract_type} ;
     sco:inputSpecPattern "specs/*.ttl" ;
-    sco:validFixtureProduct "fixture" ;
-    sco:generatesArtifact "generated/result.txt" ;
+    sco:conformanceFixture resource:Fixture ;
     sco:rejectsMissingSpecs true ;
     sco:deterministicOutput true .
+
+resource:Fixture a sco:CompilerConformanceFixture ;
+    sco:fixtureProduct "fixture" ;
+    sco:expectsArtifact "generated/result.txt" .
 
 {bootstrap}
 ''',
@@ -44,6 +54,17 @@ def test_product_identity_is_separate_from_protocol_and_contract(tmp_path: Path)
     assert contract["name"] == "ReplaceableImplementation"
     assert contract["protocol"].endswith("CompilerProtocolV1")
     assert contract["contract"].endswith("CompilationV1")
+    assert contract["conformance_fixtures"] == [
+        {
+            "name": "Fixture",
+            "fixture": (
+                "https://arturmiller.github.io/spec-compiler/"
+                "resources/test/#Fixture"
+            ),
+            "product": "fixture",
+            "generated_artifacts": ["generated/result.txt"],
+        }
+    ]
     assert contract["bootstrap"] is None
 
 
@@ -118,3 +139,12 @@ def test_protocol_dispatch_does_not_replace_general_product_type(tmp_path: Path)
             tmp_path,
             _graph(product_type="sco:ContractCompiler"),
         )
+
+
+def test_every_conformance_fixture_must_be_typed(tmp_path: Path):
+    (tmp_path / "fixture").mkdir()
+    graph = _graph()
+    graph.remove((RESOURCE.Fixture, RDF.type, SCO.CompilerConformanceFixture))
+
+    with pytest.raises(ValueError, match="CompilerConformanceFixture"):
+        read_compiler_contract(tmp_path, graph)

@@ -1,0 +1,46 @@
+@prefix kfw458: <https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#> .
+@prefix funding: <https://arturmiller.github.io/spec-compiler/ontology/funding/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+kfw458:EligibleApplicantCase a sdo:ConformanceCase ;
+    dcterms:title "Eligible natural-person owner"@en ;
+    sdo:forDecisionContract kfw458:ApplicantEligibilityDecision2026_07 ;
+    sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
+    sdo:decisionDate "2026-09-04"^^xsd:date ;
+    sdo:expectsOutcome funding:Eligible ;
+    sdo:hasFact
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionOwner ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ] .
+
+kfw458:IneligibleUsufructCase a sdo:ConformanceCase ;
+    dcterms:title "Ineligible usufruct-only applicant"@en ;
+    sdo:forDecisionContract kfw458:ApplicantEligibilityDecision2026_07 ;
+    sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
+    sdo:decisionDate "2026-09-04"^^xsd:date ;
+    sdo:expectsOutcome funding:Ineligible ;
+    sdo:hasFact
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionOwner ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ] .
+
+kfw458:UnknownOwnershipCase a sdo:ConformanceCase ;
+    dcterms:title "Unknown ownership status"@en ;
+    sdo:forDecisionContract kfw458:ApplicantEligibilityDecision2026_07 ;
+    sdo:usesRuleSetVersion kfw458:ApplicantEligibilityRules2026_07 ;
+    sdo:decisionDate "2026-09-04"^^xsd:date ;
+    sdo:expectsOutcome funding:Unknown ;
+    sdo:hasFact
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNaturalPerson ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNotOwnershipViaGbR ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionNoUsufructRight ; sdo:booleanValue false ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionExistingResidentialBuilding ; sdo:booleanValue true ],
+        [ a sdo:CaseFact ; sdo:forCondition kfw458:ConditionBuildingInGermany ; sdo:booleanValue true ] .

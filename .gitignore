@@ -7,15 +7,20 @@ site/
 *.pyc
 *.sqlite3
 
-# Generated products are local artifacts. Keep only the reference example.
+# Generated products are local artifacts. Keep only versioned reference bundles.
 products/*
 !products/sql_api_example/
 !products/sql_api_example/**
 !products/spec_compiler/
 !products/spec_compiler/**
+!products/kfw_458_eligibility/
+!products/kfw_458_eligibility/**
 products/sql_api_example/**/__pycache__/
 products/sql_api_example/**/*.pyc
 products/sql_api_example/**/.venv/
 products/spec_compiler/**/__pycache__/
 products/spec_compiler/**/*.pyc
 products/spec_compiler/**/.venv/
+products/kfw_458_eligibility/**/__pycache__/
+products/kfw_458_eligibility/**/*.pyc
+products/kfw_458_eligibility/**/.venv/

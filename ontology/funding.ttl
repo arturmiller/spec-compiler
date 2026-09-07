@@ -1,0 +1,92 @@
+@prefix funding: <https://arturmiller.github.io/spec-compiler/ontology/funding/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://arturmiller.github.io/spec-compiler/ontology/funding/>
+    a owl:Ontology ;
+    dcterms:title "Funding Domain Ontology"@en ;
+    dcterms:title "Förderdomänenontologie"@de ;
+    dcterms:description "Domain vocabulary for funding programs and scoped eligibility decisions."@en ;
+    dcterms:description "Domänenvokabular für Förderprogramme und abgegrenzte Förderfähigkeitsentscheidungen."@de ;
+    dcterms:creator <https://github.com/arturmiller> ;
+    dcterms:source <https://github.com/arturmiller/spec-compiler> ;
+    vann:preferredNamespacePrefix "funding" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/funding/#" ;
+    owl:versionInfo "0.1.0-experimental" .
+
+funding:FundingProgram a owl:Class ;
+    rdfs:label "Funding program"@en ;
+    rdfs:label "Förderprogramm"@de .
+
+funding:Applicant a owl:Class ;
+    rdfs:label "Applicant"@en ;
+    rdfs:label "Antragstellende Person"@de .
+
+funding:Project a owl:Class ;
+    rdfs:label "Project"@en ;
+    rdfs:label "Vorhaben"@de .
+
+funding:ApplicantEligibilityDecision a owl:Class ;
+    rdfs:subClassOf sdo:DecisionContract ;
+    rdfs:label "Applicant eligibility decision"@en ;
+    rdfs:label "Entscheidung über Antragsberechtigung"@de .
+
+funding:Eligible a owl:NamedIndividual, sdo:DecisionOutcome ;
+    rdfs:label "eligible"@en ;
+    rdfs:label "antragsberechtigt"@de ;
+    sdo:outcomeCode "eligible" .
+
+funding:Ineligible a owl:NamedIndividual, sdo:DecisionOutcome ;
+    rdfs:label "ineligible"@en ;
+    rdfs:label "nicht antragsberechtigt"@de ;
+    sdo:outcomeCode "ineligible" .
+
+funding:Unknown a owl:NamedIndividual, sdo:DecisionOutcome ;
+    rdfs:label "unknown"@en ;
+    rdfs:label "unbestimmt"@de ;
+    sdo:outcomeCode "unknown" .
+
+funding:fundingProgram a owl:ObjectProperty ;
+    rdfs:label "funding program"@en ;
+    rdfs:label "Förderprogramm"@de ;
+    rdfs:range funding:FundingProgram .
+
+funding:naturalPerson a owl:DatatypeProperty ;
+    rdfs:label "is a natural person"@en ;
+    rdfs:label "ist eine natürliche Person"@de ;
+    rdfs:domain funding:Applicant ;
+    rdfs:range xsd:boolean .
+
+funding:owner a owl:DatatypeProperty ;
+    rdfs:label "is an owner"@en ;
+    rdfs:label "ist Eigentümerin oder Eigentümer"@de ;
+    rdfs:domain funding:Applicant ;
+    rdfs:range xsd:boolean .
+
+funding:ownershipViaGbR a owl:DatatypeProperty ;
+    rdfs:label "holds ownership through a GbR"@en ;
+    rdfs:label "hält Eigentum über eine GbR"@de ;
+    rdfs:domain funding:Applicant ;
+    rdfs:range xsd:boolean .
+
+funding:hasUsufructRight a owl:DatatypeProperty ;
+    rdfs:label "has a usufruct right"@en ;
+    rdfs:label "hat ein Nießbrauchrecht"@de ;
+    rdfs:domain funding:Applicant ;
+    rdfs:range xsd:boolean .
+
+funding:existingResidentialBuilding a owl:DatatypeProperty ;
+    rdfs:label "concerns an existing residential building"@en ;
+    rdfs:label "betrifft ein bestehendes Wohngebäude"@de ;
+    rdfs:domain funding:Project ;
+    rdfs:range xsd:boolean .
+
+funding:buildingInGermany a owl:DatatypeProperty ;
+    rdfs:label "building is in Germany"@en ;
+    rdfs:label "Gebäude liegt in Deutschland"@de ;
+    rdfs:domain funding:Project ;
+    rdfs:range xsd:boolean .

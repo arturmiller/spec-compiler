@@ -1,0 +1,240 @@
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://arturmiller.github.io/spec-compiler/ontology/decision/>
+    a owl:Ontology ;
+    dcterms:title "Decision and Obligation Core Ontology"@en ;
+    dcterms:title "Kernontologie für Entscheidungen und Verpflichtungen"@de ;
+    dcterms:description "Domain-independent vocabulary for source-backed decisions and obligations."@en ;
+    dcterms:description "Domänenunabhängiges Vokabular für quellengestützte Entscheidungen und Verpflichtungen."@de ;
+    dcterms:creator <https://github.com/arturmiller> ;
+    dcterms:source <https://github.com/arturmiller/spec-compiler> ;
+    vann:preferredNamespacePrefix "sdo" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision/#" ;
+    owl:versionInfo "0.1.0-experimental" .
+
+sdo:DecisionContract a owl:Class ;
+    rdfs:label "Decision contract"@en ;
+    rdfs:label "Entscheidungsvertrag"@de ;
+    rdfs:comment "Versioned specification of a decision question, accepted Case facts, Rule Set Version, outcomes, and observable result obligations."@en .
+
+sdo:RuleSet a owl:Class ;
+    rdfs:label "Rule set"@en ;
+    rdfs:label "Regelwerk"@de .
+
+sdo:RuleSetVersion a owl:Class ;
+    rdfs:label "Rule set version"@en ;
+    rdfs:label "Regelwerkversion"@de .
+
+sdo:Rule a owl:Class ;
+    rdfs:label "Rule"@en ;
+    rdfs:label "Regel"@de .
+
+sdo:Condition a owl:Class ;
+    rdfs:label "Condition"@en ;
+    rdfs:label "Bedingung"@de .
+
+sdo:Case a owl:Class ;
+    rdfs:label "Case"@en ;
+    rdfs:label "Fall"@de .
+
+sdo:Fact a owl:Class ;
+    rdfs:label "Fact"@en ;
+    rdfs:label "Fallsachverhalt"@de .
+
+sdo:CaseFact a owl:Class ;
+    rdfs:subClassOf sdo:Fact ;
+    rdfs:label "Case fact"@en ;
+    rdfs:label "Fallsachverhalt"@de .
+
+sdo:FactGap a owl:Class ;
+    rdfs:label "Fact gap"@en ;
+    rdfs:label "Sachverhaltslücke"@de ;
+    rdfs:comment "Absence of a Fact required to evaluate a Condition; it is not a false Fact."@en .
+
+sdo:DecisionResult a owl:Class ;
+    rdfs:label "Decision result"@en ;
+    rdfs:label "Entscheidungsergebnis"@de .
+
+sdo:DecisionOutcome a owl:Class ;
+    rdfs:label "Decision outcome"@en ;
+    rdfs:label "Entscheidungsausgang"@de .
+
+sdo:ConditionEvaluation a owl:Class ;
+    rdfs:label "Condition evaluation"@en ;
+    rdfs:label "Bedingungsauswertung"@de .
+
+sdo:ConformanceCase a owl:Class ;
+    rdfs:subClassOf sdo:Case ;
+    rdfs:label "Conformance case"@en ;
+    rdfs:label "Konformitätsfall"@de .
+
+sdo:Source a owl:Class ;
+    rdfs:label "Source"@en ;
+    rdfs:label "Quelle"@de .
+
+sdo:SourceRevision a owl:Class ;
+    rdfs:label "Source revision"@en ;
+    rdfs:label "Quellenrevision"@de .
+
+sdo:SourceCitation a owl:Class ;
+    rdfs:label "Source citation"@en ;
+    rdfs:label "Quellenfundstelle"@de .
+
+sdo:usesRuleSetVersion a owl:ObjectProperty ;
+    rdfs:label "uses rule set version"@en ;
+    rdfs:label "verwendet Regelwerkversion"@de ;
+    rdfs:range sdo:RuleSetVersion .
+
+sdo:hasRule a owl:ObjectProperty ;
+    rdfs:label "has rule"@en ;
+    rdfs:label "hat Regel"@de ;
+    rdfs:domain sdo:RuleSetVersion ;
+    rdfs:range sdo:Rule .
+
+sdo:condition a owl:ObjectProperty ;
+    rdfs:label "condition"@en ;
+    rdfs:label "Bedingung"@de ;
+    rdfs:domain sdo:Rule ;
+    rdfs:range sdo:Condition .
+
+sdo:factProperty a owl:ObjectProperty ;
+    rdfs:label "fact property"@en ;
+    rdfs:label "Sachverhaltsproperty"@de ;
+    rdfs:domain sdo:Condition ;
+    rdfs:range rdf:Property .
+
+sdo:sourceCitation a owl:ObjectProperty ;
+    rdfs:label "source citation"@en ;
+    rdfs:label "Quellenfundstelle"@de ;
+    rdfs:domain sdo:Rule ;
+    rdfs:range sdo:SourceCitation .
+
+sdo:citesSourceRevision a owl:ObjectProperty ;
+    rdfs:label "cites source revision"@en ;
+    rdfs:label "zitiert Quellenrevision"@de ;
+    rdfs:domain sdo:SourceCitation ;
+    rdfs:range sdo:SourceRevision .
+
+sdo:positiveOutcome a owl:ObjectProperty ;
+    rdfs:label "positive outcome"@en ;
+    rdfs:label "positiver Ausgang"@de ;
+    rdfs:domain sdo:DecisionContract ;
+    rdfs:range sdo:DecisionOutcome .
+
+sdo:negativeOutcome a owl:ObjectProperty ;
+    rdfs:label "negative outcome"@en ;
+    rdfs:label "negativer Ausgang"@de ;
+    rdfs:domain sdo:DecisionContract ;
+    rdfs:range sdo:DecisionOutcome .
+
+sdo:unknownOutcome a owl:ObjectProperty ;
+    rdfs:label "unknown outcome"@en ;
+    rdfs:label "unbestimmter Ausgang"@de ;
+    rdfs:domain sdo:DecisionContract ;
+    rdfs:range sdo:DecisionOutcome .
+
+sdo:hasConformanceCase a owl:ObjectProperty ;
+    rdfs:label "has conformance case"@en ;
+    rdfs:label "hat Konformitätsfall"@de ;
+    rdfs:domain sdo:DecisionContract ;
+    rdfs:range sdo:ConformanceCase .
+
+sdo:forDecisionContract a owl:ObjectProperty ;
+    rdfs:label "for decision contract"@en ;
+    rdfs:label "für Entscheidungsvertrag"@de ;
+    rdfs:domain sdo:ConformanceCase ;
+    rdfs:range sdo:DecisionContract .
+
+sdo:expectsOutcome a owl:ObjectProperty ;
+    rdfs:label "expects outcome"@en ;
+    rdfs:label "erwartet Ausgang"@de ;
+    rdfs:domain sdo:ConformanceCase ;
+    rdfs:range sdo:DecisionOutcome .
+
+sdo:hasFact a owl:ObjectProperty ;
+    rdfs:label "has fact"@en ;
+    rdfs:label "hat Fallsachverhalt"@de ;
+    rdfs:domain sdo:Case ;
+    rdfs:range sdo:CaseFact .
+
+sdo:forCondition a owl:ObjectProperty ;
+    rdfs:label "for condition"@en ;
+    rdfs:label "für Bedingung"@de ;
+    rdfs:domain sdo:CaseFact ;
+    rdfs:range sdo:Condition .
+
+sdo:requiresAllRules a owl:DatatypeProperty ;
+    rdfs:label "requires all rules"@en ;
+    rdfs:label "erfordert alle Regeln"@de ;
+    rdfs:domain sdo:DecisionContract ;
+    rdfs:range xsd:boolean .
+
+sdo:expectedBoolean a owl:DatatypeProperty ;
+    rdfs:label "expected boolean"@en ;
+    rdfs:label "erwarteter boolescher Wert"@de ;
+    rdfs:domain sdo:Condition ;
+    rdfs:range xsd:boolean .
+
+sdo:booleanValue a owl:DatatypeProperty ;
+    rdfs:label "boolean value"@en ;
+    rdfs:label "boolescher Wert"@de ;
+    rdfs:domain sdo:CaseFact ;
+    rdfs:range xsd:boolean .
+
+sdo:outcomeCode a owl:DatatypeProperty ;
+    rdfs:label "outcome code"@en ;
+    rdfs:label "Ausgangscode"@de ;
+    rdfs:domain sdo:DecisionOutcome ;
+    rdfs:range xsd:string .
+
+sdo:scopeNote a owl:DatatypeProperty ;
+    rdfs:label "scope note"@en ;
+    rdfs:label "Geltungsbereichshinweis"@de ;
+    rdfs:domain sdo:DecisionContract ;
+    rdfs:range xsd:string .
+
+sdo:validFrom a owl:DatatypeProperty ;
+    rdfs:label "valid from"@en ;
+    rdfs:label "gültig ab"@de ;
+    rdfs:range xsd:date .
+
+sdo:validUntil a owl:DatatypeProperty ;
+    rdfs:label "valid until"@en ;
+    rdfs:label "gültig bis"@de ;
+    rdfs:range xsd:date .
+
+sdo:decisionDate a owl:DatatypeProperty ;
+    rdfs:label "decision date"@en ;
+    rdfs:label "Entscheidungsdatum"@de ;
+    rdfs:domain sdo:ConformanceCase ;
+    rdfs:range xsd:date .
+
+sdo:sourceLocator a owl:DatatypeProperty ;
+    rdfs:label "source locator"@en ;
+    rdfs:label "Quellenfundort"@de ;
+    rdfs:domain sdo:SourceCitation ;
+    rdfs:range xsd:string .
+
+sdo:sourceStatement a owl:DatatypeProperty ;
+    rdfs:label "source statement"@en ;
+    rdfs:label "Quellenaussage"@de ;
+    rdfs:domain sdo:SourceCitation ;
+    rdfs:range xsd:string .
+
+sdo:contentSha256 a owl:DatatypeProperty ;
+    rdfs:label "content SHA-256"@en ;
+    rdfs:label "Inhalts-SHA-256"@de ;
+    rdfs:domain sdo:SourceRevision ;
+    rdfs:range xsd:string .
+
+sdo:byteSize a owl:DatatypeProperty ;
+    rdfs:label "byte size"@en ;
+    rdfs:label "Byte-Größe"@de ;
+    rdfs:domain sdo:SourceRevision ;
+    rdfs:range xsd:integer .

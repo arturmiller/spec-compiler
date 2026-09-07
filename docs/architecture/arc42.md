@@ -16,24 +16,35 @@ work items that guide stochastic product-code generation.
 
 The toolchain must:
 
-- read explicit domain, HTTP, and storage statements from Turtle specs;
+- read explicit domain, HTTP, storage, decision, rule, and provenance
+  statements from Turtle specs;
 - reject missing, ambiguous, or unsupported information instead of guessing;
-- derive expected OpenAPI, black-box tests, a Work Graph, and issue text from one
-  Explicit Obligation Model;
+- derive profile-specific compiled contracts, black-box tests, a Work Graph,
+  and issue text from one normalized model per compiler profile;
 - keep the implementation language, framework, modules, and internal product
   architecture outside the generated requirements;
 - start a product through Runtime Protocol v1 and verify its externally visible
   OpenAPI, HTTP, explicit response obligations, and contracted SQLite boundaries;
 - invoke compiler products through Compiler Protocol v1 and verify declared
   artifacts, failure behavior, and deterministic fixpoints as black boxes;
+- invoke Decision Products through Decision Protocol v1 and verify eligible,
+  ineligible, and unknown Decision Results including Fact Gaps, explanation,
+  scope, and source provenance;
 - keep bootstrap provenance and implementation-neutral transformation
   obligations separate;
-- validate and publish the experimental contract vocabulary as bilingual
-  WIDOCO reference documentation with a searchable WebVOWL graph;
+- validate and publish the separated contract, decision-core, and funding
+  vocabularies as bilingual WIDOCO references with searchable WebVOWL graphs;
 - produce identical files for identical specs and compiler versions.
 
 The prototype is not a complete SHACL, SQL, or OpenAPI compiler, a production
 deployment system, or an autonomous coding-agent orchestrator.
+
+ADR 0016 accepts a bounded evolution toward **Decision and Obligation
+Compilation**. ADR 0017 implements its first compiler profile and source-pinned
+**KfW 458 Applicant Eligibility Pilot**. The capability remains inside the Spec
+Compiler rather than becoming a second software system; obligation activation,
+evidence evaluation, question derivation, and dynamic version selection remain
+later slices in the [roadmap](decision-and-obligation-roadmap.md).
 
 ### 1.2 Quality goals
 
@@ -51,11 +62,12 @@ Detailed quality scenarios are in section 10.
 
 | Stakeholder | Expectations |
 | --- | --- |
-| Spec author | Can express the supported domain, HTTP, and storage contract without selecting a product framework. |
+| Spec author | Can express the supported domain, interface, storage, or decision contract without selecting a product framework. |
 | Tool maintainer | Can evolve explicit compiler conventions and Runtime Protocol versions without hidden semantics. |
 | Product developer or coding agent | Receives bounded, verifiable work and remains free to select implementation technology. |
 | Reviewer or CI operator | Can regenerate all artifacts and verify both individual Work Items and the full product reproducibly. |
-| Product consumer | Receives behavior that conforms to the published HTTP and data contract. |
+| Product consumer | Receives behavior that conforms to the compiled interface and domain contract. |
+| Domain expert | Curates source-backed Rules and reviews their scope without turning an external document directly into a generated requirement. |
 
 ## 2. Architecture constraints
 
@@ -83,9 +95,12 @@ Detailed quality scenarios are in section 10.
 | Datatypes | `xsd:string`, `xsd:decimal`, and `xsd:integer` mappings; fixture synthesis currently covers Shape fields of string and decimal |
 | OpenAPI profile | Self-contained OpenAPI 3.1 JSON, local `$ref`, direct schemas, no schema composition |
 | Orchestration | `uv run --extra dev poe run` on a local or CI host; pytest importlib mode isolates identically named generated test modules between Product Bundles |
-| Compiler product | One `schema:SoftwareApplication` conforming to `sco:CompilerProtocolV1` and linked to one `sco:TransformationContract` with declared input pattern, fixture, artifact patterns, missing-spec behavior, and determinism; optional validated Bootstrap Process provenance |
-| Ontology publication | Canonical OWL/RDFS vocabulary plus a separately generated SQL API example graph; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
-| Version control | Generated products are ignored except the versioned `sql_api_example` reference bundle |
+| Compiler product | One `schema:SoftwareApplication` conforming to `sco:CompilerProtocolV1` and linked to one `sco:TransformationContract` with declared input pattern, typed conformance fixtures and their artifact patterns, missing-spec behavior, and determinism; optional validated Bootstrap Process provenance |
+| Compiler conformance | Separate SQL API and KfW 458 fixtures declare their profile-specific expected artifacts and are compiled twice by G1 |
+| Ontology publication | Three canonical OWL/RDFS vocabularies plus a separately generated SQL API example graph; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
+| Version control | Generated products are ignored except the versioned `sql_api_example` and `kfw_458_eligibility` reference bundles |
+| Decision compilation | One `schema:SoftwareApplication` conforming to `sco:DecisionProtocolV1`, one explicit `sdo:DecisionContract`, one pinned `sdo:RuleSetVersion`, boolean Conditions with JSON Pointers, `requiresAllRules`, three outcomes, complete Source Citations, and authored conformance cases |
+| Decision protocol | One UTF-8 JSON Decision Request on stdin and one JSON Decision Result on stdout; no HTTP or product-language requirement |
 
 Python and pytest constrain the toolchain. FastAPI, Pydantic, and Uvicorn are
 choices of the reference product only and do not constrain other products.
@@ -111,10 +126,11 @@ the Work Graph, issue Markdown, and tests are a file-based handoff.
 | Spec author | Turtle files in `products/<name>/specs/` | Compiler diagnostics |
 | Product developer or coding agent | Reads Work Graph, issues, expected OpenAPI, and tests | Writes implementation-owned files in the Product Bundle |
 | Generated Product | `product.toml`, OpenAPI 3.1 JSON, HTTP, contracted SQLite file | Process state, HTTP responses, data-store state |
+| Decision Product | Decision Protocol v1 manifest and one JSON Decision Request | JSON Decision Result, exit status, standard error, process cleanup |
 | Compiler Product | Compiler Protocol v1 manifest and an input Product Bundle | Exit status, combined process output, generated files |
 | Operating system | Process, loopback network, temporary files | Exit status and cleanup behavior |
 | Reviewer or CI | Poe/uv commands | Generated artifacts and pytest result |
-| Ontology reader | GitHub Pages URL | WIDOCO reference, separate vocabulary and SQL API WebVOWL searches, RDF downloads, example specs |
+| Ontology reader | GitHub Pages URL | Three WIDOCO vocabulary references, separate WebVOWL searches, RDF downloads, and example specs |
 | GitHub Pages | Static site artifact uploaded by GitHub Actions | Public HTTPS documentation |
 
 ### 3.3 System boundary
@@ -129,15 +145,16 @@ implementation; the directory itself is not an executable system.
 
 | Goal | Strategy |
 | --- | --- |
-| No invented requirements | Validate explicit RDF relations and use only Compiler Conventions v1 or Runtime Protocol v1 for remaining mappings. |
-| Reproducibility | Build one normalized Explicit Obligation Model and render all outputs with sorted inputs and fixed templates. |
+| No invented requirements | Validate explicit RDF relations and use only named Compiler, Runtime, or Decision conventions and protocols for remaining mappings. |
+| Reproducibility | Build a normalized model for the selected profile and render all outputs with sorted inputs and fixed templates. |
 | Technology independence | Start the Product Runtime from a product-owned manifest and observe it only through declared external boundaries. |
 | Interface verification | Generate expected OpenAPI, validate the published document as OpenAPI 3.1, then compare the required subset within the supported profile. |
 | Behavioral verification | Seed the contracted SQLite store, call the real HTTP endpoint, and assert JSON directly against explicit obligations derived from SHACL. |
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
 | Compiler bootstrap | Materialize G1 deterministically from G0 at the declared implementation path, then invoke the independent G1 through its own manifest and compare repeated outputs. |
-| Ontology publication | Keep vocabulary and product example graphs separate, validate public terms and bilingual example labels, derive visualization-only OWL connections from explicit example relations, and deploy both searchable WIDOCO/WebVOWL outputs. |
+| Ontology publication | Keep three canonical vocabularies and product example graphs separate, validate public terms and bilingual labels, derive visualization-only SQL API connections, and deploy searchable WIDOCO/WebVOWL outputs. |
+| Decision and obligation evolution | Compile source-backed Decisions through a separate CLI protocol and typed model; preserve three-valued incompleteness without treating ambiguity as unknown and keep core terms separate from Funding Domain Ontology terms. |
 
 See the accepted decisions in section 9 for rationale and consequences.
 
@@ -151,9 +168,10 @@ views for this section.
 
 | Building block | Responsibility | Interfaces |
 | --- | --- | --- |
-| Spec Compiler | Deterministically compile specs and verify a running product. | Product Bundle files, Runtime Protocol v1, HTTP, SQLite |
+| Spec Compiler | Deterministically compile specs and verify a running product. | Product Bundle files, Runtime Protocol v1, Decision Protocol v1, Compiler Protocol v1 |
 | Product Bundle | Hold all authored and generated artifacts for one product. It is an artifact boundary, not a runtime process. | `specs/`, `generated/`, `tests/`, `product.toml`, implementation files |
-| Generated Product | Implement the contract using technology selected by its implementer. | Product Runtime process, OpenAPI/HTTP, contracted store |
+| Generated Product | Implement the contract using technology selected by its implementer. | Product Runtime or Decision Product process and its selected protocol |
+| KfW 458 Applicant Eligibility Product Bundle | Version the authored pilot Specs, Decision Protocol adapter, implementation, compiled Decision Contract, generated proofs, and Work Graph. | `products/kfw_458_eligibility/` |
 | Spec Compiler Self-Description Bundle | Describe a replaceable Software Application, its Compiler Protocol conformance, and its separately versioned Transformation Contract while keeping the bootstrap trust boundary explicit. | Specs, Compiler Protocol v1 manifest, generated proofs and work |
 | Ontology Documentation Site | Publish human- and machine-readable vocabulary documentation without becoming a runtime dependency of products. | GitHub Pages HTTPS, HTML, JavaScript, Turtle, JSON-LD, RDF/XML |
 
@@ -162,15 +180,22 @@ views for this section.
 | Component | Source | Responsibility |
 | --- | --- | --- |
 | CLI and Output Coordinator | `parse_args()`, `main()` | Validate the Product Bundle path and coordinate compilation and writes. |
-| RDF/SHACL Obligation Reader | `read_obligation_model()` and parsing helpers | Merge Turtle files, validate the supported profile, and build the Explicit Obligation Model. |
+| RDF/SHACL Obligation Reader | `read_obligation_model()` and parsing helpers | Merge SQL-profile Turtle files, validate them, and build the Explicit Obligation Model. |
+| Decision Contract Reader | `read_decision_model()` and parsing helpers | Validate Decision Protocol conformance, decision semantics, source identity, conformance cases, and build the typed Explicit Decision and Obligation Model. |
 | Deterministic Fixture Synthesizer | `deterministic_value()` | Derive reproducible valid values from supported Shape boundaries. |
 | OpenAPI Contract Renderer | `build_openapi()` | Produce `generated/expected-openapi.json`. |
+| Decision Contract Renderer | `build_decision_contract()` | Produce `generated/decision-contract.json` from the typed decision model. |
 | Work Graph Compiler | `build_work_items()` | Produce obligations, sources, dependencies, exclusions, and proof references. |
 | Issue Template Renderer | `render_issue()` | Produce natural-language Markdown without an LLM. |
-| Contract Test Renderer | `TEST_TEMPLATE` | Produce the black-box pytest source. |
+| Contract Test Renderers | `TEST_TEMPLATE`, `DECISION_TEST_TEMPLATE`, `COMPILER_TEST_TEMPLATE` | Produce profile-specific black-box pytest source. |
 
-The Explicit Obligation Model is currently an in-memory Python dictionary. It is shared
-data, not an independently deployable building block.
+The SQL profile's Explicit Obligation Model remains an in-memory Python
+dictionary. The Decision profile's **Explicit Decision and Obligation Model**
+is a frozen dataclass graph that carries its Decision Contract, Rule Set
+Version, Rules, Conditions, outcomes, Conformance Cases, scope, and Source
+Provenance. Both are shared in-memory data, not deployable building blocks.
+Obligations and Evidence Requirements remain future extensions of the typed
+model.
 
 ### 5.3 Contract Verification Harness
 
@@ -178,12 +203,15 @@ data, not an independently deployable building block.
 | --- | --- | --- |
 | Generated Contract Test Suite | `products/<name>/tests/test_contract.py` | Define Runtime, OpenAPI, SQLite, and direct HTTP obligation proofs. |
 | Product Runtime Adapter | `tools/contract_runtime.py` | Read the manifest, substitute values, start the process, detect readiness, and clean up the tree. |
+| Decision Protocol Adapter | `tools/decision_runtime.py` | Read a Decision Protocol v1 manifest, exchange one UTF-8 JSON request/result pair, enforce timeout and result shape, and clean up the process tree. |
 | Compiler Runtime Adapter | `tools/compiler_runtime.py` | Invoke a compiler manifest as a separate bounded process and capture its observable result. |
-| Ontology Documentation Builder | `tools/build_ontology_site.py`, WIDOCO 1.4.25 | Validate namespace use, derive the SQL API OWL visualization projection, invoke pinned WIDOCO/WebVOWL, add landing page and example downloads, and verify the static site shape. |
+| Process Tree Terminator | `tools/process_runtime.py` | Provide shared Windows and POSIX child-process cleanup to runtime adapters. |
+| Ontology Documentation Builder | `tools/build_ontology_site.py`, WIDOCO 1.4.25 | Validate all three vocabularies and namespace use, derive the SQL API OWL visualization projection, invoke pinned WIDOCO/WebVOWL, publish example resources, and verify the static site shape. |
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
 | HTTP Obligation Verifier | Generated behavior test | Call the live endpoint and directly assert required fields, types, bounds, closure, and stored values. |
-| Runtime Regression Test | `tools/tests/test_contract_runtime.py` | Prove that parent and child product processes are removed after a test. |
+| Decision Result Verifier | Generated KfW 458 contract test | Send authored Conformance Cases and assert outcomes, Condition Evaluations, Fact Gaps, decisive Rules, Provenance, Explanation, and scope. |
+| Runtime Regression Tests | `tools/tests/test_contract_runtime.py`, `tools/tests/test_decision_runtime.py` | Prove protocol validation and that parent and child product processes are removed after timeout or test completion. |
 
 No component decomposition is documented for the reference Product Runtime. It
 is currently one small module; inventing repository or service layers would add
@@ -240,7 +268,35 @@ sequenceDiagram
     Harness-->>Operator: Deterministic pytest result
 ```
 
-### 6.3 Work Item execution
+### 6.3 Evaluate a Decision Request
+
+```mermaid
+sequenceDiagram
+    actor Operator as Reviewer / CI
+    participant Harness as Contract Verification Harness
+    participant Manifest as product.toml
+    participant Product as Decision Product
+    participant Contract as Compiled Decision Contract
+
+    Operator->>Harness: Run generated decision proofs
+    Harness->>Manifest: Read Decision Protocol v1 adapter
+    Harness->>Contract: Build request from authored Conformance Case
+    Harness->>Product: Start process and write one UTF-8 JSON Decision Request
+    Product->>Contract: Evaluate pinned Rule Set Version
+    Product-->>Harness: One JSON Decision Result
+    Harness->>Harness: Assert outcome, evaluations, gaps, decisive Rules, Provenance, Explanation, and scope
+    Harness->>Product: Stop complete process tree
+    Harness-->>Operator: Deterministic pytest result
+```
+
+The KfW reference implementation reads the compiled contract at runtime, but
+that is its implementation choice. Decision Protocol v1 exposes only JSON and
+process behavior. A missing Fact is a Fact Gap; it is never converted to
+`false`. A violated Condition takes precedence over gaps under Decision
+Conventions v1, so a source-backed ineligible result can remain determinate
+despite unrelated missing Facts.
+
+### 6.4 Work Item execution
 
 1. A developer or coding agent selects a node whose dependencies are complete.
 2. It reads that node's goal, obligations, sources, exclusions, and test node.
@@ -248,7 +304,7 @@ sequenceDiagram
 4. The named pytest node decides whether the Work Item is complete.
 5. The full test suite remains the final integration proof.
 
-### 6.4 Bootstrap and verify the compiler product
+### 6.5 Bootstrap and verify the compiler product
 
 ```mermaid
 sequenceDiagram
@@ -257,16 +313,18 @@ sequenceDiagram
     participant Self as Spec Compiler Self-Description Bundle
     participant Harness as Contract Verification Harness
     participant G1 as Compiler Product G1
-    participant Fixture as Temporary Product Bundle
+    participant Fixtures as Temporary Product Bundles
 
     Operator->>G0: Compile self-description specs
     G0->>Self: Generate G1 source, compiler proofs, and Work Graph
     Operator->>Harness: Run generated compiler proofs
-    Harness->>G1: Compile isolated fixture through Compiler Protocol v1
-    G1->>Fixture: Write declared artifacts A1
-    Harness->>G1: Compile the same fixture again
-    G1->>Fixture: Write declared artifacts A2
-    Harness->>Harness: Require A1 and A2 byte-identical
+    loop SQL API and KfW 458 conformance fixtures
+        Harness->>G1: Compile isolated fixture through Compiler Protocol v1
+        G1->>Fixtures: Write declared artifacts A1
+        Harness->>G1: Compile the same fixture again
+        G1->>Fixtures: Write declared artifacts A2
+        Harness->>Harness: Require A1 and A2 byte-identical
+    end
 ```
 
 `G1` is a separately materialized source artifact with its own project metadata,
@@ -275,14 +333,14 @@ by incrementing a generation marker and otherwise retaining the seed source.
 This establishes executable bootstrap continuity and a deterministic behavioral
 fixpoint, not an independent proof of compiler correctness.
 
-### 6.5 Build and publish ontology documentation
+### 6.6 Build and publish ontology documentation
 
 ```mermaid
 sequenceDiagram
     actor Maintainer
     participant CI as GitHub Actions
     participant Builder as Ontology Documentation Builder
-    participant Ontology as Canonical ontology
+    participant Ontologies as Three canonical ontologies
     participant Specs as Product specs
     participant WIDOCO as WIDOCO / WebVOWL
     participant Pages as GitHub Pages
@@ -290,9 +348,11 @@ sequenceDiagram
     Maintainer->>CI: Push main or open pull request
     CI->>CI: Run complete contract workflow
     CI->>Builder: Build ontology site
-    Builder->>Ontology: Parse OWL/RDFS definitions and labels
+    Builder->>Ontologies: Parse OWL/RDFS definitions and bilingual labels
     Builder->>Specs: Verify used public terms and namespaces
-    Builder->>WIDOCO: Generate bilingual reference and searchable graph
+    loop SHACL Contract, Decision Core, Funding Domain
+        Builder->>WIDOCO: Generate bilingual reference and searchable graph
+    end
     WIDOCO-->>Builder: Static site artifact
     alt push to main
         CI->>Pages: Deploy build/ontology-site
@@ -311,12 +371,12 @@ site; there is no Generated Product production deployment model yet.
 flowchart TB
     subgraph host["Deployment Node: Developer or CI host"]
         tool["Execution Environment: Tool virtual environment<br/>Python, Poe, pytest, RDFLib, validators"]
-        product["Process: Product Runtime<br/>Technology declared by product.toml"]
+        product["Process: Product Runtime or Decision Product<br/>Technology and protocol declared by product.toml"]
         db[("Data Store: temporary SQLite file")]
         files[("Artifact Store: repository workspace")]
 
         tool -->|"reads/writes product artifacts"| files
-        tool -->|"starts/stops process; loopback HTTP"| product
+        tool -->|"starts/stops process; loopback HTTP or JSON stdin/stdout"| product
         tool -->|"schema inspection and test fixtures"| db
         product -->|"initializes and reads data"| db
     end
@@ -332,8 +392,8 @@ flowchart TB
 
 - The root and reference-product environments have separate dependency manifests
   and lockfiles.
-- The Product Runtime binds only to the runner-supplied loopback host and port in
-  this test deployment.
+- The SQL Product Runtime binds only to the runner-supplied loopback host and
+  port; the Decision Product communicates through local standard streams.
 - On Windows the runner terminates the process tree with `taskkill /T /F`; on
   POSIX it uses a dedicated process group and signals the group.
 - Port selection has a small bind race; the runner retries early startup failure
@@ -357,8 +417,9 @@ compiler error. The normative details are in
 - Issue prose comes from fixed templates.
 - JSON is rendered with stable insertion order and indentation.
 - No LLM or external service participates in compilation.
-- `COMPILER_CONVENTIONS_VERSION` and `RUNTIME_PROTOCOL_VERSION` expose semantic
-  compatibility versions in the Work Graph.
+- `COMPILER_CONVENTIONS_VERSION`, `RUNTIME_PROTOCOL_VERSION`,
+  `DECISION_CONVENTIONS_VERSION`, and `DECISION_PROTOCOL_VERSION` expose
+  semantic compatibility versions in generated artifacts.
 - Compiler-product Work Graphs expose `compiler_protocol_version` and validated
   Bootstrap Process provenance; generated proofs compare consecutive output
   snapshots byte for byte. Bootstrap provenance does not prescribe the product
@@ -368,23 +429,27 @@ compiler error. The normative details are in
 
 ### 8.3 Product isolation
 
-The Product Runtime boundary consists of an explicit manifest, a child process,
-OpenAPI/HTTP, and any storage named by the product contract. The test language
-does not constrain the product language. Tool dependencies and sample-product
+Each product boundary consists of an explicit manifest and child process. The
+selected protocol adds either OpenAPI/HTTP and named storage, or one JSON
+request/result exchange over standard streams. The test language does not
+constrain the product language. Tool dependencies and reference-product
 dependencies are kept in separate environments.
 
 ### 8.4 Validation and error handling
 
 The compiler rejects duplicate singleton values, unsupported datatypes or
-cardinalities, unsafe SQL identifiers, inconsistent endpoint/table relations,
-unknown placeholders, and protocol-version mismatches. Runtime failures include
-captured process output. OpenAPI is validated before subset comparison.
+cardinalities, unsafe identifiers and paths, inconsistent relations,
+untraceable Rules, incomplete source identity, contradictory Conformance Cases,
+ambiguous profile selection, unknown placeholders, and protocol-version
+mismatches. Runtime failures include captured process output. OpenAPI is
+validated before subset comparison; Decision Results must be JSON objects.
 
 ### 8.5 Generated artifacts
 
-Specs and versioned conventions are inputs. Expected OpenAPI, tests, Work Graph,
-and issues are outputs and carry generated-file warnings where appropriate.
-Changes are made at the source and regenerated.
+Specs and versioned conventions are inputs. Expected OpenAPI or the compiled
+Decision Contract, tests, Work Graph, and issues are outputs and carry
+generated-file warnings where appropriate. Changes are made at the source and
+regenerated.
 
 The WIDOCO/WebVOWL site under `build/ontology-site/` is a disposable,
 unversioned documentation artifact. The canonical ontology and Product Bundle
@@ -402,6 +467,18 @@ test server uses loopback networking, and test databases are temporary files.
 arc42, C4, and ADRs use the same element names and are updated in the same change
 as architecture-significant code. [maintenance.md](maintenance.md) defines the
 review rules, while `AGENTS.md` loads them into Codex workflows.
+
+### 8.8 Decision and obligation semantics
+
+The [Decision and Obligation Compilation roadmap](decision-and-obligation-roadmap.md)
+defines the current and target semantics and ontology boundaries. The first
+profile implements `requiresAllRules` through Decision Conventions v1. Missing
+Case Facts produce explicit Fact Gaps and may produce an `unknown` Decision
+Outcome. Ambiguous Specs,
+conflicting Facts, ambiguous Rule Set Version applicability, and incompatible
+entailed outcomes remain errors. External Source Revisions are reached through
+Source Citations in authored Specs and do not bypass ADR 0001's permitted
+requirement origins.
 
 ## 9. Architecture decisions
 
@@ -422,6 +499,8 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | [0013](decisions/0013-project-example-relations-for-webvowl.md) | Explicit instance and SHACL relations are projected into visualization-only OWL edges so WebVOWL can connect the SQL API example nodes. | Accepted; refines ADR 0011 |
 | [0014](decisions/0014-preserve-node-shapes-in-webvowl-projection.md) | The visualization projection preserves each Node Shape as a connected node instead of bypassing it when resolving its target class. | Accepted; refines ADR 0013 |
 | [0015](decisions/0015-use-resource-namespace-as-webvowl-base.md) | The SQL API visualization uses its resource namespace as the WebVOWL ontology base so authored example nodes are classified as internal. | Accepted; refines ADR 0014 |
+| [0016](decisions/0016-evolve-to-decision-and-obligation-compilation.md) | The Spec Compiler evolves through a source-backed decision and obligation capability with separate core and domain ontologies and a bounded KfW 458 applicant-eligibility pilot. | Accepted |
+| [0017](decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.md) | A typed decision model compiles the KfW 458 pilot into a Decision Contract and black-box proofs executed through Decision Protocol v1; decision core and funding vocabularies remain separate. | Accepted; implements and refines ADR 0016 and supersedes ADR 0003's single-reference-bundle consequence |
 
 ## 10. Quality requirements
 
@@ -429,14 +508,15 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | --- | --- | --- |
 | Q-1 | Requirements integrity | Given a required statement is absent or ambiguous, generation stops with a diagnostic and does not substitute a framework, type, status, or architecture choice. |
 | Q-2 | Reproducibility | Given unchanged specs, product path, and compiler version, two runs produce byte-identical generated files. |
-| Q-3 | Technology independence | Given a product written without Python or FastAPI, it can pass when its manifest, HTTP/OpenAPI, and explicitly contracted store satisfy Runtime Protocol v1 and the specs. |
+| Q-3 | Technology independence | Given a product written without Python or FastAPI, it can pass when its selected Runtime or Decision Protocol and explicit specs are satisfied. |
 | Q-4 | Traceability | Given any Work Item, a reviewer can identify its spec/convention sources and run exactly one named pytest node as its proof. |
 | Q-5 | Fault localization | Given a wrong Runtime, OpenAPI document, SQLite schema, or HTTP response, the corresponding focused test fails. |
 | Q-6 | Platform portability | On supported Windows and Linux hosts, the same Poe command generates and verifies the product without shell-specific project scripts. |
 | Q-7 | Lifecycle safety | After success or failure, no Product Runtime descendant remains; a regression test verifies process-tree cleanup. |
 | Q-8 | Comprehensibility | A maintainer can distinguish executable containers, static artifacts, tool choices, and product choices from arc42 and C4 without reading every source file. |
-| Q-9 | Compiler bootstrap | Given the Spec Compiler Self-Description Bundle, generated black-box proofs invoke the compiler twice on an isolated fixture and require all generated and test files to be byte-identical. |
-| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes bilingual term references, RDF downloads, examples, and separate vocabulary and SQL API WebVOWL graphs whose entity searches, core terms, and endpoint-to-domain connections are present. |
+| Q-9 | Compiler bootstrap | Given the Spec Compiler Self-Description Bundle, generated black-box proofs invoke G1 twice on each declared conformance fixture and require all generated and test files to be byte-identical. |
+| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes three bilingual vocabulary references, RDF downloads, example resources, and separate searchable WebVOWL graphs with representative terms. |
+| Q-11 | Decision explainability | Given any KfW 458 Decision Result, a reviewer can identify the selected Rule Set Version, every decisive Rule and Condition Evaluation, any Fact Gap, and the Spec statement plus Source Citation that supports it. |
 
 ## 11. Risks and technical debt
 
@@ -444,7 +524,7 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | --- | --- |
 | The public ontology currently defines only the vocabulary slice exercised by the prototype. | Publication validation prevents undefined used terms, but OWL axioms and bilingual descriptions must deepen as the contract language grows. |
 | Exactly one endpoint, table, parameter, and shared Shape are supported. | The model has not demonstrated multi-resource scaling. Extend only with explicit new semantics and tests. |
-| The Explicit Obligation Model is an untyped dictionary in a large generator module. | Renderer drift becomes more likely as features grow; introduce typed immutable structures before significant expansion. |
+| The SQL profile's Explicit Obligation Model remains an untyped dictionary in a large generator module. | Renderer drift remains possible in that profile; use the typed immutable decision model as evidence for a later safe migration, not as permission for an unrelated rewrite. |
 | Expected OpenAPI and tests come from the same compiler. | A shared interpretation bug can affect both oracle and proof; add independent conformance examples or mutation tests. |
 | G1 is mechanically derived from G0 and judged by tests generated from the same lineage. | The bootstrap proves executable continuity and determinism but not semantic independence; retain G0 as a trust anchor and add an independent compiler or oracle before claiming diverse double compilation. |
 | Experimental IRIs contain the GitHub account and repository name. | Renaming either breaks identifiers; migrate through a persistent redirect such as w3id.org before promising stable public IRIs. |
@@ -459,6 +539,12 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Direct SQLite access is intentionally part of this contract profile. | It excludes opaque or remote storage implementations unless the technical contract and verifier evolve. |
 | Portability is locally tested but has no visible OS CI matrix. | Add Windows and Linux CI jobs before claiming production-grade portability. |
 | Unknown identifiers and other error behavior are unspecified. | Implementations may differ; add explicit specs rather than inferred `404` behavior if needed. |
+| External program documents change independently of the repository. | Pin Source Revisions by identifier, declared validity, retrieval date, and content identity; never infer a latest version. |
+| A scoped positive applicant result may be mistaken for funding approval or advice. | Name the Decision precisely, retain its exclusions in every presentation, and never claim legal entitlement or provider approval. |
+| A vocabulary inferred from one funding example may encode accidental domain semantics as reusable core. | Keep Funding Domain Ontology terms separate and require equivalent use in a second domain plus an ADR before promotion. |
+| Decision Conventions v1 supports only boolean Conditions combined by `requiresAllRules`. | Reject disjunctions, numeric rules, and unmodeled aggregation instead of approximating them; add a new versioned convention when another project demonstrates semantics. |
+| The compiler and generated tests share the same Decision Conventions implementation. | Authored eligible, ineligible, and unknown Conformance Cases catch disagreement with the Spec, but an independent oracle is still required before claiming formal correctness. |
+| The KfW source statement is manually curated. | The compiler proves identity and traceability, not transcription completeness or legal correctness; retain human review and the scope note. |
 
 ## 12. Glossary
 
@@ -468,17 +554,20 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Generated Product | Separately executable software system whose implementation is stochastic but whose observable contract is deterministic. |
 | Product Bundle | Static `products/<name>/` artifact boundary containing specs, manifest, code, generated artifacts, and tests. |
 | Product Runtime | Running product process started through Runtime Protocol v1. |
+| Decision Product | Running product process that implements a Decision Contract and exchanges JSON through Decision Protocol v1. |
 | Product Workspace | C4 name for the file-based artifact store represented by a Product Bundle. |
 | Spec | Explicit RDF/SHACL statement authored as product input. |
 | Shape | SHACL description of valid resource data. |
 | Contract Graph | RDF graph formed by merging the Product Bundle's sorted Turtle files. |
 | Explicit Obligation Model | Normalized in-memory representation containing only explicitly sourced, externally testable obligations used by every renderer. |
+| Explicit Decision and Obligation Model | Typed, immutable in-memory representation used by Decision-profile renderers; the first slice contains decision and provenance semantics while obligation/evidence behavior remains deferred. |
 | Compiler Convention | Named, versioned deterministic mapping not directly expressed by a spec statement. |
 | Runtime Protocol | Technology-independent contract for starting and observing a product. |
+| Decision Protocol | Technology-independent process contract for exchanging one UTF-8 JSON Decision Request and Decision Result. |
 | Compiler Protocol | Technology-independent contract for invoking a compiler on a Product Bundle and observing its exit status, output, and generated files. |
 | Spec Compiler Self-Description Bundle | Product Bundle whose specs describe the Spec Compiler as a Compiler Product. |
 | Transformation Contract | Independently identified and versionable description of accepted inputs, emitted outputs, rejection behavior, and result equivalence. |
-| Canonical Ontology | Authored OWL/RDFS vocabulary definition in `ontology/shacl-contract.ttl`; source for WIDOCO and public-term validation. |
+| Canonical Ontology | One of the authored OWL/RDFS vocabulary definitions for `sco:`, `sdo:`, or `funding:`; source for WIDOCO and public-term validation. |
 | Ontology Documentation Site | Unversioned static WIDOCO/WebVOWL artifact deployed to GitHub Pages. |
 | Bootstrap compiler (`G0`) | Trusted checked-in compiler used to generate the first executable proofs from the self-description. |
 | Bootstrap Process | Provenance describing the seed implementation and evolution strategy for deriving a future implementation; not a product behavior contract. |
@@ -489,3 +578,30 @@ review rules, while `AGENTS.md` loads them into Codex workflows.
 | Published OpenAPI | OpenAPI document served by the running product. |
 | Contract Verification Harness | pytest process that runs generated black-box proofs with shared tool components. |
 | Stochastic step | Product-code creation or modification by a human or AI agent within deterministic boundaries. |
+| Decision and Obligation Compilation | Spec Compiler capability that derives source-backed Decision Contracts and proofs, and in later profiles obligations and evidence requirements, from explicit Specs. |
+| Decision Contract | Implementation-neutral contract for one scoped decision question, pinned Rule Set Version, outcomes, Rules, Conditions, provenance, and evaluation convention. |
+| Decision Request | Decision Protocol v1 JSON input naming contract, version, date, and Case Facts. |
+| Decision Result | Decision Protocol v1 JSON output containing outcome, evaluations, decisive Rules, gaps, provenance, explanation, and scope. |
+| Rule Set | Stable identity for a governed collection of related Rules across revisions. |
+| Rule Set Version | One immutable, explicitly identified revision of a Rule Set with declared applicability. |
+| Rule | Normative proposition in a Spec that relates Conditions to an explicit conclusion or Obligation. |
+| Fact | Explicitly supplied assertion about the Case evaluated by a Decision. |
+| Fact Gap | Recorded absence of a Fact required to evaluate a Condition; it is not a false Fact. |
+| Condition | Truth-valued predicate referenced by a Rule and evaluated from explicit Facts and named conventions. |
+| Condition Evaluation | `satisfied`, `violated`, or `unknown` result for one Condition within one Decision. |
+| Decision | Evaluation of one scoped question for one Case against exactly one applicable Rule Set Version. |
+| Decision Outcome | Uniquely entailed domain conclusion, or `unknown` when Fact Gaps prevent a unique conclusion. |
+| Case | Explicitly bounded subject and supplied Facts considered by one Decision. |
+| Obligation | Explicitly sourced requirement that applies to a Case when its Rule applies. |
+| Evidence Requirement | Explicitly sourced requirement for information or an artifact that can support a Fact or an Obligation's fulfillment. |
+| Evidence | Supplied information or artifact offered as support without becoming conclusive by mere presence. |
+| Source | Stable identity for an external document or governed publication across revisions. |
+| Source Revision | One immutable, identified edition of a Source whose content can be verified. |
+| Source Citation | Precise locator from an authored Spec statement to a passage in one Source Revision. |
+| Provenance | Navigable chain from a derived result through Rules and Specs to Source Citations or named, versioned conventions. |
+| Validity Period | Half-open applicability interval whose `validFrom` is inclusive and optional `validUntil` is exclusive. |
+| Decision Date | Explicit instant used to select the applicable Rule Set Version; it never defaults to runtime today. |
+| Decision and Obligation Core Ontology | Public `sdo:` vocabulary whose first materialized slice defines domain-independent decision, rule, condition, case, provenance, and temporal concepts. |
+| Domain Ontology | Vocabulary whose terms carry meaning specific to one problem domain. |
+| Funding Domain Ontology | Public `funding:` Domain Ontology for funding programs, applicants, projects, scoped eligibility facts, and outcomes. |
+| KfW 458 Applicant Eligibility Pilot | First bounded Case family, limited to natural-person applicant eligibility under the pinned July 2026 source revision. |

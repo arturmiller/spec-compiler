@@ -17,10 +17,14 @@
       "depends_on": [],
       "obligations": [
         "Input specs are discovered using `specs/*.ttl`.",
-        "A successful compilation emits `generated/expected-openapi.json`.",
-        "A successful compilation emits `generated/issues/*.md`.",
-        "A successful compilation emits `generated/work-graph.json`.",
-        "A successful compilation emits `tests/test_contract.py`."
+        "The `Kfw458Fixture` conformance fixture emits `generated/decision-contract.json`.",
+        "The `Kfw458Fixture` conformance fixture emits `generated/issues/*.md`.",
+        "The `Kfw458Fixture` conformance fixture emits `generated/work-graph.json`.",
+        "The `Kfw458Fixture` conformance fixture emits `tests/test_contract.py`.",
+        "The `SqlApiFixture` conformance fixture emits `generated/expected-openapi.json`.",
+        "The `SqlApiFixture` conformance fixture emits `generated/issues/*.md`.",
+        "The `SqlApiFixture` conformance fixture emits `generated/work-graph.json`.",
+        "The `SqlApiFixture` conformance fixture emits `tests/test_contract.py`."
       ],
       "sources": [
         "`specs/`: compiler input and generated artifact declarations",
@@ -39,7 +43,7 @@
         "toolchain.compiler.outputs"
       ],
       "obligations": [
-        "Two compilations of the same Product Bundle produce byte-identical generated and test files."
+        "Two compilations of each conformance fixture produce byte-identical generated and test files."
       ],
       "sources": [
         "`specs/`: deterministic output requirement"
@@ -75,7 +79,7 @@
       ],
       "obligations": [
         "G0 materializes the declared G1 implementation artifact from its seed source.",
-        "G1 successfully compiles the valid fixture through Compiler Protocol v1."
+        "G1 successfully compiles every conformance fixture through Compiler Protocol v1."
       ],
       "sources": [
         "`specs/`: Bootstrap Process, seed, strategy, and implementation artifact",

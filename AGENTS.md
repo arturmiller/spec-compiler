@@ -52,3 +52,21 @@ uv run --extra dev poe run
 When generated outputs change, run the generator twice and verify byte-identical
 outputs. When runtime handling changes, also verify that no child process remains
 after the tests.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked as GitHub Issues. See
+`docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The repository uses `needs-triage`, `needs-info`, `ready-for-agent`,
+`ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+The repository uses a single domain context with an optional root `CONTEXT.md`
+and architecture decisions under `docs/architecture/decisions/`. See
+`docs/agents/domain.md`.

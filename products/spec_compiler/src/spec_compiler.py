@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 import json
 from pathlib import Path
@@ -10,13 +12,16 @@ from pprint import pformat
 import re
 
 from rdflib import Graph, Namespace, RDF
-from rdflib.namespace import DCTERMS, SH, XSD
+from rdflib.namespace import DCTERMS, OWL, SH, XSD
 
 ROOT = Path(__file__).parents[1]
 BOOTSTRAP_GENERATION = 1
 COMPILER_CONVENTIONS_VERSION = 1
 RUNTIME_PROTOCOL_VERSION = 1
+DECISION_CONVENTIONS_VERSION = 1
+DECISION_PROTOCOL_VERSION = 1
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
+SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
 SQL_TYPES = {
     XSD.string: "TEXT",
@@ -29,6 +34,65 @@ OPENAPI_TYPES = {
     XSD.integer: "integer",
 }
 SQL_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
+@dataclass(frozen=True)
+class DecisionSource:
+    citation: str
+    source_revision: str
+    source: str
+    locator: str
+    statement: str
+    title: str
+    identifier: str
+    version: str
+    valid_from: str
+    content_url: str
+    content_sha256: str
+    byte_size: int
+
+
+@dataclass(frozen=True)
+class DecisionCondition:
+    identifier: str
+    fact_property: str
+    input_json_pointer: str
+    expected_boolean: bool
+
+
+@dataclass(frozen=True)
+class DecisionRule:
+    identifier: str
+    condition: DecisionCondition
+    source: DecisionSource
+
+
+@dataclass(frozen=True)
+class DecisionConformanceCase:
+    identifier: str
+    decision_date: str
+    expected_outcome: str
+    facts: tuple[tuple[str, bool], ...]
+
+
+@dataclass(frozen=True)
+class ExplicitDecisionAndObligationModel:
+    product: str
+    decision_contract: str
+    rule_set: str
+    rule_set_version: str
+    valid_from: str
+    valid_until: str | None
+    positive_outcome: str
+    positive_outcome_code: str
+    negative_outcome: str
+    negative_outcome_code: str
+    unknown_outcome: str
+    unknown_outcome_code: str
+    scope_note: str
+    rules: tuple[DecisionRule, ...]
+    conformance_cases: tuple[DecisionConformanceCase, ...]
 
 
 def one(graph: Graph, subject, predicate):
@@ -176,19 +240,51 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
         raise ValueError(
             "Compiler product contract must be a sco:TransformationContract"
         )
-    artifacts = sorted(
-        str(value) for value in graph.objects(contract, SCO.generatesArtifact)
+    fixture_nodes = sorted(
+        graph.objects(contract, SCO.conformanceFixture), key=str
     )
-    if not artifacts:
-        raise ValueError("Spec compiler must declare at least one generated artifact")
-    for artifact in artifacts:
-        path = Path(artifact)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError(f"Generated artifact pattern must stay in the input bundle: {artifact}")
-    fixture = str(one(graph, contract, SCO.validFixtureProduct))
-    fixture_path = (product_root / fixture).resolve()
-    if not fixture_path.is_dir():
-        raise ValueError(f"Compiler fixture product does not exist: {fixture_path}")
+    if not fixture_nodes:
+        raise ValueError(
+            "Spec compiler must declare at least one "
+            "sco:CompilerConformanceFixture"
+        )
+    conformance_fixtures = []
+    for fixture_node in fixture_nodes:
+        if (fixture_node, RDF.type, SCO.CompilerConformanceFixture) not in graph:
+            raise ValueError(
+                f"Compiler conformance fixture {fixture_node} must be a "
+                "sco:CompilerConformanceFixture"
+            )
+        fixture_product = str(one(graph, fixture_node, SCO.fixtureProduct))
+        fixture_path = (product_root / fixture_product).resolve()
+        if not fixture_path.is_dir():
+            raise ValueError(
+                f"Compiler fixture product does not exist: {fixture_path}"
+            )
+        artifacts = sorted(
+            str(value)
+            for value in graph.objects(fixture_node, SCO.expectsArtifact)
+        )
+        if not artifacts:
+            raise ValueError(
+                f"Compiler conformance fixture {fixture_node} must expect at "
+                "least one generated artifact"
+            )
+        for artifact in artifacts:
+            path = Path(artifact)
+            if path.is_absolute() or ".." in path.parts:
+                raise ValueError(
+                    "Generated artifact pattern must stay in the input bundle: "
+                    f"{artifact}"
+                )
+        conformance_fixtures.append(
+            {
+                "name": local_name(fixture_node),
+                "fixture": str(fixture_node),
+                "product": fixture_product,
+                "generated_artifacts": artifacts,
+            }
+        )
     bootstrap_processes = list(graph.subjects(SCO.bootstrapsProduct, product))
     if len(bootstrap_processes) > 1:
         raise ValueError(
@@ -233,8 +329,7 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
         "contract": str(contract),
         "protocol": str(SCO.CompilerProtocolV1),
         "input_spec_pattern": str(one(graph, contract, SCO.inputSpecPattern)),
-        "valid_fixture_product": fixture,
-        "generated_artifacts": artifacts,
+        "conformance_fixtures": conformance_fixtures,
         "rejects_missing_specs": bool(
             one(graph, contract, SCO.rejectsMissingSpecs).toPython()
         ),
@@ -243,6 +338,367 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
         ),
         "bootstrap": bootstrap,
     }
+
+
+def _boolean_value(value, description: str) -> bool:
+    converted = value.toPython()
+    if not isinstance(converted, bool):
+        raise ValueError(f"{description} must be an xsd:boolean")
+    return converted
+
+
+def _date_value(value, description: str) -> str:
+    converted = value.toPython()
+    if not isinstance(converted, date):
+        raise ValueError(f"{description} must be an xsd:date")
+    return converted.isoformat()
+
+
+def _required_text(graph: Graph, subject, predicate, description: str) -> str:
+    value = str(one(graph, subject, predicate)).strip()
+    if not value:
+        raise ValueError(f"{description} must not be empty")
+    return value
+
+
+def _json_pointer(value: str) -> str:
+    if not value.startswith("/case/"):
+        raise ValueError(
+            "Decision fact input pointers must identify a value below /case/"
+        )
+    if any(not part for part in value.split("/")[1:]):
+        raise ValueError(f"Decision fact input pointer has an empty segment: {value}")
+    if re.search(r"~(?:[^01]|$)", value):
+        raise ValueError(f"Decision fact input pointer has invalid escaping: {value}")
+    return value
+
+
+def _read_decision_source(graph: Graph, citation) -> DecisionSource:
+    if (citation, RDF.type, SDO.SourceCitation) not in graph:
+        raise ValueError(
+            f"Decision Rule source {citation} must be an sdo:SourceCitation"
+        )
+    revision = one(graph, citation, SDO.citesSourceRevision)
+    if (revision, RDF.type, SDO.SourceRevision) not in graph:
+        raise ValueError(
+            f"Source Citation {citation} must cite an sdo:SourceRevision"
+        )
+    source = one(graph, revision, DCTERMS.isVersionOf)
+    if (source, RDF.type, SDO.Source) not in graph:
+        raise ValueError(
+            f"Source Revision {revision} must identify an sdo:Source"
+        )
+    sha256 = str(one(graph, revision, SDO.contentSha256))
+    if not SHA256.fullmatch(sha256):
+        raise ValueError(
+            f"Source Revision {revision} must declare a lowercase SHA-256 digest"
+        )
+    byte_size = int(one(graph, revision, SDO.byteSize))
+    if byte_size <= 0:
+        raise ValueError(f"Source Revision {revision} byte size must be positive")
+    return DecisionSource(
+        citation=str(citation),
+        source_revision=str(revision),
+        source=str(source),
+        locator=_required_text(
+            graph, citation, SDO.sourceLocator, "Source Citation locator"
+        ),
+        statement=_required_text(
+            graph, citation, SDO.sourceStatement, "Source Citation statement"
+        ),
+        title=_required_text(
+            graph, revision, DCTERMS.title, "Source Revision title"
+        ),
+        identifier=_required_text(
+            graph,
+            revision,
+            DCTERMS.identifier,
+            "Source Revision identifier",
+        ),
+        version=_required_text(
+            graph, revision, OWL.versionInfo, "Source Revision version"
+        ),
+        valid_from=_date_value(
+            one(graph, revision, SDO.validFrom),
+            f"Source Revision {revision} validFrom",
+        ),
+        content_url=_required_text(
+            graph, revision, SCHEMA.contentUrl, "Source Revision content URL"
+        ),
+        content_sha256=sha256,
+        byte_size=byte_size,
+    )
+
+
+def _decision_outcome_for_case(
+    rules: tuple[DecisionRule, ...],
+    facts: tuple[tuple[str, bool], ...],
+    *,
+    positive_outcome: str,
+    negative_outcome: str,
+    unknown_outcome: str,
+) -> str:
+    values = dict(facts)
+    states = []
+    for rule in rules:
+        actual = values.get(rule.condition.identifier)
+        if actual is None:
+            states.append("unknown")
+        elif actual == rule.condition.expected_boolean:
+            states.append("satisfied")
+        else:
+            states.append("violated")
+    if "violated" in states:
+        return negative_outcome
+    if "unknown" in states:
+        return unknown_outcome
+    return positive_outcome
+
+
+def read_decision_model(
+    product_root: Path, graph: Graph | None = None
+) -> ExplicitDecisionAndObligationModel:
+    if graph is None:
+        graph = load_contract_graph(product_root)
+    products = list(graph.subjects(DCTERMS.conformsTo, SCO.DecisionProtocolV1))
+    if len(products) != 1:
+        raise ValueError(
+            "Decision profile expects exactly one product conforming to "
+            "sco:DecisionProtocolV1"
+        )
+    product = products[0]
+    if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
+        raise ValueError(
+            "Decision Protocol product must be a schema:SoftwareApplication"
+        )
+    contract = one(graph, product, SCO.implementsDecisionContract)
+    if (contract, RDF.type, SDO.DecisionContract) not in graph:
+        raise ValueError(
+            "Decision product contract must be an sdo:DecisionContract"
+        )
+    if not _boolean_value(
+        one(graph, contract, SDO.requiresAllRules),
+        f"Decision Contract {contract} requiresAllRules",
+    ):
+        raise ValueError(
+            "Decision Conventions v1 only supports contracts that explicitly "
+            "require all Rules"
+        )
+
+    version = one(graph, contract, SDO.usesRuleSetVersion)
+    if (version, RDF.type, SDO.RuleSetVersion) not in graph:
+        raise ValueError(
+            f"Decision Contract {contract} must use an sdo:RuleSetVersion"
+        )
+    rule_set = one(graph, version, DCTERMS.isVersionOf)
+    if (rule_set, RDF.type, SDO.RuleSet) not in graph:
+        raise ValueError(
+            f"Rule Set Version {version} must identify an sdo:RuleSet"
+        )
+    valid_from = _date_value(
+        one(graph, version, SDO.validFrom),
+        f"Rule Set Version {version} validFrom",
+    )
+    valid_until_values = list(graph.objects(version, SDO.validUntil))
+    if len(valid_until_values) > 1:
+        raise ValueError(
+            f"Expected at most one {SDO.validUntil} on {version}"
+        )
+    valid_until = (
+        _date_value(
+            valid_until_values[0], f"Rule Set Version {version} validUntil"
+        )
+        if valid_until_values
+        else None
+    )
+    if valid_until is not None and valid_until <= valid_from:
+        raise ValueError(
+            f"Rule Set Version {version} validUntil must be after validFrom"
+        )
+
+    positive_outcome_node = one(graph, contract, SDO.positiveOutcome)
+    negative_outcome_node = one(graph, contract, SDO.negativeOutcome)
+    unknown_outcome_node = one(graph, contract, SDO.unknownOutcome)
+    positive_outcome = str(positive_outcome_node)
+    negative_outcome = str(negative_outcome_node)
+    unknown_outcome = str(unknown_outcome_node)
+    outcomes = {positive_outcome, negative_outcome, unknown_outcome}
+    if len(outcomes) != 3:
+        raise ValueError("Decision Contract outcomes must be three distinct IRIs")
+    for outcome_node in (
+        positive_outcome_node,
+        negative_outcome_node,
+        unknown_outcome_node,
+    ):
+        if (outcome_node, RDF.type, SDO.DecisionOutcome) not in graph:
+            raise ValueError(
+                f"Decision outcome {outcome_node} must be an sdo:DecisionOutcome"
+            )
+    outcome_codes = {
+        positive_outcome: str(one(graph, positive_outcome_node, SDO.outcomeCode)),
+        negative_outcome: str(one(graph, negative_outcome_node, SDO.outcomeCode)),
+        unknown_outcome: str(one(graph, unknown_outcome_node, SDO.outcomeCode)),
+    }
+    if len(set(outcome_codes.values())) != 3 or any(
+        not SQL_IDENTIFIER.fullmatch(code) for code in outcome_codes.values()
+    ):
+        raise ValueError(
+            "Decision outcome codes must be distinct safe identifiers"
+        )
+
+    rule_nodes = sorted(graph.objects(version, SDO.hasRule), key=str)
+    if not rule_nodes:
+        raise ValueError("Decision Rule Set Version must contain at least one Rule")
+    rules = []
+    pointers = set()
+    conditions = set()
+    for rule_node in rule_nodes:
+        if (rule_node, RDF.type, SDO.Rule) not in graph:
+            raise ValueError(f"Rule Set member {rule_node} must be an sdo:Rule")
+        condition_node = one(graph, rule_node, SDO.condition)
+        if (condition_node, RDF.type, SDO.Condition) not in graph:
+            raise ValueError(
+                f"Decision Rule {rule_node} must reference an sdo:Condition"
+            )
+        condition_id = str(condition_node)
+        if condition_id in conditions:
+            raise ValueError(
+                f"Decision Condition {condition_node} is used by more than one Rule"
+            )
+        conditions.add(condition_id)
+        pointer = _json_pointer(str(one(graph, condition_node, SCO.inputJsonPointer)))
+        if pointer in pointers:
+            raise ValueError(
+                f"Decision Conditions must not share input pointer {pointer}"
+            )
+        pointers.add(pointer)
+        condition = DecisionCondition(
+            identifier=condition_id,
+            fact_property=str(one(graph, condition_node, SDO.factProperty)),
+            input_json_pointer=pointer,
+            expected_boolean=_boolean_value(
+                one(graph, condition_node, SDO.expectedBoolean),
+                f"Decision Condition {condition_node} expectedBoolean",
+            ),
+        )
+        citation = one(graph, rule_node, SDO.sourceCitation)
+        rules.append(
+            DecisionRule(
+                identifier=str(rule_node),
+                condition=condition,
+                source=_read_decision_source(graph, citation),
+            )
+        )
+    immutable_rules = tuple(rules)
+
+    case_nodes = sorted(graph.objects(contract, SDO.hasConformanceCase), key=str)
+    if not case_nodes:
+        raise ValueError(
+            "Decision Contract must declare conformance cases for all outcomes"
+        )
+    cases = []
+    for case_node in case_nodes:
+        if (case_node, RDF.type, SDO.ConformanceCase) not in graph:
+            raise ValueError(
+                f"Decision conformance case {case_node} must be an sdo:ConformanceCase"
+            )
+        if one(graph, case_node, SDO.forDecisionContract) != contract:
+            raise ValueError(
+                f"Conformance case {case_node} must reference its Decision Contract"
+            )
+        if one(graph, case_node, SDO.usesRuleSetVersion) != version:
+            raise ValueError(
+                f"Conformance case {case_node} must pin its Rule Set Version"
+            )
+        decision_date = _date_value(
+            one(graph, case_node, SDO.decisionDate),
+            f"Conformance case {case_node} decisionDate",
+        )
+        if decision_date < valid_from or (
+            valid_until is not None and decision_date >= valid_until
+        ):
+            raise ValueError(
+                f"Conformance case {case_node} falls outside Rule Set validity"
+            )
+        expected_outcome = str(one(graph, case_node, SDO.expectsOutcome))
+        if expected_outcome not in outcomes:
+            raise ValueError(
+                f"Conformance case {case_node} uses an undeclared outcome"
+            )
+        facts = []
+        fact_conditions = set()
+        for fact in graph.objects(case_node, SDO.hasFact):
+            if (fact, RDF.type, SDO.CaseFact) not in graph:
+                raise ValueError(
+                    f"Conformance case fact {fact} must be an sdo:CaseFact"
+                )
+            condition = str(one(graph, fact, SDO.forCondition))
+            if condition not in conditions:
+                raise ValueError(
+                    f"Conformance case {case_node} references unknown Condition {condition}"
+                )
+            if condition in fact_conditions:
+                raise ValueError(
+                    f"Conformance case {case_node} has conflicting Facts for {condition}"
+                )
+            fact_conditions.add(condition)
+            facts.append(
+                (
+                    condition,
+                    _boolean_value(
+                        one(graph, fact, SDO.booleanValue),
+                        f"Conformance case {case_node} Fact value",
+                    ),
+                )
+            )
+        immutable_facts = tuple(sorted(facts))
+        derived_outcome = _decision_outcome_for_case(
+            immutable_rules,
+            immutable_facts,
+            positive_outcome=positive_outcome,
+            negative_outcome=negative_outcome,
+            unknown_outcome=unknown_outcome,
+        )
+        if derived_outcome != expected_outcome:
+            raise ValueError(
+                f"Conformance case {case_node} expects {expected_outcome}, "
+                f"but Decision Conventions v1 derives {derived_outcome}"
+            )
+        cases.append(
+            DecisionConformanceCase(
+                identifier=str(case_node),
+                decision_date=decision_date,
+                expected_outcome=expected_outcome,
+                facts=immutable_facts,
+            )
+        )
+    immutable_cases = tuple(cases)
+    covered_outcomes = {case.expected_outcome for case in immutable_cases}
+    if covered_outcomes != outcomes:
+        missing = sorted(outcomes - covered_outcomes)
+        raise ValueError(
+            f"Decision Contract conformance cases do not cover outcomes: {missing}"
+        )
+
+    return ExplicitDecisionAndObligationModel(
+        product=str(product),
+        decision_contract=str(contract),
+        rule_set=str(rule_set),
+        rule_set_version=str(version),
+        valid_from=valid_from,
+        valid_until=valid_until,
+        positive_outcome=positive_outcome,
+        positive_outcome_code=outcome_codes[positive_outcome],
+        negative_outcome=negative_outcome,
+        negative_outcome_code=outcome_codes[negative_outcome],
+        unknown_outcome=unknown_outcome,
+        unknown_outcome_code=outcome_codes[unknown_outcome],
+        scope_note=_required_text(
+            graph, contract, SDO.scopeNote, "Decision Contract scope note"
+        ),
+        rules=immutable_rules,
+        conformance_cases=immutable_cases,
+    )
 
 
 def deterministic_value(field: dict):
@@ -308,6 +764,162 @@ def build_openapi(contract: dict) -> dict:
             }
         },
     }
+
+
+def build_decision_contract(
+    model: ExplicitDecisionAndObligationModel,
+) -> dict:
+    """Render the typed decision model as a deterministic machine contract."""
+    source_revisions = {}
+    rules = []
+    for rule in model.rules:
+        source = rule.source
+        source_revisions[source.source_revision] = {
+            "id": source.source_revision,
+            "source": source.source,
+            "title": source.title,
+            "identifier": source.identifier,
+            "version": source.version,
+            "valid_from": source.valid_from,
+            "content_url": source.content_url,
+            "content_sha256": source.content_sha256,
+            "byte_size": source.byte_size,
+        }
+        rules.append(
+            {
+                "id": rule.identifier,
+                "condition": {
+                    "id": rule.condition.identifier,
+                    "fact_property": rule.condition.fact_property,
+                    "input_json_pointer": rule.condition.input_json_pointer,
+                    "expected_boolean": rule.condition.expected_boolean,
+                },
+                "source": {
+                    "citation": source.citation,
+                    "source_revision": source.source_revision,
+                    "locator": source.locator,
+                    "statement": source.statement,
+                },
+            }
+        )
+
+    return {
+        "profile": "decision-obligation-v1",
+        "decision_protocol_version": DECISION_PROTOCOL_VERSION,
+        "decision_conventions_version": DECISION_CONVENTIONS_VERSION,
+        "product": model.product,
+        "decision_contract": model.decision_contract,
+        "rule_set": {
+            "id": model.rule_set,
+            "version": model.rule_set_version,
+            "valid_from": model.valid_from,
+            "valid_until": model.valid_until,
+            "requires_all_rules": True,
+        },
+        "outcomes": {
+            "positive": {
+                "id": model.positive_outcome,
+                "code": model.positive_outcome_code,
+            },
+            "negative": {
+                "id": model.negative_outcome,
+                "code": model.negative_outcome_code,
+            },
+            "unknown": {
+                "id": model.unknown_outcome,
+                "code": model.unknown_outcome_code,
+            },
+        },
+        "scope_note": model.scope_note,
+        "source_revisions": [
+            source_revisions[key] for key in sorted(source_revisions)
+        ],
+        "rules": rules,
+        "conformance_cases": [
+            {
+                "id": case.identifier,
+                "decision_date": case.decision_date,
+                "expected_outcome": case.expected_outcome,
+                "facts": [
+                    {"condition": condition, "value": value}
+                    for condition, value in case.facts
+                ],
+            }
+            for case in model.conformance_cases
+        ],
+    }
+
+
+def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
+    runtime_id = "kfw-458.decision-runtime"
+    evaluation_id = "kfw-458.applicant-eligibility"
+    return [
+        {
+            "id": runtime_id,
+            "title": "Provide the Decision Protocol v1 interface",
+            "goal": "Make the decision product invocable as a technology-neutral black box.",
+            "depends_on": [],
+            "obligations": [
+                "The product can be invoked through its `product.toml` manifest.",
+                "It accepts one UTF-8 JSON Decision Request on standard input.",
+                "It returns one UTF-8 JSON Decision Result on standard output.",
+            ],
+            "sources": [
+                "Decision Protocol v1: manifest-driven process and JSON transport",
+                f"Decision Contract `{contract['decision_contract']}`",
+            ],
+            "test": f"{test_path}::test_decision_product_runtime",
+            "excluded": [
+                "A particular implementation language or framework",
+                "HTTP or a conversational user interface",
+            ],
+        },
+        {
+            "id": evaluation_id,
+            "title": "Evaluate KfW 458 applicant eligibility",
+            "goal": "Return the specified applicant-eligibility outcome for each explicit Case.",
+            "depends_on": [runtime_id],
+            "obligations": [
+                "All declared Conditions are evaluated as satisfied, violated, or unknown.",
+                "A violated required Rule yields the declared negative outcome.",
+                "A Fact Gap without a violated Rule yields the declared unknown outcome.",
+                "Only all satisfied Rules yield the declared positive outcome.",
+                "The eligible, ineligible, and unknown conformance Cases pass end to end.",
+            ],
+            "sources": [
+                f"Decision Contract `{contract['decision_contract']}`",
+                "`specs/`: Rules, Conditions, expected values, outcomes, and conformance Cases",
+                "Decision Conventions v1: explicit requires-all aggregation",
+            ],
+            "test": f"{test_path}::test_declared_decision_outcome",
+            "excluded": [
+                "Heating-system or measure eligibility",
+                "A funding amount, legal entitlement, or KfW approval",
+            ],
+        },
+        {
+            "id": "kfw-458.result-provenance",
+            "title": "Explain the decision with source provenance",
+            "goal": "Expose decisive Rules, source statements, and Fact Gaps in every result.",
+            "depends_on": [evaluation_id],
+            "obligations": [
+                "Every decisive Rule identifies its Source Citation and Source Revision.",
+                "Every cited source statement and locator is present in the Decision Result.",
+                "Unknown results identify the exact missing Facts.",
+                "Every result contains a human-readable explanation and the scope note.",
+            ],
+            "sources": [
+                "`specs/`: Rule-to-Source Citation relations and source statements",
+                "`specs/`: scope note",
+                "Decision Conventions v1: decisive Rule and Fact Gap projection",
+            ],
+            "test": f"{test_path}::test_decision_result_provenance",
+            "excluded": [
+                "Automatic source-document ingestion",
+                "A claim that the authored Spec completely transcribes the external source",
+            ],
+        },
+    ]
 
 
 def build_work_items(contract: dict, test_path: str) -> list[dict]:
@@ -817,9 +1429,162 @@ def test_get_endpoint_satisfies_explicit_obligations(running_api):
 '''
 
 
+DECISION_TEST_TEMPLATE = '''# Generated by Spec Compiler. Do not edit.
+import json
+from pathlib import Path
+
+import pytest
+
+from tools.decision_runtime import run_decision
+
+PRODUCT_ROOT = Path(__file__).parents[1]
+CONTRACT = json.loads(
+    (PRODUCT_ROOT / "generated" / "decision-contract.json").read_text(
+        encoding="utf-8"
+    )
+)
+RULES_BY_CONDITION = {
+    rule["condition"]["id"]: rule for rule in CONTRACT["rules"]
+}
+
+
+def _set_json_pointer(document, pointer, value):
+    parts = [part.replace("~1", "/").replace("~0", "~") for part in pointer[1:].split("/")]
+    target = document
+    for part in parts[:-1]:
+        target = target.setdefault(part, {})
+    target[parts[-1]] = value
+
+
+def _request_for_case(case):
+    request = {
+        "decision_contract": CONTRACT["decision_contract"],
+        "rule_set_version": CONTRACT["rule_set"]["version"],
+        "decision_date": case["decision_date"],
+        "case": {},
+    }
+    for fact in case["facts"]:
+        rule = RULES_BY_CONDITION[fact["condition"]]
+        _set_json_pointer(
+            request,
+            rule["condition"]["input_json_pointer"],
+            fact["value"],
+        )
+    return request
+
+
+def _expected_result(case):
+    facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
+    evaluations = []
+    gaps = []
+    for rule in CONTRACT["rules"]:
+        condition = rule["condition"]
+        actual = facts.get(condition["id"])
+        if actual is None:
+            state = "unknown"
+            gaps.append(
+                {
+                    "condition": condition["id"],
+                    "fact_property": condition["fact_property"],
+                    "input_json_pointer": condition["input_json_pointer"],
+                }
+            )
+        elif actual == condition["expected_boolean"]:
+            state = "satisfied"
+        else:
+            state = "violated"
+        evaluations.append(
+            {
+                "rule": rule["id"],
+                "condition": condition["id"],
+                "state": state,
+            }
+        )
+
+    violated = [item["rule"] for item in evaluations if item["state"] == "violated"]
+    unknown = [item["rule"] for item in evaluations if item["state"] == "unknown"]
+    if violated:
+        decisive = violated
+        outcome_role = "negative"
+    elif unknown:
+        decisive = unknown
+        outcome_role = "unknown"
+    else:
+        decisive = [rule["id"] for rule in CONTRACT["rules"]]
+        outcome_role = "positive"
+    outcome = CONTRACT["outcomes"][outcome_role]
+    provenance = [
+        {
+            "rule": rule["id"],
+            "source_citation": rule["source"]["citation"],
+            "source_revision": rule["source"]["source_revision"],
+            "source_locator": rule["source"]["locator"],
+            "source_statement": rule["source"]["statement"],
+        }
+        for rule in CONTRACT["rules"]
+        if rule["id"] in decisive
+    ]
+    return outcome, evaluations, decisive, gaps, provenance
+
+
+def _run_case(case):
+    result = run_decision(PRODUCT_ROOT, _request_for_case(case))
+    assert result.returncode == 0, result.output
+    return result.json_output()
+
+
+def test_generated_contract_covers_all_declared_outcomes():
+    assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
+        outcome["id"] for outcome in CONTRACT["outcomes"].values()
+    }
+    assert all(rule["source"]["statement"] for rule in CONTRACT["rules"])
+    assert all(rule["source"]["locator"] for rule in CONTRACT["rules"])
+
+
+def test_decision_product_runtime():
+    payload = _run_case(CONTRACT["conformance_cases"][0])
+    assert isinstance(payload, dict)
+
+
+@pytest.mark.parametrize(
+    "case",
+    CONTRACT["conformance_cases"],
+    ids=lambda case: case["id"].rsplit("#", 1)[-1],
+)
+def test_declared_decision_outcome(case):
+    payload = _run_case(case)
+    outcome, evaluations, decisive, gaps, provenance = _expected_result(case)
+    assert case["expected_outcome"] == outcome["id"]
+    assert payload["decision_contract"] == CONTRACT["decision_contract"]
+    assert payload["rule_set_version"] == CONTRACT["rule_set"]["version"]
+    assert payload["decision_date"] == case["decision_date"]
+    assert payload["outcome"] == outcome["code"]
+    assert payload["outcome_id"] == outcome["id"]
+    assert payload["condition_evaluations"] == evaluations
+    assert payload["decisive_rules"] == decisive
+    assert payload["fact_gaps"] == gaps
+
+
+@pytest.mark.parametrize(
+    "case",
+    CONTRACT["conformance_cases"],
+    ids=lambda case: case["id"].rsplit("#", 1)[-1],
+)
+def test_decision_result_provenance(case):
+    payload = _run_case(case)
+    outcome, _, _, _, provenance = _expected_result(case)
+    assert payload["provenance"] == provenance
+    assert isinstance(payload["explanation"], str) and payload["explanation"].strip()
+    assert outcome["code"] in payload["explanation"].lower()
+    assert payload["scope_note"] == CONTRACT["scope_note"]
+'''
+
+
 COMPILER_TEST_TEMPLATE = '''# Generated by Spec Compiler. Do not edit.
 from pathlib import Path
 import shutil
+
+import pytest
 
 from tools.compiler_runtime import run_compiler
 
@@ -838,23 +1603,33 @@ def _snapshot(product_root):
     }
 
 
-def _copy_fixture(tmp_path):
-    source = (COMPILER_ROOT / CONTRACT["valid_fixture_product"]).resolve()
+def _copy_fixture(tmp_path, fixture):
+    source = (COMPILER_ROOT / fixture["product"]).resolve()
     target = tmp_path / "input-product"
     shutil.copytree(source, target)
     return target
 
 
-def test_compiler_generates_declared_artifacts(tmp_path):
-    product_root = _copy_fixture(tmp_path)
+@pytest.mark.parametrize(
+    "fixture",
+    CONTRACT["conformance_fixtures"],
+    ids=lambda fixture: fixture["name"],
+)
+def test_compiler_generates_declared_artifacts(tmp_path, fixture):
+    product_root = _copy_fixture(tmp_path, fixture)
     result = run_compiler(COMPILER_ROOT, product_root)
     assert result.returncode == 0, result.output
-    for pattern in CONTRACT["generated_artifacts"]:
+    for pattern in fixture["generated_artifacts"]:
         assert list(product_root.glob(pattern)), f"No generated artifact matches {pattern}"
 
 
-def test_compiler_output_reaches_a_byte_identical_fixpoint(tmp_path):
-    product_root = _copy_fixture(tmp_path)
+@pytest.mark.parametrize(
+    "fixture",
+    CONTRACT["conformance_fixtures"],
+    ids=lambda fixture: fixture["name"],
+)
+def test_compiler_output_reaches_a_byte_identical_fixpoint(tmp_path, fixture):
+    product_root = _copy_fixture(tmp_path, fixture)
     first = run_compiler(COMPILER_ROOT, product_root)
     assert first.returncode == 0, first.output
     first_snapshot = _snapshot(product_root)
@@ -871,7 +1646,12 @@ def test_compiler_rejects_a_bundle_without_specs(tmp_path):
     assert "No Turtle specs found" in result.output
 
 
-def test_bootstrapped_compiler_is_independently_executable(tmp_path):
+@pytest.mark.parametrize(
+    "fixture",
+    CONTRACT["conformance_fixtures"],
+    ids=lambda fixture: fixture["name"],
+)
+def test_bootstrapped_compiler_is_independently_executable(tmp_path, fixture):
     if not CONTRACT["bootstrap"]:
         return
     implementation = COMPILER_ROOT / CONTRACT["bootstrap"]["implementation_artifact"]
@@ -881,10 +1661,10 @@ def test_bootstrapped_compiler_is_independently_executable(tmp_path):
         encoding="utf-8"
     )
 
-    fixture_root = _copy_fixture(tmp_path)
+    fixture_root = _copy_fixture(tmp_path, fixture)
     result = run_compiler(COMPILER_ROOT, fixture_root)
     assert result.returncode == 0, result.output
-    for pattern in CONTRACT["generated_artifacts"]:
+    for pattern in fixture["generated_artifacts"]:
         assert list(fixture_root.glob(pattern)), f"No G1 artifact matches {pattern}"
 '''
 
@@ -899,8 +1679,11 @@ def build_compiler_work_items(contract: dict, test_path: str) -> list[dict]:
             "obligations": [
                 f"Input specs are discovered using `{contract['input_spec_pattern']}`.",
                 *(
-                    f"A successful compilation emits `{artifact}`."
-                    for artifact in contract["generated_artifacts"]
+                    "The `"
+                    f"{fixture['name']}` conformance fixture emits `"
+                    f"{artifact}`."
+                    for fixture in contract["conformance_fixtures"]
+                    for artifact in fixture["generated_artifacts"]
                 ),
             ],
             "sources": [
@@ -919,7 +1702,8 @@ def build_compiler_work_items(contract: dict, test_path: str) -> list[dict]:
                 "goal": "Produce byte-identical artifacts on consecutive compilations.",
                 "depends_on": ["toolchain.compiler.outputs"],
                 "obligations": [
-                    "Two compilations of the same Product Bundle produce byte-identical generated and test files."
+                    "Two compilations of each conformance fixture produce "
+                    "byte-identical generated and test files."
                 ],
                 "sources": ["`specs/`: deterministic output requirement"],
                 "test": f"{test_path}::test_compiler_output_reaches_a_byte_identical_fixpoint",
@@ -951,7 +1735,7 @@ def build_compiler_work_items(contract: dict, test_path: str) -> list[dict]:
                 "depends_on": ["toolchain.compiler.outputs"],
                 "obligations": [
                     "G0 materializes the declared G1 implementation artifact from its seed source.",
-                    "G1 successfully compiles the valid fixture through Compiler Protocol v1.",
+                    "G1 successfully compiles every conformance fixture through Compiler Protocol v1.",
                 ],
                 "sources": [
                     "`specs/`: Bootstrap Process, seed, strategy, and implementation artifact",
@@ -1033,6 +1817,54 @@ def generate_compiler_contract(product_root: Path, product_path: str, contract: 
     ]
 
 
+def generate_decision_contract(
+    product_root: Path,
+    product_path: str,
+    model: ExplicitDecisionAndObligationModel,
+) -> list[Path]:
+    tests_root = product_root / "tests"
+    test_output = tests_root / "test_contract.py"
+    test_path = (
+        test_output.relative_to(ROOT).as_posix()
+        if test_output.is_relative_to(ROOT)
+        else test_output.relative_to(product_root).as_posix()
+    )
+    contract = build_decision_contract(model)
+    work_items = build_decision_work_items(contract, test_path)
+
+    test_output.parent.mkdir(parents=True, exist_ok=True)
+    test_output.write_text(DECISION_TEST_TEMPLATE, encoding="utf-8")
+    generated = product_root / "generated"
+    issues = generated / "issues"
+    issues.mkdir(parents=True, exist_ok=True)
+    contract_output = generated / "decision-contract.json"
+    contract_output.write_text(
+        json.dumps(contract, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    graph_output = generated / "work-graph.json"
+    graph_output.write_text(
+        json.dumps(
+            {
+                "generator": "spec-compiler",
+                "compiler_conventions_version": COMPILER_CONVENTIONS_VERSION,
+                "decision_conventions_version": DECISION_CONVENTIONS_VERSION,
+                "decision_protocol_version": DECISION_PROTOCOL_VERSION,
+                "work_items": work_items,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    issue_outputs = []
+    for item in work_items:
+        issue_output = issues / f"{item['id']}.md"
+        issue_output.write_text(render_issue(item, product_path), encoding="utf-8")
+        issue_outputs.append(issue_output)
+    return [test_output, contract_output, graph_output, *issue_outputs]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -1058,9 +1890,36 @@ def main() -> None:
     compiler_products = list(
         graph.subjects(DCTERMS.conformsTo, SCO.CompilerProtocolV1)
     )
+    decision_products = list(
+        graph.subjects(DCTERMS.conformsTo, SCO.DecisionProtocolV1)
+    )
+    http_contract = bool(
+        list(graph.subjects(RDF.type, SCO.GetEndpoint))
+        or list(graph.subjects(RDF.type, SCO.SqlTable))
+    )
+    profiles = [
+        name
+        for name, present in (
+            ("compiler", bool(compiler_products)),
+            ("decision", bool(decision_products)),
+            ("http-sql", http_contract),
+        )
+        if present
+    ]
+    if len(profiles) != 1:
+        raise ValueError(
+            "Product specs must select exactly one executable profile; found "
+            + (", ".join(profiles) if profiles else "none")
+        )
     if compiler_products:
         contract = read_compiler_contract(product_root, graph)
         outputs = generate_compiler_contract(product_root, product_path, contract)
+        for generated_output in outputs:
+            print(f"Generated {generated_output.relative_to(product_root)}")
+        return
+    if decision_products:
+        model = read_decision_model(product_root, graph)
+        outputs = generate_decision_contract(product_root, product_path, model)
         for generated_output in outputs:
             print(f"Generated {generated_output.relative_to(product_root)}")
         return

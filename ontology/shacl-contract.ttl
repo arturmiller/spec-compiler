@@ -1,4 +1,5 @@
 @prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -58,6 +59,12 @@ sco:CompilerProtocolV1
     rdfs:label "Compilerprotokoll v1"@de ;
     rdfs:comment "Manifest-driven command-line protocol for invoking a compiler on a Product Bundle."@en .
 
+sco:DecisionProtocolV1
+    a owl:NamedIndividual ;
+    rdfs:label "Decision Protocol v1"@en ;
+    rdfs:label "Entscheidungsprotokoll v1"@de ;
+    rdfs:comment "Manifest-driven protocol that sends one JSON Decision Request to a product process and observes one JSON Decision Result."@en .
+
 sco:SQLite
     a owl:NamedIndividual ;
     rdfs:label "SQLite"@en ;
@@ -69,6 +76,13 @@ sco:implementsContract
     rdfs:label "implementiert Vertrag"@de ;
     rdfs:domain schema:SoftwareApplication ;
     rdfs:range sco:TransformationContract .
+
+sco:implementsDecisionContract
+    a owl:ObjectProperty ;
+    rdfs:label "implements decision contract"@en ;
+    rdfs:label "implementiert Entscheidungsvertrag"@de ;
+    rdfs:domain schema:SoftwareApplication ;
+    rdfs:range sdo:DecisionContract .
 
 sco:bootstrapsProduct
     a owl:ObjectProperty ;
@@ -196,6 +210,32 @@ sco:inputSpecPattern
     rdfs:domain sco:TransformationContract ;
     rdfs:range xsd:string .
 
+sco:CompilerConformanceFixture
+    a owl:Class ;
+    rdfs:label "compiler conformance fixture"@en ;
+    rdfs:label "Compiler-Konformitäts-Fixture"@de .
+
+sco:conformanceFixture
+    a owl:ObjectProperty ;
+    rdfs:label "has conformance fixture"@en ;
+    rdfs:label "hat Konformitäts-Fixture"@de ;
+    rdfs:domain sco:TransformationContract ;
+    rdfs:range sco:CompilerConformanceFixture .
+
+sco:fixtureProduct
+    a owl:DatatypeProperty ;
+    rdfs:label "fixture product"@en ;
+    rdfs:label "Fixture-Produkt"@de ;
+    rdfs:domain sco:CompilerConformanceFixture ;
+    rdfs:range xsd:string .
+
+sco:expectsArtifact
+    a owl:DatatypeProperty ;
+    rdfs:label "expects artifact"@en ;
+    rdfs:label "erwartet Artefakt"@de ;
+    rdfs:domain sco:CompilerConformanceFixture ;
+    rdfs:range xsd:string .
+
 sco:validFixtureProduct
     a owl:DatatypeProperty ;
     rdfs:label "valid fixture product"@en ;
@@ -229,4 +269,12 @@ sco:generatesImplementationArtifact
     rdfs:label "generates implementation artifact"@en ;
     rdfs:label "generiert Implementierungsartefakt"@de ;
     rdfs:domain sco:BootstrapProcess ;
+    rdfs:range xsd:string .
+
+sco:inputJsonPointer
+    a owl:DatatypeProperty ;
+    rdfs:label "input JSON pointer"@en ;
+    rdfs:label "Eingabe-JSON-Pointer"@de ;
+    rdfs:comment "RFC 6901 pointer identifying a Condition's Fact in the Decision Protocol v1 request."@en ;
+    rdfs:domain sdo:Condition ;
     rdfs:range xsd:string .

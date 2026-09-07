@@ -13,7 +13,7 @@ Verify the independently materialized G1 compiler.
 ## Obligations
 
 - G0 materializes the declared G1 implementation artifact from its seed source.
-- G1 successfully compiles the valid fixture through Compiler Protocol v1.
+- G1 successfully compiles every conformance fixture through Compiler Protocol v1.
 
 ## Verification
 

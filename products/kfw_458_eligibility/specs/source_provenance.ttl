@@ -1,0 +1,34 @@
+@prefix kfw458: <https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix schema: <https://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+kfw458:Kfw458Merkblatt a sdo:Source ;
+    dcterms:title "KfW Merkblatt, Zuschuss Nr. 458"@de .
+
+kfw458:Kfw458Merkblatt2026_07 a sdo:SourceRevision ;
+    dcterms:isVersionOf kfw458:Kfw458Merkblatt ;
+    dcterms:title "BEG Heizungsförderung für Privatpersonen – Wohngebäude" ;
+    dcterms:identifier "600 000 5131" ;
+    owl:versionInfo "2026-07" ;
+    sdo:validFrom "2026-07-21"^^xsd:date ;
+    schema:contentUrl <https://www.kfw.de/PDF/Download-Center/F%C3%B6rderprogramme-%28Inlandsf%C3%B6rderung%29/PDF-Dokumente/6000005131_M_458.pdf> ;
+    sdo:byteSize 256308 ;
+    sdo:contentSha256 "27056983339718d66cb02e9dd526db5787df742350de15eb7821040299d9fd5d" .
+
+kfw458:CitationEligibleApplicants a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
+    sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories" ;
+    sdo:sourceStatement "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories." .
+
+kfw458:CitationGbRExclusion a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
+    sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', first explicit exclusion" ;
+    sdo:sourceStatement "A GbR entered as owner and its partners are not eligible applicants." .
+
+kfw458:CitationUsufructExclusion a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
+    sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', second explicit exclusion" ;
+    sdo:sourceStatement "A person for whom a usufruct right to a residential building has been established is not an eligible applicant." .

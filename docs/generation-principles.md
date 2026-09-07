@@ -17,29 +17,31 @@ implementierung in generierte Anforderungen gelangen.
 
 Python ist momentan die Sprache des Generators und des Test-Harness. Das
 verlangt nicht, dass ein Produkt in Python implementiert wird. Vertragstests
-starten das Produkt als separaten Prozess und beobachten ausschließlich die
-explizit vereinbarten Grenzen HTTP, OpenAPI und SQLite. Sie importieren keinen
-Produktcode.
+starten das Produkt als separaten Prozess und beobachten ausschließlich das
+gewählte, explizite Protokoll: HTTP, OpenAPI und SQLite im SQL-Profil oder
+UTF-8-JSON über Standard-Ein-/Ausgabe im Decision-Profil. Sie importieren
+keinen Produktcode.
 
 ## Quellen der aktuellen Anforderungen
 
-Das öffentliche Vokabular liegt autoritativ in
-`ontology/shacl-contract.ttl`. Eigene Vertragsbegriffe verwenden den Namespace
-`https://arturmiller.github.io/spec-compiler/ontology/#`. Konkrete Toolchain- und
-SQL-API-Ressourcen liegen in getrennten `resources/toolchain/#`- beziehungsweise
-`resources/sql-api/#`-Namespaces. Eine Produkt-Spec darf einen öffentlichen
-Vokabularbegriff verwenden, ohne ihn neu zu definieren; der Publikationsvalidator
-verlangt dafür eine Definition und ein Label in der kanonischen Ontologie.
+Die öffentlichen Vokabulare liegen autoritativ in
+`ontology/shacl-contract.ttl`, `ontology/decision-obligation.ttl` und
+`ontology/funding.ttl`. Sie verwenden die getrennten Namespaces `sco:`, `sdo:`
+und `funding:`. Konkrete Toolchain-, SQL-API- und KfW-Ressourcen liegen in
+getrennten `resources/.../#`-Namespaces. Eine Produkt-Spec darf einen
+öffentlichen Vokabularbegriff verwenden, ohne ihn neu zu definieren; der
+Publikationsvalidator verlangt dafür eine Definition sowie deutsche und
+englische Labels in der zuständigen kanonischen Ontologie.
 
 WIDOCO-HTML, WebVOWL-Daten und publizierte Beispielkopien sind abgeleitete
 Dokumentationsartefakte. Sie begründen keine Produktanforderungen und werden
 nicht als deterministische Vertragsartefakte behandelt.
 
-Der kanonische WebVOWL-Graph enthält nur das öffentliche `sco:*`-Vokabular. Ein
-zweiter, daraus klar getrennter Visualisierungsgraph wird aus den SQL-API-Specs
+Jedes kanonische Vokabular erhält einen eigenen WIDOCO-/WebVOWL-Graphen. Ein
+weiterer, klar getrennter Visualisierungsgraph wird aus den SQL-API-Specs
 gebildet. Fachliche Klassen und Properties müssen dafür explizit als OWL/RDFS-
 Terme mit deutschen und englischen Labels deklariert sein. Die Visualisierung
-ersetzt weder die SHACL-Specs noch deren ausführbare Constraints.
+ersetzt weder die Specs noch deren ausführbare Constraints.
 
 Für diesen zweiten Graphen projiziert der Dokumentationsbuilder ausgewählte
 Instanz- und SHACL-Beziehungen in ausschließlich visuelle OWL-Klassen und
@@ -70,6 +72,39 @@ sind keine Anforderung an andere Produkte.
 Der RDF-Graph wird in ein **Explicit Obligation Model** normalisiert. Dieses
 interne Modell enthält ausschließlich Aussagen, die eine beobachtbare
 Verpflichtung begründen. Fehlende Aussagen erzeugen weder Defaults noch Tests.
+
+### Decision and Obligation Compilation
+
+[ADR 0016](architecture/decisions/0016-evolve-to-decision-and-obligation-compilation.md)
+definiert die Grenzen; [ADR 0017](architecture/decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.md)
+materialisiert den ersten vertikalen Schnitt. Das Decision-Profil normalisiert
+die autorisierten Aussagen in ein typisiertes, unveränderliches **Explicit
+Decision and Obligation Model**. Für diese und weitere Schnitte gelten folgende
+Regeln:
+
+- Ein externes Dokument ist nicht unmittelbar die Quelle einer generierten
+  Anforderung. Eine autorisierte Spec-Aussage verweist über eine präzise Source
+  Citation auf eine unveränderlich identifizierte Source Revision. Die
+  generierte Anforderung stammt weiterhin aus der Spec-Aussage oder aus einer
+  benannten, versionierten Konvention.
+- Entscheidungen, Condition Evaluations, Fact Gaps, Fragen, Obligations und
+  Evidence Requirements sind generierte Ergebnisse und benötigen dieselbe
+  nachvollziehbare Provenienz wie Assertions und Work Items.
+- Das Fehlen eines für eine Condition benötigten Fallsachverhalts wird als Fact
+  Gap ausgewiesen und darf zu `unknown` führen. Ein fehlender Sachverhalt wird
+  nicht als `false` interpretiert.
+- Mehrdeutige Specs, widersprüchliche Facts, eine nicht eindeutig anwendbare
+  Rule Set Version oder mehrere unvereinbare Schlussfolgerungen sind Fehler.
+  Sie dürfen nicht als `unknown` kaschiert werden.
+- Decision Date und Rule Set Version werden explizit angegeben. Es gibt keinen
+  impliziten Standard für „heute“, „aktuell“ oder „neueste Version“.
+- Die Transformation externer Dokumente in autorisierte Specs ist zunächst ein
+  menschlich kuratierter Schritt außerhalb der deterministischen Kompilierung.
+  Weder Scraping noch ein Sprachmodell darf dabei stillschweigend Teil des
+  Compilers werden.
+
+Die kanonischen Begriffe und Pilotgrenzen stehen in der
+[Decision and Obligation Compilation roadmap](architecture/decision-and-obligation-roadmap.md).
 
 `product.toml` ist kein fachlicher Vertrag. Es ist der kleine Laufzeitadapter,
 über den das Werkzeug ein Produkt unabhängig von seiner Technologie startet.
@@ -102,6 +137,30 @@ Wenn die Spec eine SQLite-Tabelle verlangt, bezeichnet
 `{database_path}` die tatsächlich verwendete dateibasierte Datenbank und ihr
 Schema ist beim Bereitschaftssignal initialisiert.
 
+### Decision Protocol v1
+
+Ein Decision Product wird weder als HTTP-Service noch als RDF-System
+vorausgesetzt. Sein `product.toml` deklariert
+`decision_protocol_version = 1` und eine Tabelle `[decision]` mit:
+
+- `command`: Argumentliste des zu startenden Decision-Product-Prozesses,
+- `working_directory`: relativ zum Product Bundle,
+- `timeout_seconds`: optionale Ausführungsfrist,
+- `environment`: optionale Umgebungsvariablen.
+
+Der Harness ersetzt `{product_root}`, schreibt genau einen UTF-8-kodierten JSON
+**Decision Request** auf die Standardeingabe und erwartet genau ein JSON-Objekt
+als **Decision Result** auf der Standardausgabe. Exitstatus, Standardfehler,
+Timeout und Prozessbaum-Cleanup sind beobachtbare Protokolleigenschaften.
+Python, ein bestimmtes CLI-Framework, RDF, HTTP und die interne Auswertung des
+kompilierten Vertrags sind keine Produktanforderungen.
+
+Der Request benennt den Decision Contract, die Rule Set Version und das
+Decision Date explizit und trägt die Case Facts an den kompilierten JSON
+Pointers. Das Result benennt Outcome, Condition Evaluations, decisive Rules,
+Fact Gaps, Provenance, menschliche Explanation und den unveränderten Scope
+Note. Protokoll und fachlicher Decision Contract bleiben getrennt versionierbar.
+
 ### Compiler Protocol v1
 
 Ein Compilerprodukt wird nicht künstlich als HTTP-Laufzeit modelliert. Sein
@@ -121,9 +180,10 @@ im Input Product Bundle erzeugten Dateien.
 Das Produkt ist allgemein als `schema:SoftwareApplication` klassifiziert.
 `dcterms:conformsTo sco:CompilerProtocolV1` wählt das ausführbare Protokoll;
 `sco:implementsContract` verweist auf einen separat versionierbaren
-`sco:TransformationContract`. Dieser darf Ausgabepfade oder Glob-Muster, die
-Suche nach Eingabespecs, Fehlerfälle und die jeweilige Ergebnisgleichheit
-explizit festlegen. Beim
+`sco:TransformationContract`. Dieser benennt ein oder mehrere
+`sco:CompilerConformanceFixture`-Ressourcen mit Product Bundle und jeweils
+erwarteten Ausgabepfaden oder Glob-Mustern sowie die Suche nach Eingabespecs,
+Fehlerfälle und die Ergebnisgleichheit. Beim
 Determinismusnachweis werden zwei Läufe derselben Compilerimplementierung mit
 demselben Input verglichen. Das ist ein Fixpunkt- und Reproduzierbarkeitsnachweis,
 aber kein unabhängiger Beweis für die korrekte Interpretation der Spec.
@@ -160,9 +220,10 @@ Der Prototyp verwendet folgende explizite Abbildungsregeln:
   die ausführbare Testsemantik.
 - `sco:implementsContract` muss auf genau einen `sco:TransformationContract`
   zeigen, aus dem die generierten Verpflichtungen stammen.
-- Die Aussagen `sco:generatesArtifact`, `sco:rejectsMissingSpecs` und
-  `sco:deterministicOutput` werden direkt in fokussierte Black-box-Proofs
-  übersetzt.
+- Die Aussagen `sco:conformanceFixture`, `sco:fixtureProduct`,
+  `sco:expectsArtifact`, `sco:rejectsMissingSpecs` und
+  `sco:deterministicOutput` werden direkt in fokussierte Black-box-Proofs für
+  jedes deklarierte Compilerprofil übersetzt.
 - Ein deklarierter Bootstrap-Prozess muss genau einen als
   `schema:SoftwareApplication` typisierten Seed und die unterstützte Strategie
   `sco:ModifyExistingImplementation` sowie einen sicheren relativen Pfad über
@@ -175,6 +236,37 @@ Der Prototyp verwendet folgende explizite Abbildungsregeln:
 
 Andere Datentypen, Kardinalitäten, Engines oder unsichere Bezeichner werden
 nicht geraten, sondern als nicht unterstützte Eingabe abgelehnt.
+
+## Decision Conventions v1
+
+Der erste Decision-Schnitt unterstützt ausschließlich einen expliziten
+`sdo:DecisionContract` mit genau einer gepinnten `sdo:RuleSetVersion` und
+`sdo:requiresAllRules true`:
+
+- Jede Rule verweist auf genau eine Condition, ein eindeutiges
+  `sco:inputJsonPointer`, einen booleschen Sollwert und genau eine Source
+  Citation.
+- Eine Condition ist `satisfied`, wenn ein boolescher Case Fact ihrem Sollwert
+  entspricht, `violated`, wenn er ihm widerspricht, und `unknown`, wenn der Fact
+  fehlt. Nicht-boolesche oder widersprüchliche Facts sind Fehler.
+- Mindestens eine verletzte Condition ergibt `ineligible`. Gibt es keine
+  verletzte, aber mindestens eine unbekannte Condition, ergibt sich `unknown`.
+  Nur wenn alle Conditions erfüllt sind, ergibt sich `eligible`.
+- Bei `ineligible` sind alle verletzten Rules entscheidend, bei `unknown` alle
+  Rules mit Fact Gap und bei `eligible` alle Rules.
+- Jede entscheidende Rule wird zusammen mit Source Citation, Source Revision,
+  Locator und autorisierter Source Statement ausgegeben.
+- Source Revision, Rule Set Version, `validFrom`, Outcome-IRIs und sichere,
+  eindeutige Outcome Codes müssen in der Spec stehen. Der Compiler ergänzt
+  weder eine neueste Version noch ein heutiges Datum.
+- Autorisierte Conformance Cases müssen `eligible`, `ineligible` und `unknown`
+  abdecken. Ihr erwartetes Resultat muss aus denselben Regeln folgen; andernfalls
+  ist die Spec widersprüchlich und wird abgelehnt.
+
+Der Compiler erzeugt aus diesem Modell `generated/decision-contract.json`,
+Black-box-Tests, Work Graph und Issue-Texte. Die erste Konvention umfasst keine
+automatische Quellenaufnahme, Disjunktionen, numerische Regeln, mehrere
+anwendbare Versionen, Obligationsaktivierung oder Evidence-Bewertung.
 
 ## OpenAPI und Verhalten
 
