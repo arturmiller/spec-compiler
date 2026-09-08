@@ -8,6 +8,16 @@
 kfw458:Kfw458Merkblatt a sdo:Source ;
     dcterms:title "KfW Merkblatt, Zuschuss Nr. 458"@de .
 
+kfw458:Kfw458Merkblatt2025_12 a sdo:SourceRevision ;
+    dcterms:isVersionOf kfw458:Kfw458Merkblatt ;
+    dcterms:title "BEG Heizungsförderung für Privatpersonen – Wohngebäude" ;
+    dcterms:identifier "600 000 5131" ;
+    owl:versionInfo "2025-12" ;
+    sdo:validFrom "2025-12-10"^^xsd:date ;
+    schema:contentUrl <https://www.kfw.de/partner/Dokumente/Archiv/750-2025-Q4/6000005131_M_458_2025_12_Schwarz.pdf> ;
+    sdo:byteSize 250112 ;
+    sdo:contentSha256 "0bbe3f9a82b2fdfc2ca8f9037b73e01093aa2ce49709681eba152c2800610369" .
+
 kfw458:Kfw458Merkblatt2026_07 a sdo:SourceRevision ;
     dcterms:isVersionOf kfw458:Kfw458Merkblatt ;
     dcterms:title "BEG Heizungsförderung für Privatpersonen – Wohngebäude" ;
@@ -18,22 +28,38 @@ kfw458:Kfw458Merkblatt2026_07 a sdo:SourceRevision ;
     sdo:byteSize 256308 ;
     sdo:contentSha256 "27056983339718d66cb02e9dd526db5787df742350de15eb7821040299d9fd5d" .
 
-kfw458:CitationEligibleApplicants a sdo:SourceCitation ;
+kfw458:CitationRuleSetVersion2025_12 a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2025_12 ;
+    sdo:sourceLocator "PDF page 1, publication metadata" ;
+    sdo:sourceStatement "The KfW leaflet is revision 12/2025 and states that it is valid from 10 December 2025." .
+
+kfw458:CitationRuleSetVersion2026_07 a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
+    sdo:sourceLocator "PDF page 1, publication metadata" ;
+    sdo:sourceStatement "The KfW leaflet is revision 07/2026 and states that it is valid from 21 July 2026." .
+
+kfw458:CitationEligibleApplicants2025_12 a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2025_12 ;
+    sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories" ;
+    sdo:sourceStatement "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories." .
+kfw458:CitationGbRExclusion2025_12 a sdo:SourceCitation ;
+    sdo:citesSourceRevision kfw458:Kfw458Merkblatt2025_12 ;
+    sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', explicit exclusions" ;
+    sdo:sourceStatement "A GbR entered as owner and its partners are not eligible applicants; this revision states no usufruct exclusion." .
+
+kfw458:CitationEligibleApplicants2026_07 a sdo:SourceCitation ;
     sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
     sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories" ;
     sdo:sourceStatement "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories." .
-
-kfw458:CitationGbRExclusion a sdo:SourceCitation ;
+kfw458:CitationGbRExclusion2026_07 a sdo:SourceCitation ;
     sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
     sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', first explicit exclusion" ;
     sdo:sourceStatement "A GbR entered as owner and its partners are not eligible applicants." .
-
-kfw458:CitationUsufructExclusion a sdo:SourceCitation ;
+kfw458:CitationUsufructExclusion2026_07 a sdo:SourceCitation ;
     sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
     sdo:sourceLocator "PDF page 2, section 'Wer kann Anträge stellen?', second explicit exclusion" ;
     sdo:sourceStatement "A person for whom a usufruct right to a residential building has been established is not an eligible applicant." .
-
-kfw458:CitationOwnershipEvidenceForApplicantBonus a sdo:SourceCitation ;
+kfw458:CitationOwnershipEvidenceForApplicantBonus2026_07 a sdo:SourceCitation ;
     sdo:citesSourceRevision kfw458:Kfw458Merkblatt2026_07 ;
     sdo:sourceLocator "PDF page 8, section 'Nachweise', first paragraph" ;
     sdo:sourceStatement "Self-using owners claiming the climate-speed bonus or income bonus must submit a land-register excerpt as evidence of ownership." .

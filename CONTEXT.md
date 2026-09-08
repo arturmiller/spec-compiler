@@ -26,15 +26,18 @@ adds explicit Fact Questions and deterministic Next Question selection from
 current Fact Gaps. [ADR 0019](docs/architecture/decisions/0019-evaluate-evidence-requirements-separately-from-conditions.md)
 adds independently sourced Evidence Requirements, explicit Evidence
 Assessments, and Evidence Requirement Evaluations without changing Condition
-truth or Decision Outcomes. Obligation activation remains a later slice.
+truth or Decision Outcomes. [ADR 0020](docs/architecture/decisions/0020-select-rule-set-version-only-from-validity-and-decision-date.md)
+adds Version Selection Conventions v1: a stable Rule Set and explicit Decision
+Date select exactly one source-backed Rule Set Version without a today/latest
+default. Obligation activation remains a later slice.
 
 The first implementation slice is the **KfW 458 Applicant Eligibility Pilot**.
-It is invoked through Decision Protocol v1 and compiles a pinned Rule Set
-Version into a Decision Contract, generated proofs, and observable eligible,
+It is invoked through Decision Protocol v1 and compiles two historical Rule Set
+Versions into a Decision Contract, generated proofs, and observable eligible,
 ineligible, or unknown Decision Results. An unknown result carries one
 source-justified Next Question; repeated complete Case submissions advance to
-another justified question or a determinate outcome. Its scope and pinned
-source revision are defined in the
+another justified question or a determinate outcome. Its scope and source
+revisions are defined in the
 [Decision and Obligation Compilation roadmap](docs/architecture/decision-and-obligation-roadmap.md).
 For self-using owners claiming the modeled bonuses, the same Decision Result
 also reports the independent ownership Evidence Requirement as `fulfilled`,
@@ -62,6 +65,9 @@ ontology terms, code, and generated work items use that language.
   Citation.
 - Ambiguous specs, conflicting facts, ambiguous rule-set applicability, or
   multiple incompatible conclusions are errors, not Undetermined outcomes.
+- A Decision Request supplies a stable Rule Set and Decision Date. The Rule Set
+  Version is derived only from authored half-open Validity Periods and is
+  reported in every result; it is never selected by the caller or wall clock.
 - The Spec Compiler remains one software system. Decision and Obligation
   Compilation is a capability of it, not a second system.
 - Reusable decision semantics and domain vocabulary remain separate. A funding

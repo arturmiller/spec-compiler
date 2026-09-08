@@ -12,24 +12,34 @@ CONTRACT = json.loads(
         encoding="utf-8"
     )
 )
-RULES_BY_CONDITION = {
-    rule["condition"]["id"]: rule for rule in CONTRACT["rules"]
-}
+VERSIONS = CONTRACT["rule_set"]["versions"]
+VERSIONS_BY_ID = {version["id"]: version for version in VERSIONS}
+ALL_RULES = [rule for version in VERSIONS for rule in version["rules"]]
+ALL_EVIDENCE_REQUIREMENTS = [
+    requirement
+    for version in VERSIONS
+    for requirement in version["evidence_requirements"]
+]
 EVIDENCE_REQUIREMENTS_BY_ID = {
     requirement["id"]: requirement
-    for requirement in CONTRACT["evidence_requirements"]
+    for requirement in ALL_EVIDENCE_REQUIREMENTS
 }
 CONDITIONS_BY_ID = {
-    **{
-        condition_id: rule["condition"]
-        for condition_id, rule in RULES_BY_CONDITION.items()
-    },
+    **{rule["condition"]["id"]: rule["condition"] for rule in ALL_RULES},
     **{
         condition["id"]: condition
-        for requirement in CONTRACT["evidence_requirements"]
+        for requirement in ALL_EVIDENCE_REQUIREMENTS
         for condition in requirement["applicability_conditions"]
     },
 }
+
+
+def _version_for_case(case):
+    return VERSIONS_BY_ID[case["expected_rule_set_version"]]
+
+
+def _rules_by_condition(version):
+    return {rule["condition"]["id"]: rule for rule in version["rules"]}
 
 
 def _set_json_pointer(document, pointer, value):
@@ -43,7 +53,7 @@ def _set_json_pointer(document, pointer, value):
 def _request_for_case(case):
     request = {
         "decision_contract": CONTRACT["decision_contract"],
-        "rule_set_version": CONTRACT["rule_set"]["version"],
+        "rule_set": CONTRACT["rule_set"]["id"],
         "decision_date": case["decision_date"],
         "case": {},
         "evidence": json.loads(json.dumps(case.get("evidence", []))),
@@ -59,10 +69,11 @@ def _request_for_case(case):
 
 
 def _expected_result(case):
+    version = _version_for_case(case)
     facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
     evaluations = []
     gaps = []
-    for rule in CONTRACT["rules"]:
+    for rule in version["rules"]:
         condition = rule["condition"]
         actual = facts.get(condition["id"])
         if actual is None:
@@ -95,7 +106,7 @@ def _expected_result(case):
         decisive = unknown
         outcome_role = "unknown"
     else:
-        decisive = [rule["id"] for rule in CONTRACT["rules"]]
+        decisive = [rule["id"] for rule in version["rules"]]
         outcome_role = "positive"
     outcome = CONTRACT["outcomes"][outcome_role]
     provenance = [
@@ -106,18 +117,18 @@ def _expected_result(case):
             "source_locator": rule["source"]["locator"],
             "source_statement": rule["source"]["statement"],
         }
-        for rule in CONTRACT["rules"]
+        for rule in version["rules"]
         if rule["id"] in decisive
     ]
     return outcome, evaluations, decisive, gaps, provenance
 
 
-def _expected_next_question(evaluations):
+def _expected_next_question(evaluations, version):
     if any(item["state"] == "violated" for item in evaluations):
         return None
     unknown_rules = [
         rule
-        for rule in CONTRACT["rules"]
+        for rule in version["rules"]
         if any(
             item["rule"] == rule["id"] and item["state"] == "unknown"
             for item in evaluations
@@ -150,9 +161,10 @@ def _expected_next_question(evaluations):
 
 
 def _expected_evidence_evaluations(case):
+    version = _version_for_case(case)
     facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
     result = []
-    for requirement in CONTRACT["evidence_requirements"]:
+    for requirement in version["evidence_requirements"]:
         applicability = []
         for condition in requirement["applicability_conditions"]:
             actual = facts.get(condition["id"])
@@ -224,14 +236,18 @@ def _run_case(case):
 def test_generated_contract_covers_all_declared_outcomes():
     assert CONTRACT["question_selection_conventions_version"] == 1
     assert CONTRACT["evidence_evaluation_conventions_version"] == 1
+    assert CONTRACT["version_selection_conventions_version"] == 1
     assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
         outcome["id"] for outcome in CONTRACT["outcomes"].values()
     }
-    assert all(rule["source"]["statement"] for rule in CONTRACT["rules"])
-    assert all(rule["source"]["locator"] for rule in CONTRACT["rules"])
+    assert all(rule["source"]["statement"] for rule in ALL_RULES)
+    assert all(rule["source"]["locator"] for rule in ALL_RULES)
+    assert all(version["source"]["statement"] for version in VERSIONS)
     priorities = [
-        rule["condition"]["question"]["priority"]
-        for rule in CONTRACT["rules"]
+        condition["question"]["priority"]
+        for condition in {
+            rule["condition"]["id"]: rule["condition"] for rule in ALL_RULES
+        }.values()
     ]
     assert len(priorities) == len(set(priorities))
     flow_case = next(
@@ -239,13 +255,15 @@ def test_generated_contract_covers_all_declared_outcomes():
         for case in CONTRACT["conformance_cases"]
         if case["id"] == CONTRACT["question_flow_case"]
     )
+    flow_version = _version_for_case(flow_case)
+    flow_rules = _rules_by_condition(flow_version)
     assert flow_case["expected_outcome"] == CONTRACT["outcomes"]["positive"]["id"]
     assert {
         fact["condition"]
         for fact in flow_case["facts"]
-        if fact["condition"] in RULES_BY_CONDITION
-    } == set(RULES_BY_CONDITION)
-    for requirement in CONTRACT["evidence_requirements"]:
+        if fact["condition"] in flow_rules
+    } == set(flow_rules)
+    for requirement in ALL_EVIDENCE_REQUIREMENTS:
         assert {
             expectation["status"]
             for case in CONTRACT["conformance_cases"]
@@ -256,13 +274,64 @@ def test_generated_contract_covers_all_declared_outcomes():
         requirement["source"]["statement"]
         and requirement["source"]["locator"]
         and requirement["source"]["citation"]
-        for requirement in CONTRACT["evidence_requirements"]
+        for requirement in ALL_EVIDENCE_REQUIREMENTS
     )
 
 
 def test_decision_product_runtime():
     payload = _run_case(CONTRACT["conformance_cases"][0])
     assert isinstance(payload, dict)
+
+
+def test_decision_date_selects_historical_rule_set_version():
+    cases = [
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["id"] in CONTRACT["version_selection_cases"]
+    ]
+    assert len(cases) == 2
+    requests = [_request_for_case(case) for case in cases]
+    comparable = []
+    for request in requests:
+        copy = json.loads(json.dumps(request))
+        copy.pop("decision_date")
+        comparable.append(copy)
+    assert comparable[0] == comparable[1]
+
+    results = [_run_case(case) for case in cases]
+    assert {result["rule_set_version"] for result in results} == {
+        case["expected_rule_set_version"] for case in cases
+    }
+    assert len({result["outcome"] for result in results}) == 2
+    for case, result in zip(cases, results):
+        version = _version_for_case(case)
+        assert result["decision_date"] == case["decision_date"]
+        assert result["rule_set_version"] == version["id"]
+        assert result["rule_set_version_label"] == version["version"]
+        assert {
+            item["source_revision"] for item in result["provenance"]
+        } == {version["source"]["source_revision"]}
+
+
+def test_runtime_rejects_missing_uncovered_and_caller_selected_versions():
+    case = CONTRACT["conformance_cases"][0]
+    missing = _request_for_case(case)
+    missing.pop("decision_date")
+    result = run_decision(PRODUCT_ROOT, missing)
+    assert result.returncode != 0
+    assert "must contain an ISO decision_date" in result.output
+
+    uncovered = _request_for_case(case)
+    uncovered["decision_date"] = "2025-12-09"
+    result = run_decision(PRODUCT_ROOT, uncovered)
+    assert result.returncode != 0
+    assert "matches 0 Rule Set Versions" in result.output
+
+    caller_selected = _request_for_case(case)
+    caller_selected["rule_set_version"] = case["expected_rule_set_version"]
+    result = run_decision(PRODUCT_ROOT, caller_selected)
+    assert result.returncode != 0
+    assert "must not select a Rule Set Version" in result.output
 
 
 @pytest.mark.parametrize(
@@ -272,17 +341,20 @@ def test_decision_product_runtime():
 )
 def test_declared_decision_outcome(case):
     payload = _run_case(case)
+    version = _version_for_case(case)
     outcome, evaluations, decisive, gaps, provenance = _expected_result(case)
     assert case["expected_outcome"] == outcome["id"]
     assert payload["decision_contract"] == CONTRACT["decision_contract"]
-    assert payload["rule_set_version"] == CONTRACT["rule_set"]["version"]
+    assert payload["rule_set"] == CONTRACT["rule_set"]["id"]
+    assert payload["rule_set_version"] == version["id"]
+    assert payload["rule_set_version_label"] == version["version"]
     assert payload["decision_date"] == case["decision_date"]
     assert payload["outcome"] == outcome["code"]
     assert payload["outcome_id"] == outcome["id"]
     assert payload["condition_evaluations"] == evaluations
     assert payload["decisive_rules"] == decisive
     assert payload["fact_gaps"] == gaps
-    assert payload["next_question"] == _expected_next_question(evaluations)
+    assert payload["next_question"] == _expected_next_question(evaluations, version)
     assert payload["evidence_requirement_evaluations"] == (
         _expected_evidence_evaluations(case)
     )
@@ -302,11 +374,9 @@ def test_decision_result_provenance(case):
     assert payload["scope_note"] == CONTRACT["scope_note"]
 
 
-@pytest.mark.skipif(
-    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
-)
+@pytest.mark.skipif(not ALL_EVIDENCE_REQUIREMENTS, reason="no Evidence Requirements")
 def test_evidence_requirements_are_evaluated_separately():
-    requirement = CONTRACT["evidence_requirements"][0]
+    requirement = ALL_EVIDENCE_REQUIREMENTS[0]
     supporting_condition = requirement["supports_condition"]
     cases_by_status = {
         expectation["status"]: case
@@ -316,7 +386,7 @@ def test_evidence_requirements_are_evaluated_separately():
         if {
             fact["condition"]: fact["value"] for fact in case["facts"]
         }.get(supporting_condition)
-        == RULES_BY_CONDITION[supporting_condition]["condition"]["expected_boolean"]
+        == _rules_by_condition(_version_for_case(case))[supporting_condition]["condition"]["expected_boolean"]
     }
     assert set(cases_by_status) == {"fulfilled", "missing", "not_applicable"}
     results = {
@@ -370,9 +440,7 @@ def test_evidence_requirements_are_evaluated_separately():
         assert evidence_evaluation["supplied_evidence"][0]["classification"] == classification
 
 
-@pytest.mark.skipif(
-    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
-)
+@pytest.mark.skipif(not ALL_EVIDENCE_REQUIREMENTS, reason="no Evidence Requirements")
 def test_unaccepted_supplied_evidence_does_not_fulfill_requirement():
     complete = next(
         case
@@ -401,9 +469,11 @@ def test_question_driven_interaction_reaches_final_outcome():
         for case in CONTRACT["conformance_cases"]
         if case["id"] == CONTRACT["question_flow_case"]
     )
+    flow_version = _version_for_case(flow_case)
+    flow_rules = _rules_by_condition(flow_version)
     answers = {fact["condition"]: fact["value"] for fact in flow_case["facts"]}
     ordered_rules = sorted(
-        CONTRACT["rules"],
+        flow_version["rules"],
         key=lambda rule: rule["condition"]["question"]["priority"],
     )
     request = _request_for_case(
@@ -412,7 +482,7 @@ def test_question_driven_interaction_reaches_final_outcome():
             "facts": [
                 fact
                 for fact in flow_case["facts"]
-                if fact["condition"] not in RULES_BY_CONDITION
+                if fact["condition"] not in flow_rules
             ],
         }
     )
@@ -429,7 +499,7 @@ def test_question_driven_interaction_reaches_final_outcome():
         )
         question = payload["next_question"]
         assert question == _expected_next_question(
-            payload["condition_evaluations"]
+            payload["condition_evaluations"], flow_version
         )
         assert question["condition"] == rule["condition"]["id"]
         assert question["condition"] not in answered
@@ -459,11 +529,12 @@ def test_determinate_outcome_does_not_ask_an_irrelevant_question():
         for case in CONTRACT["conformance_cases"]
         if case["expected_outcome"] == CONTRACT["outcomes"]["negative"]["id"]
     )
+    negative_rules = _rules_by_condition(_version_for_case(negative))
     removable = next(
         fact
         for fact in negative["facts"]
         if fact["value"]
-        == RULES_BY_CONDITION[fact["condition"]]["condition"]["expected_boolean"]
+        == negative_rules[fact["condition"]]["condition"]["expected_boolean"]
     )
     partial = {
         **negative,

@@ -79,7 +79,11 @@ Verpflichtung begründen. Fehlende Aussagen erzeugen weder Defaults noch Tests.
 definiert die Grenzen; [ADR 0017](architecture/decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.md)
 materialisiert den ersten vertikalen Schnitt und
 [ADR 0018](architecture/decisions/0018-select-next-fact-question-from-current-fact-gaps.md)
-ergänzt die deterministische Auswahl der nächsten Frage. Das Decision-Profil normalisiert
+ergänzt die deterministische Auswahl der nächsten Frage,
+[ADR 0019](architecture/decisions/0019-evaluate-evidence-requirements-separately-from-conditions.md)
+die getrennte Nachweisauswertung und
+[ADR 0020](architecture/decisions/0020-select-rule-set-version-only-from-validity-and-decision-date.md)
+die historische Versionsauswahl. Das Decision-Profil normalisiert
 die autorisierten Aussagen in ein typisiertes, unveränderliches **Explicit
 Decision and Obligation Model**. Für diese und weitere Schnitte gelten folgende
 Regeln:
@@ -98,8 +102,10 @@ Regeln:
 - Mehrdeutige Specs, widersprüchliche Facts, eine nicht eindeutig anwendbare
   Rule Set Version oder mehrere unvereinbare Schlussfolgerungen sind Fehler.
   Sie dürfen nicht als `unknown` kaschiert werden.
-- Decision Date und Rule Set Version werden explizit angegeben. Es gibt keinen
-  impliziten Standard für „heute“, „aktuell“ oder „neueste Version“.
+- Decision Date und stabile Rule-Set-Identität werden explizit angegeben. Die
+  Rule Set Version wird ausschließlich aus deklarierten Validity Periods
+  ausgewählt. Es gibt keinen impliziten Standard für „heute“, „aktuell“ oder
+  „neueste Version“.
 - Die Transformation externer Dokumente in autorisierte Specs ist zunächst ein
   menschlich kuratierter Schritt außerhalb der deterministischen Kompilierung.
   Weder Scraping noch ein Sprachmodell darf dabei stillschweigend Teil des
@@ -157,9 +163,11 @@ Timeout und Prozessbaum-Cleanup sind beobachtbare Protokolleigenschaften.
 Python, ein bestimmtes CLI-Framework, RDF, HTTP und die interne Auswertung des
 kompilierten Vertrags sind keine Produktanforderungen.
 
-Der Request benennt den Decision Contract, die Rule Set Version und das
+Der Request benennt den Decision Contract, das stabile Rule Set und das
 Decision Date explizit und trägt die Case Facts an den kompilierten JSON
-Pointers. Das Result benennt Outcome, Condition Evaluations, decisive Rules,
+Pointers. Eine Rule Set Version im Request ist unzulässig; sie wird nach
+Version Selection Conventions v1 aus dem Datum abgeleitet. Das Result benennt
+die gewählte Version und das Datum sowie Outcome, Condition Evaluations, decisive Rules,
 Fact Gaps, höchstens eine Next Question, Provenance, menschliche Explanation
 und den unveränderten Scope Note. Ein Client ergänzt eine Antwort am
 ausgegebenen JSON Pointer und sendet den vollständigen akkumulierten Case in
@@ -246,7 +254,8 @@ nicht geraten, sondern als nicht unterstützte Eingabe abgelehnt.
 ## Decision Conventions v1
 
 Der erste Decision-Schnitt unterstützt ausschließlich einen expliziten
-`sdo:DecisionContract` mit genau einer gepinnten `sdo:RuleSetVersion` und
+`sdo:DecisionContract` mit mindestens einer vollständig beschriebenen
+`sdo:RuleSetVersion` desselben stabilen Rule Sets und
 `sdo:requiresAllRules true`:
 
 - Jede Rule verweist auf genau eine Condition, ein eindeutiges
@@ -271,8 +280,32 @@ Der erste Decision-Schnitt unterstützt ausschließlich einen expliziten
 
 Der Compiler erzeugt aus diesem Modell `generated/decision-contract.json`,
 Black-box-Tests, Work Graph und Issue-Texte. Die erste Konvention umfasst keine
-automatische Quellenaufnahme, Disjunktionen, numerische Regeln, mehrere
-anwendbare Versionen oder Obligationsaktivierung.
+automatische Quellenaufnahme, Disjunktionen, numerische Regeln oder
+Obligationsaktivierung. Mehrere deklarierte Versionen sind erlaubt; mehr als
+eine anwendbare Version ist ein Fehler.
+
+## Version Selection Conventions v1
+
+Jede Rule Set Version nennt explizit ihre stabile Rule-Set-Identität, ein
+Versionslabel, `validFrom`, optional `validUntil` und eine eigene Source
+Citation, deren Source Revision denselben Gültigkeitsbeginn ausweist. Rules und
+Evidence Requirements gehören zu genau einer Version und zitieren deren Source
+Revision. Validity Periods sind halboffen: `validFrom` ist einschließlich,
+`validUntil` ausschließlich; ein fehlendes `validUntil` bezeichnet aufgrund
+dieser benannten Konvention ein offenes Ende.
+
+Der Compiler lehnt überlappende Perioden ab. Für jeden Conformance Case muss
+genau ein Decision Date angegeben sein und genau eine Version treffen.
+`expectsRuleSetVersion` ist nur die Test-Oracle für die abgeleitete Auswahl.
+Fehlende Daten, Lücken, Überlappungen, verschiedene stabile Rule Sets oder
+widersprüchliche Oracles brechen die Kompilierung mit Diagnose ab.
+
+Ein Decision Request enthält die stabile Rule-Set-Identität und das Decision
+Date, nicht die Version. Das Decision Result enthält Versionsidentität,
+Versionslabel und das unveränderte Decision Date. Weder Compiler noch Decision
+Product verwenden Laufzeitdatum, Versionsreihenfolge oder „latest“ als
+Fallback. Version Selection Cases und Compiler-Black-box-Tests beweisen die
+historische Auswahl sowie die unterstützten Fehlerfälle.
 
 ## Question Selection Conventions v1
 

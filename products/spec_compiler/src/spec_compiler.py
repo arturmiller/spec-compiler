@@ -22,6 +22,7 @@ DECISION_CONVENTIONS_VERSION = 1
 DECISION_PROTOCOL_VERSION = 1
 QUESTION_SELECTION_CONVENTIONS_VERSION = 1
 EVIDENCE_EVALUATION_CONVENTIONS_VERSION = 1
+VERSION_SELECTION_CONVENTIONS_VERSION = 1
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
 SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
@@ -96,6 +97,17 @@ class EvidenceRequirement:
 
 
 @dataclass(frozen=True)
+class RuleSetVersion:
+    identifier: str
+    version_label: str
+    valid_from: str
+    valid_until: str | None
+    source: DecisionSource
+    rules: tuple[DecisionRule, ...]
+    evidence_requirements: tuple[EvidenceRequirement, ...]
+
+
+@dataclass(frozen=True)
 class EvidenceAssessment:
     evidence_requirement: str
     accepted: bool
@@ -112,6 +124,7 @@ class SuppliedEvidence:
 class DecisionConformanceCase:
     identifier: str
     decision_date: str
+    expected_rule_set_version: str
     expected_outcome: str
     facts: tuple[tuple[str, bool], ...]
     evidence: tuple[SuppliedEvidence, ...]
@@ -123,9 +136,7 @@ class ExplicitDecisionAndObligationModel:
     product: str
     decision_contract: str
     rule_set: str
-    rule_set_version: str
-    valid_from: str
-    valid_until: str | None
+    rule_set_versions: tuple[RuleSetVersion, ...]
     positive_outcome: str
     positive_outcome_code: str
     negative_outcome: str
@@ -133,10 +144,9 @@ class ExplicitDecisionAndObligationModel:
     unknown_outcome: str
     unknown_outcome_code: str
     scope_note: str
-    rules: tuple[DecisionRule, ...]
-    evidence_requirements: tuple[EvidenceRequirement, ...]
     conformance_cases: tuple[DecisionConformanceCase, ...]
     question_flow_case: str
+    version_selection_cases: tuple[str, ...]
 
 
 def one(graph: Graph, subject, predicate):
@@ -548,14 +558,10 @@ def read_decision_model(
         )
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
-        raise ValueError(
-            "Decision Protocol product must be a schema:SoftwareApplication"
-        )
+        raise ValueError("Decision Protocol product must be a schema:SoftwareApplication")
     contract = one(graph, product, SCO.implementsDecisionContract)
     if (contract, RDF.type, SDO.DecisionContract) not in graph:
-        raise ValueError(
-            "Decision product contract must be an sdo:DecisionContract"
-        )
+        raise ValueError("Decision product contract must be an sdo:DecisionContract")
     if not _boolean_value(
         one(graph, contract, SDO.requiresAllRules),
         f"Decision Contract {contract} requiresAllRules",
@@ -565,98 +571,58 @@ def read_decision_model(
             "require all Rules"
         )
 
-    version = one(graph, contract, SDO.usesRuleSetVersion)
-    if (version, RDF.type, SDO.RuleSetVersion) not in graph:
-        raise ValueError(
-            f"Decision Contract {contract} must use an sdo:RuleSetVersion"
-        )
-    rule_set = one(graph, version, DCTERMS.isVersionOf)
-    if (rule_set, RDF.type, SDO.RuleSet) not in graph:
-        raise ValueError(
-            f"Rule Set Version {version} must identify an sdo:RuleSet"
-        )
-    valid_from = _date_value(
-        one(graph, version, SDO.validFrom),
-        f"Rule Set Version {version} validFrom",
-    )
-    valid_until_values = list(graph.objects(version, SDO.validUntil))
-    if len(valid_until_values) > 1:
-        raise ValueError(
-            f"Expected at most one {SDO.validUntil} on {version}"
-        )
-    valid_until = (
-        _date_value(
-            valid_until_values[0], f"Rule Set Version {version} validUntil"
-        )
-        if valid_until_values
-        else None
-    )
-    if valid_until is not None and valid_until <= valid_from:
-        raise ValueError(
-            f"Rule Set Version {version} validUntil must be after validFrom"
-        )
-
-    positive_outcome_node = one(graph, contract, SDO.positiveOutcome)
-    negative_outcome_node = one(graph, contract, SDO.negativeOutcome)
-    unknown_outcome_node = one(graph, contract, SDO.unknownOutcome)
-    positive_outcome = str(positive_outcome_node)
-    negative_outcome = str(negative_outcome_node)
-    unknown_outcome = str(unknown_outcome_node)
-    outcomes = {positive_outcome, negative_outcome, unknown_outcome}
+    outcome_nodes = {
+        "positive": one(graph, contract, SDO.positiveOutcome),
+        "negative": one(graph, contract, SDO.negativeOutcome),
+        "unknown": one(graph, contract, SDO.unknownOutcome),
+    }
+    outcomes = {str(node) for node in outcome_nodes.values()}
     if len(outcomes) != 3:
         raise ValueError("Decision Contract outcomes must be three distinct IRIs")
-    for outcome_node in (
-        positive_outcome_node,
-        negative_outcome_node,
-        unknown_outcome_node,
-    ):
-        if (outcome_node, RDF.type, SDO.DecisionOutcome) not in graph:
-            raise ValueError(
-                f"Decision outcome {outcome_node} must be an sdo:DecisionOutcome"
-            )
+    for node in outcome_nodes.values():
+        if (node, RDF.type, SDO.DecisionOutcome) not in graph:
+            raise ValueError(f"Decision outcome {node} must be an sdo:DecisionOutcome")
     outcome_codes = {
-        positive_outcome: str(one(graph, positive_outcome_node, SDO.outcomeCode)),
-        negative_outcome: str(one(graph, negative_outcome_node, SDO.outcomeCode)),
-        unknown_outcome: str(one(graph, unknown_outcome_node, SDO.outcomeCode)),
+        str(node): str(one(graph, node, SDO.outcomeCode))
+        for node in outcome_nodes.values()
     }
     if len(set(outcome_codes.values())) != 3 or any(
         not SQL_IDENTIFIER.fullmatch(code) for code in outcome_codes.values()
     ):
-        raise ValueError(
-            "Decision outcome codes must be distinct safe identifiers"
-        )
+        raise ValueError("Decision outcome codes must be distinct safe identifiers")
+    positive_outcome = str(outcome_nodes["positive"])
+    negative_outcome = str(outcome_nodes["negative"])
+    unknown_outcome = str(outcome_nodes["unknown"])
 
-    rule_nodes = sorted(graph.objects(version, SDO.hasRule), key=str)
-    if not rule_nodes:
-        raise ValueError("Decision Rule Set Version must contain at least one Rule")
-    rules = []
-    pointers = set()
-    conditions = set()
-    questions = set()
-    question_priorities = set()
-    for rule_node in rule_nodes:
-        if (rule_node, RDF.type, SDO.Rule) not in graph:
-            raise ValueError(f"Rule Set member {rule_node} must be an sdo:Rule")
-        condition_node = one(graph, rule_node, SDO.condition)
+    version_nodes = sorted(graph.objects(contract, SDO.usesRuleSetVersion), key=str)
+    if not version_nodes:
+        raise ValueError(
+            f"Decision Contract {contract} must declare at least one "
+            "sdo:usesRuleSetVersion"
+        )
+    condition_cache: dict[str, DecisionCondition] = {}
+    evidence_condition_cache: dict[str, EvidenceApplicabilityCondition] = {}
+    pointer_owners: dict[str, str] = {}
+    question_owners: dict[str, str] = {}
+    priority_owners: dict[int, str] = {}
+    rule_ids: set[str] = set()
+    requirement_ids: set[str] = set()
+    parsed_versions = []
+    stable_rule_set = None
+
+    def read_rule_condition(condition_node) -> DecisionCondition:
+        condition_id = str(condition_node)
+        if condition_id in condition_cache:
+            return condition_cache[condition_id]
         if (condition_node, RDF.type, SDO.Condition) not in graph:
             raise ValueError(
-                f"Decision Rule {rule_node} must reference an sdo:Condition"
+                f"Decision Rule Condition {condition_node} must be an sdo:Condition"
             )
-        condition_id = str(condition_node)
-        if condition_id in conditions:
-            raise ValueError(
-                f"Decision Condition {condition_node} is used by more than one Rule"
-            )
-        conditions.add(condition_id)
         pointer = _json_pointer(str(one(graph, condition_node, SCO.inputJsonPointer)))
-        if pointer in pointers:
-            raise ValueError(
-                f"Decision Conditions must not share input pointer {pointer}"
-            )
-        pointers.add(pointer)
-        question_nodes = list(
-            graph.subjects(SDO.elicitsCondition, condition_node)
-        )
+        if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
+            raise ValueError(f"Decision Conditions must not share input pointer {pointer}")
+        pointer_owners[pointer] = condition_id
+        question_nodes = list(graph.subjects(SDO.elicitsCondition, condition_node))
         if len(question_nodes) != 1:
             raise ValueError(
                 f"Decision Condition {condition_node} must have exactly one "
@@ -664,25 +630,21 @@ def read_decision_model(
             )
         question_node = question_nodes[0]
         if (question_node, RDF.type, SDO.FactQuestion) not in graph:
-            raise ValueError(
-                f"Question {question_node} must be an sdo:FactQuestion"
-            )
+            raise ValueError(f"Question {question_node} must be an sdo:FactQuestion")
         question_id = str(question_node)
-        if question_id in questions:
-            raise ValueError(
-                f"Fact Question {question_node} elicits more than one Condition"
-            )
-        questions.add(question_id)
-        question_priority = _positive_integer_value(
+        if question_id in question_owners and question_owners[question_id] != condition_id:
+            raise ValueError(f"Fact Question {question_node} elicits more than one Condition")
+        question_owners[question_id] = condition_id
+        priority = _positive_integer_value(
             one(graph, question_node, SDO.questionPriority),
             f"Fact Question {question_node} priority",
         )
-        if question_priority in question_priorities:
+        if priority in priority_owners and priority_owners[priority] != condition_id:
             raise ValueError(
                 "Fact Question priorities must be unique within a Decision "
-                f"Contract: {question_priority}"
+                f"Contract: {priority}"
             )
-        question_priorities.add(question_priority)
+        priority_owners[priority] = condition_id
         condition = DecisionCondition(
             identifier=condition_id,
             fact_property=str(one(graph, condition_node, SDO.factProperty)),
@@ -694,155 +656,246 @@ def read_decision_model(
             question=FactQuestion(
                 identifier=question_id,
                 text=_required_text(
-                    graph,
-                    question_node,
-                    SDO.questionText,
+                    graph, question_node, SDO.questionText,
                     f"Fact Question {question_node} text",
                 ),
-                priority=question_priority,
+                priority=priority,
             ),
         )
-        citation = one(graph, rule_node, SDO.sourceCitation)
-        rules.append(
-            DecisionRule(
-                identifier=str(rule_node),
-                condition=condition,
-                source=_read_decision_source(graph, citation),
-            )
-        )
-    immutable_rules = tuple(rules)
+        condition_cache[condition_id] = condition
+        return condition
 
-    evidence_requirement_nodes = sorted(
-        graph.objects(contract, SDO.hasEvidenceRequirement), key=str
-    )
-    evidence_requirements = []
-    evidence_conditions = {}
-    for requirement_node in evidence_requirement_nodes:
-        if (requirement_node, RDF.type, SDO.EvidenceRequirement) not in graph:
+    def read_evidence_condition(condition_node) -> EvidenceApplicabilityCondition:
+        condition_id = str(condition_node)
+        if condition_id in evidence_condition_cache:
+            return evidence_condition_cache[condition_id]
+        if condition_id in condition_cache:
             raise ValueError(
-                f"Decision Contract member {requirement_node} must be an "
-                "sdo:EvidenceRequirement"
+                f"Evidence applicability Condition {condition_node} must be "
+                "separate from Rule Conditions"
             )
-        supports_condition = str(
-            one(graph, requirement_node, SDO.supportsCondition)
+        if (condition_node, RDF.type, SDO.Condition) not in graph:
+            raise ValueError(
+                f"Evidence applicability member {condition_node} must be an "
+                "sdo:Condition"
+            )
+        pointer = _json_pointer(str(one(graph, condition_node, SCO.inputJsonPointer)))
+        if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
+            raise ValueError(f"Conditions must not share input pointer {pointer}")
+        pointer_owners[pointer] = condition_id
+        condition = EvidenceApplicabilityCondition(
+            identifier=condition_id,
+            fact_property=str(one(graph, condition_node, SDO.factProperty)),
+            input_json_pointer=pointer,
+            expected_boolean=_boolean_value(
+                one(graph, condition_node, SDO.expectedBoolean),
+                f"Evidence applicability Condition {condition_node} expectedBoolean",
+            ),
         )
-        if supports_condition not in conditions:
+        evidence_condition_cache[condition_id] = condition
+        return condition
+
+    for version_node in version_nodes:
+        if (version_node, RDF.type, SDO.RuleSetVersion) not in graph:
             raise ValueError(
-                f"Evidence Requirement {requirement_node} must support a "
-                "Condition used by a Rule"
+                f"Decision Contract {contract} member {version_node} must be an "
+                "sdo:RuleSetVersion"
             )
-        required_evidence_type_node = one(
-            graph, requirement_node, SDO.requiredEvidenceType
+        rule_set = one(graph, version_node, DCTERMS.isVersionOf)
+        if (rule_set, RDF.type, SDO.RuleSet) not in graph:
+            raise ValueError(f"Rule Set Version {version_node} must identify an sdo:RuleSet")
+        if stable_rule_set is None:
+            stable_rule_set = rule_set
+        elif rule_set != stable_rule_set:
+            raise ValueError(
+                f"Rule Set Versions on {contract} must identify one stable Rule Set"
+            )
+        version_label = _required_text(
+            graph, version_node, OWL.versionInfo,
+            f"Rule Set Version {version_node} version label",
         )
-        if not isinstance(required_evidence_type_node, URIRef):
-            raise ValueError(
-                f"Required Evidence type {required_evidence_type_node} must be "
-                "an IRI"
-            )
-        applicability_nodes = sorted(
-            graph.objects(requirement_node, SDO.applicabilityCondition), key=str
+        valid_from = _date_value(
+            one(graph, version_node, SDO.validFrom),
+            f"Rule Set Version {version_node} validFrom",
         )
-        if not applicability_nodes:
-            raise ValueError(
-                f"Evidence Requirement {requirement_node} must declare at least "
-                "one applicability Condition"
+        until_values = list(graph.objects(version_node, SDO.validUntil))
+        if len(until_values) > 1:
+            raise ValueError(f"Expected at most one {SDO.validUntil} on {version_node}")
+        valid_until = (
+            _date_value(
+                until_values[0], f"Rule Set Version {version_node} validUntil"
             )
-        applicability_conditions = []
-        for condition_node in applicability_nodes:
-            if (condition_node, RDF.type, SDO.Condition) not in graph:
+            if until_values else None
+        )
+        if valid_until is not None and valid_until <= valid_from:
+            raise ValueError(
+                f"Rule Set Version {version_node} validUntil must be after validFrom"
+            )
+        version_source = _read_decision_source(
+            graph, one(graph, version_node, SDO.versionSourceCitation)
+        )
+        if version_source.valid_from != valid_from:
+            raise ValueError(
+                f"Rule Set Version {version_node} validFrom must equal its "
+                "Source Revision validFrom"
+            )
+
+        rules = []
+        version_conditions = set()
+        for rule_node in sorted(graph.objects(version_node, SDO.hasRule), key=str):
+            if (rule_node, RDF.type, SDO.Rule) not in graph:
+                raise ValueError(f"Rule Set member {rule_node} must be an sdo:Rule")
+            rule_id = str(rule_node)
+            if rule_id in rule_ids:
+                raise ValueError(f"Decision Rule {rule_node} belongs to more than one version")
+            rule_ids.add(rule_id)
+            condition = read_rule_condition(one(graph, rule_node, SDO.condition))
+            if condition.identifier in version_conditions:
                 raise ValueError(
-                    f"Evidence applicability member {condition_node} must be an "
-                    "sdo:Condition"
+                    f"Decision Condition {condition.identifier} is used by more "
+                    f"than one Rule in Rule Set Version {version_node}"
                 )
-            condition_id = str(condition_node)
-            if condition_id in conditions:
+            version_conditions.add(condition.identifier)
+            source = _read_decision_source(
+                graph, one(graph, rule_node, SDO.sourceCitation)
+            )
+            if source.source_revision != version_source.source_revision:
                 raise ValueError(
-                    f"Evidence applicability Condition {condition_node} must be "
-                    "separate from Rule Conditions"
+                    f"Decision Rule {rule_node} must cite the Source Revision "
+                    f"selected by Rule Set Version {version_node}"
                 )
-            if condition_id in evidence_conditions:
-                condition = evidence_conditions[condition_id]
-            else:
-                pointer = _json_pointer(
-                    str(one(graph, condition_node, SCO.inputJsonPointer))
+            rules.append(DecisionRule(rule_id, condition, source))
+        if not rules:
+            raise ValueError(f"Rule Set Version {version_node} must contain at least one Rule")
+
+        requirements = []
+        for requirement_node in sorted(
+            graph.objects(version_node, SDO.hasEvidenceRequirement), key=str
+        ):
+            if (requirement_node, RDF.type, SDO.EvidenceRequirement) not in graph:
+                raise ValueError(
+                    f"Rule Set Version member {requirement_node} must be an "
+                    "sdo:EvidenceRequirement"
                 )
-                if pointer in pointers:
-                    raise ValueError(
-                        f"Conditions must not share input pointer {pointer}"
-                    )
-                pointers.add(pointer)
-                condition = EvidenceApplicabilityCondition(
-                    identifier=condition_id,
-                    fact_property=str(
-                        one(graph, condition_node, SDO.factProperty)
+            requirement_id = str(requirement_node)
+            if requirement_id in requirement_ids:
+                raise ValueError(
+                    f"Evidence Requirement {requirement_node} belongs to more than one version"
+                )
+            requirement_ids.add(requirement_id)
+            supports = str(one(graph, requirement_node, SDO.supportsCondition))
+            if supports not in version_conditions:
+                raise ValueError(
+                    f"Evidence Requirement {requirement_node} must support a "
+                    "Condition used by its Rule Set Version"
+                )
+            evidence_type = one(graph, requirement_node, SDO.requiredEvidenceType)
+            if not isinstance(evidence_type, URIRef):
+                raise ValueError(f"Required Evidence type {evidence_type} must be an IRI")
+            applicability_nodes = sorted(
+                graph.objects(requirement_node, SDO.applicabilityCondition), key=str
+            )
+            if not applicability_nodes:
+                raise ValueError(
+                    f"Evidence Requirement {requirement_node} must declare at "
+                    "least one applicability Condition"
+                )
+            source = _read_decision_source(
+                graph, one(graph, requirement_node, SDO.evidenceSourceCitation)
+            )
+            if source.source_revision != version_source.source_revision:
+                raise ValueError(
+                    f"Evidence Requirement {requirement_node} must cite the Source "
+                    f"Revision selected by Rule Set Version {version_node}"
+                )
+            requirements.append(
+                EvidenceRequirement(
+                    identifier=requirement_id,
+                    supports_condition=supports,
+                    applicability_conditions=tuple(
+                        read_evidence_condition(node) for node in applicability_nodes
                     ),
-                    input_json_pointer=pointer,
-                    expected_boolean=_boolean_value(
-                        one(graph, condition_node, SDO.expectedBoolean),
-                        f"Evidence applicability Condition {condition_node} "
-                        "expectedBoolean",
-                    ),
+                    required_evidence_type=str(evidence_type),
+                    source=source,
                 )
-                evidence_conditions[condition_id] = condition
-            applicability_conditions.append(condition)
-        citation = one(graph, requirement_node, SDO.evidenceSourceCitation)
-        evidence_requirements.append(
-            EvidenceRequirement(
-                identifier=str(requirement_node),
-                supports_condition=supports_condition,
-                applicability_conditions=tuple(applicability_conditions),
-                required_evidence_type=str(required_evidence_type_node),
-                source=_read_decision_source(graph, citation),
+            )
+        parsed_versions.append(
+            RuleSetVersion(
+                identifier=str(version_node),
+                version_label=version_label,
+                valid_from=valid_from,
+                valid_until=valid_until,
+                source=version_source,
+                rules=tuple(rules),
+                evidence_requirements=tuple(requirements),
             )
         )
-    immutable_evidence_requirements = tuple(evidence_requirements)
-    evidence_requirement_ids = {
-        requirement.identifier for requirement in immutable_evidence_requirements
+
+    versions = tuple(sorted(parsed_versions, key=lambda item: (item.valid_from, item.identifier)))
+    labels = [item.version_label for item in versions]
+    if len(labels) != len(set(labels)):
+        raise ValueError("Rule Set Version labels must be unique within a Decision Contract")
+    for earlier, later in zip(versions, versions[1:]):
+        if earlier.valid_until is None or later.valid_from < earlier.valid_until:
+            raise ValueError(
+                "Rule Set Versions have overlapping validity periods: "
+                f"{earlier.identifier} and {later.identifier}"
+            )
+
+    def version_for_date(value: str, context: str) -> RuleSetVersion:
+        applicable = [
+            item for item in versions
+            if value >= item.valid_from
+            and (item.valid_until is None or value < item.valid_until)
+        ]
+        if len(applicable) != 1:
+            raise ValueError(
+                f"Decision Date {value} for {context} matches "
+                f"{len(applicable)} Rule Set Versions of Rule Set {stable_rule_set}; "
+                "declare non-overlapping validity information that selects exactly one"
+            )
+        return applicable[0]
+
+    all_conditions = set(condition_cache) | set(evidence_condition_cache)
+    all_requirement_ids = {
+        requirement.identifier
+        for version in versions
+        for requirement in version.evidence_requirements
     }
-    all_conditions = conditions | set(evidence_conditions)
-
-    case_nodes = sorted(graph.objects(contract, SDO.hasConformanceCase), key=str)
-    if not case_nodes:
-        raise ValueError(
-            "Decision Contract must declare conformance cases for all outcomes"
-        )
     cases = []
     question_flow_case_ids = []
-    for case_node in case_nodes:
+    version_selection_case_ids = []
+    for case_node in sorted(graph.objects(contract, SDO.hasConformanceCase), key=str):
         if (case_node, RDF.type, SDO.ConformanceCase) not in graph:
-            raise ValueError(
-                f"Decision conformance case {case_node} must be an sdo:ConformanceCase"
-            )
+            raise ValueError(f"Decision conformance case {case_node} must be an sdo:ConformanceCase")
         if one(graph, case_node, SDO.forDecisionContract) != contract:
+            raise ValueError(f"Conformance case {case_node} must reference its Decision Contract")
+        date_values = list(graph.objects(case_node, SDO.decisionDate))
+        if len(date_values) != 1:
             raise ValueError(
-                f"Conformance case {case_node} must reference its Decision Contract"
-            )
-        if one(graph, case_node, SDO.usesRuleSetVersion) != version:
-            raise ValueError(
-                f"Conformance case {case_node} must pin its Rule Set Version"
+                f"Conformance Case {case_node} must declare exactly one Decision Date; "
+                f"got {len(date_values)}"
             )
         decision_date = _date_value(
-            one(graph, case_node, SDO.decisionDate),
-            f"Conformance case {case_node} decisionDate",
+            date_values[0], f"Conformance case {case_node} decisionDate"
         )
-        if decision_date < valid_from or (
-            valid_until is not None and decision_date >= valid_until
-        ):
+        selected_version = version_for_date(decision_date, f"Conformance Case {case_node}")
+        expected_version = one(graph, case_node, SDO.expectsRuleSetVersion)
+        if str(expected_version) != selected_version.identifier:
             raise ValueError(
-                f"Conformance case {case_node} falls outside Rule Set validity"
+                f"Conformance Case {case_node} expects Rule Set Version "
+                f"{expected_version}, but Version Selection Conventions v1 select "
+                f"{selected_version.identifier} from its Decision Date"
             )
         expected_outcome = str(one(graph, case_node, SDO.expectsOutcome))
         if expected_outcome not in outcomes:
-            raise ValueError(
-                f"Conformance case {case_node} uses an undeclared outcome"
-            )
+            raise ValueError(f"Conformance case {case_node} uses an undeclared outcome")
+
         facts = []
         fact_conditions = set()
         for fact in graph.objects(case_node, SDO.hasFact):
             if (fact, RDF.type, SDO.CaseFact) not in graph:
-                raise ValueError(
-                    f"Conformance case fact {fact} must be an sdo:CaseFact"
-                )
+                raise ValueError(f"Conformance case fact {fact} must be an sdo:CaseFact")
             condition = str(one(graph, fact, SDO.forCondition))
             if condition not in all_conditions:
                 raise ValueError(
@@ -854,146 +907,102 @@ def read_decision_model(
                 )
             fact_conditions.add(condition)
             facts.append(
-                (
-                    condition,
-                    _boolean_value(
-                        one(graph, fact, SDO.booleanValue),
-                        f"Conformance case {case_node} Fact value",
-                    ),
-                )
+                (condition, _boolean_value(
+                    one(graph, fact, SDO.booleanValue),
+                    f"Conformance case {case_node} Fact value",
+                ))
             )
         immutable_facts = tuple(sorted(facts))
+
         evidence = []
         evidence_ids = set()
-        for evidence_node in sorted(
-            graph.objects(case_node, SDO.hasEvidence), key=str
-        ):
+        for evidence_node in sorted(graph.objects(case_node, SDO.hasEvidence), key=str):
             if (evidence_node, RDF.type, SDO.Evidence) not in graph:
-                raise ValueError(
-                    f"Supplied Evidence {evidence_node} must be an sdo:Evidence"
-                )
+                raise ValueError(f"Supplied Evidence {evidence_node} must be an sdo:Evidence")
             evidence_id = str(evidence_node)
             if evidence_id in evidence_ids:
-                raise ValueError(
-                    f"Conformance case {case_node} supplies duplicate Evidence "
-                    f"{evidence_node}"
-                )
+                raise ValueError(f"Conformance case {case_node} supplies duplicate Evidence {evidence_node}")
             evidence_ids.add(evidence_id)
             evidence_type = one(graph, evidence_node, SDO.evidenceType)
             if not isinstance(evidence_type, URIRef):
-                raise ValueError(
-                    f"Supplied Evidence type {evidence_type} must be an IRI"
-                )
+                raise ValueError(f"Supplied Evidence type {evidence_type} must be an IRI")
             assessments = []
             assessed_requirements = set()
             for assessment_node in sorted(
                 graph.objects(evidence_node, SDO.hasEvidenceAssessment), key=str
             ):
-                if (
-                    assessment_node,
-                    RDF.type,
-                    SDO.EvidenceAssessment,
-                ) not in graph:
+                if (assessment_node, RDF.type, SDO.EvidenceAssessment) not in graph:
                     raise ValueError(
-                        f"Evidence assessment {assessment_node} must be an "
-                        "sdo:EvidenceAssessment"
+                        f"Evidence assessment {assessment_node} must be an sdo:EvidenceAssessment"
                     )
-                assessed_requirement = str(
-                    one(
-                        graph,
-                        assessment_node,
-                        SDO.assessesEvidenceRequirement,
-                    )
-                )
-                if assessed_requirement not in evidence_requirement_ids:
+                assessed = str(one(graph, assessment_node, SDO.assessesEvidenceRequirement))
+                if assessed not in all_requirement_ids:
                     raise ValueError(
-                        f"Evidence assessment {assessment_node} references an "
-                        "unknown Evidence Requirement"
+                        f"Evidence assessment {assessment_node} references an unknown Evidence Requirement"
                     )
-                if assessed_requirement in assessed_requirements:
+                if assessed in assessed_requirements:
                     raise ValueError(
-                        f"Evidence {evidence_node} has conflicting assessments "
-                        f"for {assessed_requirement}"
+                        f"Evidence {evidence_node} has conflicting assessments for {assessed}"
                     )
-                assessed_requirements.add(assessed_requirement)
-                assessments.append(
-                    EvidenceAssessment(
-                        evidence_requirement=assessed_requirement,
-                        accepted=_boolean_value(
-                            one(graph, assessment_node, SDO.accepted),
-                            f"Evidence assessment {assessment_node} accepted",
-                        ),
-                    )
-                )
-            evidence.append(
-                SuppliedEvidence(
-                    identifier=evidence_id,
-                    evidence_type=str(evidence_type),
-                    assessments=tuple(assessments),
-                )
-            )
+                assessed_requirements.add(assessed)
+                assessments.append(EvidenceAssessment(
+                    evidence_requirement=assessed,
+                    accepted=_boolean_value(
+                        one(graph, assessment_node, SDO.accepted),
+                        f"Evidence assessment {assessment_node} accepted",
+                    ),
+                ))
+            evidence.append(SuppliedEvidence(
+                identifier=evidence_id,
+                evidence_type=str(evidence_type),
+                assessments=tuple(assessments),
+            ))
         immutable_evidence = tuple(evidence)
-        expected_evidence_statuses = []
-        expected_requirements = set()
+
+        selected_requirement_ids = {
+            requirement.identifier
+            for requirement in selected_version.evidence_requirements
+        }
+        statuses = []
+        seen_expectations = set()
         status_by_node = {
             str(SDO.EvidenceRequirementFulfilled): "fulfilled",
             str(SDO.EvidenceRequirementMissing): "missing",
             str(SDO.EvidenceRequirementNotApplicable): "not_applicable",
         }
-        for expectation_node in graph.objects(
-            case_node, SDO.hasEvidenceExpectation
-        ):
-            if (
-                expectation_node,
-                RDF.type,
-                SDO.EvidenceExpectation,
-            ) not in graph:
+        for expectation_node in graph.objects(case_node, SDO.hasEvidenceExpectation):
+            if (expectation_node, RDF.type, SDO.EvidenceExpectation) not in graph:
                 raise ValueError(
-                    f"Evidence expectation {expectation_node} must be an "
-                    "sdo:EvidenceExpectation"
+                    f"Evidence expectation {expectation_node} must be an sdo:EvidenceExpectation"
                 )
-            expected_requirement = str(
-                one(
-                    graph,
-                    expectation_node,
-                    SDO.expectsEvidenceRequirement,
-                )
-            )
-            if expected_requirement not in evidence_requirement_ids:
+            requirement_id = str(one(
+                graph, expectation_node, SDO.expectsEvidenceRequirement
+            ))
+            if requirement_id not in selected_requirement_ids:
                 raise ValueError(
                     f"Evidence expectation {expectation_node} references an "
-                    "unknown Evidence Requirement"
+                    "Evidence Requirement outside the selected Rule Set Version"
                 )
-            if expected_requirement in expected_requirements:
+            if requirement_id in seen_expectations:
                 raise ValueError(
                     f"Conformance case {case_node} has conflicting Evidence "
-                    f"Expectations for {expected_requirement}"
+                    f"Expectations for {requirement_id}"
                 )
-            expected_requirements.add(expected_requirement)
-            status_node = str(
-                one(graph, expectation_node, SDO.expectedEvidenceStatus)
-            )
+            seen_expectations.add(requirement_id)
+            status_node = str(one(graph, expectation_node, SDO.expectedEvidenceStatus))
             if status_node not in status_by_node:
                 raise ValueError(
-                    f"Evidence expectation {expectation_node} uses an "
-                    "unsupported Evidence Requirement status"
+                    f"Evidence expectation {expectation_node} uses an unsupported status"
                 )
-            expected_evidence_statuses.append(
-                (expected_requirement, status_by_node[status_node])
-            )
-        if expected_requirements != evidence_requirement_ids:
-            missing = sorted(evidence_requirement_ids - expected_requirements)
+            statuses.append((requirement_id, status_by_node[status_node]))
+        if seen_expectations != selected_requirement_ids:
+            missing = sorted(selected_requirement_ids - seen_expectations)
             raise ValueError(
-                f"Conformance case {case_node} lacks Evidence Expectations for "
-                f"{missing}"
+                f"Conformance case {case_node} lacks Evidence Expectations for {missing}"
             )
-        immutable_expected_evidence_statuses = tuple(
-            sorted(expected_evidence_statuses)
-        )
-        for requirement in immutable_evidence_requirements:
-            expected_status = dict(immutable_expected_evidence_statuses)[
-                requirement.identifier
-            ]
+        immutable_statuses = tuple(sorted(statuses))
+        for requirement in selected_version.evidence_requirements:
+            expected_status = dict(immutable_statuses)[requirement.identifier]
             derived_status = _evidence_status_for_case(
                 requirement, immutable_facts, immutable_evidence
             )
@@ -1004,80 +1013,102 @@ def read_decision_model(
                     f"Conventions v1 derive {derived_status}"
                 )
         derived_outcome = _decision_outcome_for_case(
-            immutable_rules,
-            immutable_facts,
+            selected_version.rules, immutable_facts,
             positive_outcome=positive_outcome,
             negative_outcome=negative_outcome,
             unknown_outcome=unknown_outcome,
         )
         if derived_outcome != expected_outcome:
             raise ValueError(
-                f"Conformance case {case_node} expects {expected_outcome}, "
-                f"but Decision Conventions v1 derives {derived_outcome}"
+                f"Conformance case {case_node} expects {expected_outcome}, but "
+                f"Decision Conventions v1 derives {derived_outcome}"
             )
-        cases.append(
-            DecisionConformanceCase(
-                identifier=str(case_node),
-                decision_date=decision_date,
-                expected_outcome=expected_outcome,
-                facts=immutable_facts,
-                evidence=immutable_evidence,
-                expected_evidence_statuses=immutable_expected_evidence_statuses,
-            )
-        )
+        cases.append(DecisionConformanceCase(
+            identifier=str(case_node),
+            decision_date=decision_date,
+            expected_rule_set_version=selected_version.identifier,
+            expected_outcome=expected_outcome,
+            facts=immutable_facts,
+            evidence=immutable_evidence,
+            expected_evidence_statuses=immutable_statuses,
+        ))
         if (case_node, RDF.type, SDO.QuestionFlowCase) in graph:
             question_flow_case_ids.append(str(case_node))
+        if (case_node, RDF.type, SDO.VersionSelectionCase) in graph:
+            version_selection_case_ids.append(str(case_node))
+
     immutable_cases = tuple(cases)
+    if not immutable_cases:
+        raise ValueError("Decision Contract must declare conformance cases for all outcomes")
     covered_outcomes = {case.expected_outcome for case in immutable_cases}
     if covered_outcomes != outcomes:
-        missing = sorted(outcomes - covered_outcomes)
         raise ValueError(
-            f"Decision Contract conformance cases do not cover outcomes: {missing}"
+            f"Decision Contract conformance cases do not cover outcomes: "
+            f"{sorted(outcomes - covered_outcomes)}"
         )
-    required_evidence_statuses = {"fulfilled", "missing", "not_applicable"}
-    for requirement in immutable_evidence_requirements:
-        covered_evidence_statuses = {
-            status
-            for case in immutable_cases
-            for requirement_id, status in case.expected_evidence_statuses
-            if requirement_id == requirement.identifier
-        }
-        if covered_evidence_statuses != required_evidence_statuses:
-            missing = sorted(
-                required_evidence_statuses - covered_evidence_statuses
-            )
-            raise ValueError(
-                f"Conformance cases do not cover Evidence Requirement "
-                f"{requirement.identifier} statuses: {missing}"
-            )
+    required_statuses = {"fulfilled", "missing", "not_applicable"}
+    for version in versions:
+        selected_cases = [
+            case for case in immutable_cases
+            if case.expected_rule_set_version == version.identifier
+        ]
+        for requirement in version.evidence_requirements:
+            covered = {
+                status
+                for case in selected_cases
+                for requirement_id, status in case.expected_evidence_statuses
+                if requirement_id == requirement.identifier
+            }
+            if covered != required_statuses:
+                raise ValueError(
+                    f"Conformance cases do not cover Evidence Requirement "
+                    f"{requirement.identifier} statuses: {sorted(required_statuses - covered)}"
+                )
     if len(question_flow_case_ids) != 1:
         raise ValueError(
             "Decision Contract must declare exactly one sdo:QuestionFlowCase, "
             f"got {len(question_flow_case_ids)}"
         )
     question_flow_case = next(
-        case
-        for case in immutable_cases
+        case for case in immutable_cases
         if case.identifier == question_flow_case_ids[0]
     )
+    question_version = next(
+        version for version in versions
+        if version.identifier == question_flow_case.expected_rule_set_version
+    )
     if question_flow_case.expected_outcome != positive_outcome:
-        raise ValueError(
-            "Question Flow Case must have the Decision Contract's positive outcome"
-        )
-    if not conditions.issubset(
+        raise ValueError("Question Flow Case must have the Decision Contract's positive outcome")
+    question_conditions = {rule.condition.identifier for rule in question_version.rules}
+    if not question_conditions.issubset(
         {condition for condition, _ in question_flow_case.facts}
     ):
+        raise ValueError("Question Flow Case must supply one Fact for every Rule Condition")
+
+    selection_cases = [
+        case for case in immutable_cases
+        if case.identifier in version_selection_case_ids
+    ]
+    has_historical_pair = any(
+        left.facts == right.facts
+        and left.evidence == right.evidence
+        and left.expected_rule_set_version != right.expected_rule_set_version
+        and left.expected_outcome != right.expected_outcome
+        for index, left in enumerate(selection_cases)
+        for right in selection_cases[index + 1:]
+    )
+    if version_selection_case_ids and not has_historical_pair:
         raise ValueError(
-            "Question Flow Case must supply one Fact for every Rule Condition"
+            "Version Selection Conventions v1 require two Version Selection "
+            "Cases with identical facts, different selected versions, and "
+            "different outcomes"
         )
 
     return ExplicitDecisionAndObligationModel(
         product=str(product),
         decision_contract=str(contract),
-        rule_set=str(rule_set),
-        rule_set_version=str(version),
-        valid_from=valid_from,
-        valid_until=valid_until,
+        rule_set=str(stable_rule_set),
+        rule_set_versions=versions,
         positive_outcome=positive_outcome,
         positive_outcome_code=outcome_codes[positive_outcome],
         negative_outcome=negative_outcome,
@@ -1087,10 +1118,9 @@ def read_decision_model(
         scope_note=_required_text(
             graph, contract, SDO.scopeNote, "Decision Contract scope note"
         ),
-        rules=immutable_rules,
-        evidence_requirements=immutable_evidence_requirements,
         conformance_cases=immutable_cases,
         question_flow_case=question_flow_case.identifier,
+        version_selection_cases=tuple(version_selection_case_ids),
     )
 
 
@@ -1164,46 +1194,8 @@ def build_decision_contract(
 ) -> dict:
     """Render the typed decision model as a deterministic machine contract."""
     source_revisions = {}
-    rules = []
-    for rule in model.rules:
-        source = rule.source
-        source_revisions[source.source_revision] = {
-            "id": source.source_revision,
-            "source": source.source,
-            "title": source.title,
-            "identifier": source.identifier,
-            "version": source.version,
-            "valid_from": source.valid_from,
-            "content_url": source.content_url,
-            "content_sha256": source.content_sha256,
-            "byte_size": source.byte_size,
-        }
-        rules.append(
-            {
-                "id": rule.identifier,
-                "condition": {
-                    "id": rule.condition.identifier,
-                    "fact_property": rule.condition.fact_property,
-                    "input_json_pointer": rule.condition.input_json_pointer,
-                    "expected_boolean": rule.condition.expected_boolean,
-                    "question": {
-                        "id": rule.condition.question.identifier,
-                        "text": rule.condition.question.text,
-                        "priority": rule.condition.question.priority,
-                    },
-                },
-                "source": {
-                    "citation": source.citation,
-                    "source_revision": source.source_revision,
-                    "locator": source.locator,
-                    "statement": source.statement,
-                },
-            }
-        )
 
-    evidence_requirements = []
-    for requirement in model.evidence_requirements:
-        source = requirement.source
+    def remember_source(source: DecisionSource) -> None:
         source_revisions[source.source_revision] = {
             "id": source.source_revision,
             "source": source.source,
@@ -1215,26 +1207,68 @@ def build_decision_contract(
             "content_sha256": source.content_sha256,
             "byte_size": source.byte_size,
         }
-        evidence_requirements.append(
-            {
-                "id": requirement.identifier,
-                "supports_condition": requirement.supports_condition,
-                "applicability_conditions": [
-                    {
-                        "id": condition.identifier,
-                        "fact_property": condition.fact_property,
-                        "input_json_pointer": condition.input_json_pointer,
-                        "expected_boolean": condition.expected_boolean,
-                    }
-                    for condition in requirement.applicability_conditions
-                ],
-                "required_evidence_type": requirement.required_evidence_type,
-                "source": {
-                    "citation": source.citation,
-                    "source_revision": source.source_revision,
-                    "locator": source.locator,
-                    "statement": source.statement,
+
+    def render_source(source: DecisionSource) -> dict:
+        remember_source(source)
+        return {
+            "citation": source.citation,
+            "source_revision": source.source_revision,
+            "locator": source.locator,
+            "statement": source.statement,
+        }
+
+    def render_rule(rule: DecisionRule) -> dict:
+        source = rule.source
+        return {
+            "id": rule.identifier,
+            "condition": {
+                "id": rule.condition.identifier,
+                "fact_property": rule.condition.fact_property,
+                "input_json_pointer": rule.condition.input_json_pointer,
+                "expected_boolean": rule.condition.expected_boolean,
+                "question": {
+                    "id": rule.condition.question.identifier,
+                    "text": rule.condition.question.text,
+                    "priority": rule.condition.question.priority,
                 },
+            },
+            "source": render_source(source),
+        }
+
+    def render_requirement(requirement: EvidenceRequirement) -> dict:
+        source = requirement.source
+        return {
+            "id": requirement.identifier,
+            "supports_condition": requirement.supports_condition,
+            "applicability_conditions": [
+                {
+                    "id": condition.identifier,
+                    "fact_property": condition.fact_property,
+                    "input_json_pointer": condition.input_json_pointer,
+                    "expected_boolean": condition.expected_boolean,
+                }
+                for condition in requirement.applicability_conditions
+            ],
+            "required_evidence_type": requirement.required_evidence_type,
+            "source": render_source(source),
+        }
+
+    versions = []
+    for version in model.rule_set_versions:
+        version_source = render_source(version.source)
+        versions.append(
+            {
+                "id": version.identifier,
+                "version": version.version_label,
+                "valid_from": version.valid_from,
+                "valid_until": version.valid_until,
+                "source": version_source,
+                "requires_all_rules": True,
+                "rules": [render_rule(rule) for rule in version.rules],
+                "evidence_requirements": [
+                    render_requirement(requirement)
+                    for requirement in version.evidence_requirements
+                ],
             }
         )
 
@@ -1248,14 +1282,14 @@ def build_decision_contract(
         "evidence_evaluation_conventions_version": (
             EVIDENCE_EVALUATION_CONVENTIONS_VERSION
         ),
+        "version_selection_conventions_version": (
+            VERSION_SELECTION_CONVENTIONS_VERSION
+        ),
         "product": model.product,
         "decision_contract": model.decision_contract,
         "rule_set": {
             "id": model.rule_set,
-            "version": model.rule_set_version,
-            "valid_from": model.valid_from,
-            "valid_until": model.valid_until,
-            "requires_all_rules": True,
+            "versions": versions,
         },
         "outcomes": {
             "positive": {
@@ -1273,15 +1307,15 @@ def build_decision_contract(
         },
         "scope_note": model.scope_note,
         "question_flow_case": model.question_flow_case,
+        "version_selection_cases": list(model.version_selection_cases),
         "source_revisions": [
             source_revisions[key] for key in sorted(source_revisions)
         ],
-        "rules": rules,
-        "evidence_requirements": evidence_requirements,
         "conformance_cases": [
             {
                 "id": case.identifier,
                 "decision_date": case.decision_date,
+                "expected_rule_set_version": case.expected_rule_set_version,
                 "expected_outcome": case.expected_outcome,
                 "facts": [
                     {"condition": condition, "value": value}
@@ -1318,8 +1352,14 @@ def build_decision_contract(
 
 def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
     runtime_id = "kfw-458.decision-runtime"
+    selection_id = "kfw-458.version-selection"
     evaluation_id = "kfw-458.applicant-eligibility"
     provenance_id = "kfw-458.result-provenance"
+    evidence_requirements = [
+        requirement
+        for version in contract["rule_set"]["versions"]
+        for requirement in version["evidence_requirements"]
+    ]
     work_items = [
         {
             "id": runtime_id,
@@ -1342,10 +1382,35 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
             ],
         },
         {
+            "id": selection_id,
+            "title": "Select the Rule Set Version by Decision Date",
+            "goal": (
+                "Reproduce decisions in their declared temporal context without "
+                "a current-date or latest-version default."
+            ),
+            "depends_on": [runtime_id],
+            "obligations": [
+                "The Decision Request identifies the stable Rule Set and an explicit ISO Decision Date.",
+                "Exactly one Rule Set Version is selected from authored half-open validity intervals.",
+                "Every Decision Result reports the selected Rule Set Version and Decision Date.",
+                "Missing dates, uncovered dates, caller-selected versions, and overlapping validity intervals fail with actionable diagnostics.",
+                "Identical facts produce the two source-backed historical outcomes declared by the Version Selection Cases.",
+            ],
+            "sources": [
+                "`specs/`: Rule Set Versions, validity intervals, version Source Citations, and Version Selection Cases",
+                "Version Selection Conventions v1: date-only, exactly-one applicability",
+            ],
+            "test": f"{test_path}::test_decision_date_selects_historical_rule_set_version",
+            "excluded": [
+                "A silent current-date or latest-version default",
+                "Caller control over the selected Rule Set Version",
+            ],
+        },
+        {
             "id": evaluation_id,
             "title": "Evaluate KfW 458 applicant eligibility",
             "goal": "Return the specified applicant-eligibility outcome for each explicit Case.",
-            "depends_on": [runtime_id],
+            "depends_on": [selection_id],
             "obligations": [
                 "All declared Conditions are evaluated as satisfied, violated, or unknown.",
                 "A violated required Rule yields the declared negative outcome.",
@@ -1446,7 +1511,7 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
             ],
         },
     ]
-    if not contract["evidence_requirements"]:
+    if not evidence_requirements:
         work_items.pop()
     return work_items
 
@@ -1972,24 +2037,34 @@ CONTRACT = json.loads(
         encoding="utf-8"
     )
 )
-RULES_BY_CONDITION = {
-    rule["condition"]["id"]: rule for rule in CONTRACT["rules"]
-}
+VERSIONS = CONTRACT["rule_set"]["versions"]
+VERSIONS_BY_ID = {version["id"]: version for version in VERSIONS}
+ALL_RULES = [rule for version in VERSIONS for rule in version["rules"]]
+ALL_EVIDENCE_REQUIREMENTS = [
+    requirement
+    for version in VERSIONS
+    for requirement in version["evidence_requirements"]
+]
 EVIDENCE_REQUIREMENTS_BY_ID = {
     requirement["id"]: requirement
-    for requirement in CONTRACT["evidence_requirements"]
+    for requirement in ALL_EVIDENCE_REQUIREMENTS
 }
 CONDITIONS_BY_ID = {
-    **{
-        condition_id: rule["condition"]
-        for condition_id, rule in RULES_BY_CONDITION.items()
-    },
+    **{rule["condition"]["id"]: rule["condition"] for rule in ALL_RULES},
     **{
         condition["id"]: condition
-        for requirement in CONTRACT["evidence_requirements"]
+        for requirement in ALL_EVIDENCE_REQUIREMENTS
         for condition in requirement["applicability_conditions"]
     },
 }
+
+
+def _version_for_case(case):
+    return VERSIONS_BY_ID[case["expected_rule_set_version"]]
+
+
+def _rules_by_condition(version):
+    return {rule["condition"]["id"]: rule for rule in version["rules"]}
 
 
 def _set_json_pointer(document, pointer, value):
@@ -2003,7 +2078,7 @@ def _set_json_pointer(document, pointer, value):
 def _request_for_case(case):
     request = {
         "decision_contract": CONTRACT["decision_contract"],
-        "rule_set_version": CONTRACT["rule_set"]["version"],
+        "rule_set": CONTRACT["rule_set"]["id"],
         "decision_date": case["decision_date"],
         "case": {},
         "evidence": json.loads(json.dumps(case.get("evidence", []))),
@@ -2019,10 +2094,11 @@ def _request_for_case(case):
 
 
 def _expected_result(case):
+    version = _version_for_case(case)
     facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
     evaluations = []
     gaps = []
-    for rule in CONTRACT["rules"]:
+    for rule in version["rules"]:
         condition = rule["condition"]
         actual = facts.get(condition["id"])
         if actual is None:
@@ -2055,7 +2131,7 @@ def _expected_result(case):
         decisive = unknown
         outcome_role = "unknown"
     else:
-        decisive = [rule["id"] for rule in CONTRACT["rules"]]
+        decisive = [rule["id"] for rule in version["rules"]]
         outcome_role = "positive"
     outcome = CONTRACT["outcomes"][outcome_role]
     provenance = [
@@ -2066,18 +2142,18 @@ def _expected_result(case):
             "source_locator": rule["source"]["locator"],
             "source_statement": rule["source"]["statement"],
         }
-        for rule in CONTRACT["rules"]
+        for rule in version["rules"]
         if rule["id"] in decisive
     ]
     return outcome, evaluations, decisive, gaps, provenance
 
 
-def _expected_next_question(evaluations):
+def _expected_next_question(evaluations, version):
     if any(item["state"] == "violated" for item in evaluations):
         return None
     unknown_rules = [
         rule
-        for rule in CONTRACT["rules"]
+        for rule in version["rules"]
         if any(
             item["rule"] == rule["id"] and item["state"] == "unknown"
             for item in evaluations
@@ -2110,9 +2186,10 @@ def _expected_next_question(evaluations):
 
 
 def _expected_evidence_evaluations(case):
+    version = _version_for_case(case)
     facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
     result = []
-    for requirement in CONTRACT["evidence_requirements"]:
+    for requirement in version["evidence_requirements"]:
         applicability = []
         for condition in requirement["applicability_conditions"]:
             actual = facts.get(condition["id"])
@@ -2184,14 +2261,18 @@ def _run_case(case):
 def test_generated_contract_covers_all_declared_outcomes():
     assert CONTRACT["question_selection_conventions_version"] == 1
     assert CONTRACT["evidence_evaluation_conventions_version"] == 1
+    assert CONTRACT["version_selection_conventions_version"] == 1
     assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
         outcome["id"] for outcome in CONTRACT["outcomes"].values()
     }
-    assert all(rule["source"]["statement"] for rule in CONTRACT["rules"])
-    assert all(rule["source"]["locator"] for rule in CONTRACT["rules"])
+    assert all(rule["source"]["statement"] for rule in ALL_RULES)
+    assert all(rule["source"]["locator"] for rule in ALL_RULES)
+    assert all(version["source"]["statement"] for version in VERSIONS)
     priorities = [
-        rule["condition"]["question"]["priority"]
-        for rule in CONTRACT["rules"]
+        condition["question"]["priority"]
+        for condition in {
+            rule["condition"]["id"]: rule["condition"] for rule in ALL_RULES
+        }.values()
     ]
     assert len(priorities) == len(set(priorities))
     flow_case = next(
@@ -2199,13 +2280,15 @@ def test_generated_contract_covers_all_declared_outcomes():
         for case in CONTRACT["conformance_cases"]
         if case["id"] == CONTRACT["question_flow_case"]
     )
+    flow_version = _version_for_case(flow_case)
+    flow_rules = _rules_by_condition(flow_version)
     assert flow_case["expected_outcome"] == CONTRACT["outcomes"]["positive"]["id"]
     assert {
         fact["condition"]
         for fact in flow_case["facts"]
-        if fact["condition"] in RULES_BY_CONDITION
-    } == set(RULES_BY_CONDITION)
-    for requirement in CONTRACT["evidence_requirements"]:
+        if fact["condition"] in flow_rules
+    } == set(flow_rules)
+    for requirement in ALL_EVIDENCE_REQUIREMENTS:
         assert {
             expectation["status"]
             for case in CONTRACT["conformance_cases"]
@@ -2216,13 +2299,64 @@ def test_generated_contract_covers_all_declared_outcomes():
         requirement["source"]["statement"]
         and requirement["source"]["locator"]
         and requirement["source"]["citation"]
-        for requirement in CONTRACT["evidence_requirements"]
+        for requirement in ALL_EVIDENCE_REQUIREMENTS
     )
 
 
 def test_decision_product_runtime():
     payload = _run_case(CONTRACT["conformance_cases"][0])
     assert isinstance(payload, dict)
+
+
+def test_decision_date_selects_historical_rule_set_version():
+    cases = [
+        case
+        for case in CONTRACT["conformance_cases"]
+        if case["id"] in CONTRACT["version_selection_cases"]
+    ]
+    assert len(cases) == 2
+    requests = [_request_for_case(case) for case in cases]
+    comparable = []
+    for request in requests:
+        copy = json.loads(json.dumps(request))
+        copy.pop("decision_date")
+        comparable.append(copy)
+    assert comparable[0] == comparable[1]
+
+    results = [_run_case(case) for case in cases]
+    assert {result["rule_set_version"] for result in results} == {
+        case["expected_rule_set_version"] for case in cases
+    }
+    assert len({result["outcome"] for result in results}) == 2
+    for case, result in zip(cases, results):
+        version = _version_for_case(case)
+        assert result["decision_date"] == case["decision_date"]
+        assert result["rule_set_version"] == version["id"]
+        assert result["rule_set_version_label"] == version["version"]
+        assert {
+            item["source_revision"] for item in result["provenance"]
+        } == {version["source"]["source_revision"]}
+
+
+def test_runtime_rejects_missing_uncovered_and_caller_selected_versions():
+    case = CONTRACT["conformance_cases"][0]
+    missing = _request_for_case(case)
+    missing.pop("decision_date")
+    result = run_decision(PRODUCT_ROOT, missing)
+    assert result.returncode != 0
+    assert "must contain an ISO decision_date" in result.output
+
+    uncovered = _request_for_case(case)
+    uncovered["decision_date"] = "2025-12-09"
+    result = run_decision(PRODUCT_ROOT, uncovered)
+    assert result.returncode != 0
+    assert "matches 0 Rule Set Versions" in result.output
+
+    caller_selected = _request_for_case(case)
+    caller_selected["rule_set_version"] = case["expected_rule_set_version"]
+    result = run_decision(PRODUCT_ROOT, caller_selected)
+    assert result.returncode != 0
+    assert "must not select a Rule Set Version" in result.output
 
 
 @pytest.mark.parametrize(
@@ -2232,17 +2366,20 @@ def test_decision_product_runtime():
 )
 def test_declared_decision_outcome(case):
     payload = _run_case(case)
+    version = _version_for_case(case)
     outcome, evaluations, decisive, gaps, provenance = _expected_result(case)
     assert case["expected_outcome"] == outcome["id"]
     assert payload["decision_contract"] == CONTRACT["decision_contract"]
-    assert payload["rule_set_version"] == CONTRACT["rule_set"]["version"]
+    assert payload["rule_set"] == CONTRACT["rule_set"]["id"]
+    assert payload["rule_set_version"] == version["id"]
+    assert payload["rule_set_version_label"] == version["version"]
     assert payload["decision_date"] == case["decision_date"]
     assert payload["outcome"] == outcome["code"]
     assert payload["outcome_id"] == outcome["id"]
     assert payload["condition_evaluations"] == evaluations
     assert payload["decisive_rules"] == decisive
     assert payload["fact_gaps"] == gaps
-    assert payload["next_question"] == _expected_next_question(evaluations)
+    assert payload["next_question"] == _expected_next_question(evaluations, version)
     assert payload["evidence_requirement_evaluations"] == (
         _expected_evidence_evaluations(case)
     )
@@ -2262,11 +2399,9 @@ def test_decision_result_provenance(case):
     assert payload["scope_note"] == CONTRACT["scope_note"]
 
 
-@pytest.mark.skipif(
-    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
-)
+@pytest.mark.skipif(not ALL_EVIDENCE_REQUIREMENTS, reason="no Evidence Requirements")
 def test_evidence_requirements_are_evaluated_separately():
-    requirement = CONTRACT["evidence_requirements"][0]
+    requirement = ALL_EVIDENCE_REQUIREMENTS[0]
     supporting_condition = requirement["supports_condition"]
     cases_by_status = {
         expectation["status"]: case
@@ -2276,7 +2411,7 @@ def test_evidence_requirements_are_evaluated_separately():
         if {
             fact["condition"]: fact["value"] for fact in case["facts"]
         }.get(supporting_condition)
-        == RULES_BY_CONDITION[supporting_condition]["condition"]["expected_boolean"]
+        == _rules_by_condition(_version_for_case(case))[supporting_condition]["condition"]["expected_boolean"]
     }
     assert set(cases_by_status) == {"fulfilled", "missing", "not_applicable"}
     results = {
@@ -2330,9 +2465,7 @@ def test_evidence_requirements_are_evaluated_separately():
         assert evidence_evaluation["supplied_evidence"][0]["classification"] == classification
 
 
-@pytest.mark.skipif(
-    not CONTRACT["evidence_requirements"], reason="no Evidence Requirements"
-)
+@pytest.mark.skipif(not ALL_EVIDENCE_REQUIREMENTS, reason="no Evidence Requirements")
 def test_unaccepted_supplied_evidence_does_not_fulfill_requirement():
     complete = next(
         case
@@ -2361,9 +2494,11 @@ def test_question_driven_interaction_reaches_final_outcome():
         for case in CONTRACT["conformance_cases"]
         if case["id"] == CONTRACT["question_flow_case"]
     )
+    flow_version = _version_for_case(flow_case)
+    flow_rules = _rules_by_condition(flow_version)
     answers = {fact["condition"]: fact["value"] for fact in flow_case["facts"]}
     ordered_rules = sorted(
-        CONTRACT["rules"],
+        flow_version["rules"],
         key=lambda rule: rule["condition"]["question"]["priority"],
     )
     request = _request_for_case(
@@ -2372,7 +2507,7 @@ def test_question_driven_interaction_reaches_final_outcome():
             "facts": [
                 fact
                 for fact in flow_case["facts"]
-                if fact["condition"] not in RULES_BY_CONDITION
+                if fact["condition"] not in flow_rules
             ],
         }
     )
@@ -2389,7 +2524,7 @@ def test_question_driven_interaction_reaches_final_outcome():
         )
         question = payload["next_question"]
         assert question == _expected_next_question(
-            payload["condition_evaluations"]
+            payload["condition_evaluations"], flow_version
         )
         assert question["condition"] == rule["condition"]["id"]
         assert question["condition"] not in answered
@@ -2419,11 +2554,12 @@ def test_determinate_outcome_does_not_ask_an_irrelevant_question():
         for case in CONTRACT["conformance_cases"]
         if case["expected_outcome"] == CONTRACT["outcomes"]["negative"]["id"]
     )
+    negative_rules = _rules_by_condition(_version_for_case(negative))
     removable = next(
         fact
         for fact in negative["facts"]
         if fact["value"]
-        == RULES_BY_CONDITION[fact["condition"]]["condition"]["expected_boolean"]
+        == negative_rules[fact["condition"]]["condition"]["expected_boolean"]
     )
     partial = {
         **negative,
@@ -2713,6 +2849,9 @@ def generate_decision_contract(
                 ),
                 "evidence_evaluation_conventions_version": (
                     EVIDENCE_EVALUATION_CONVENTIONS_VERSION
+                ),
+                "version_selection_conventions_version": (
+                    VERSION_SELECTION_CONVENTIONS_VERSION
                 ),
                 "work_items": work_items,
             },

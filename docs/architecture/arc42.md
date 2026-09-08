@@ -30,7 +30,8 @@ The toolchain must:
 - invoke Decision Products through Decision Protocol v1 and verify eligible,
   ineligible, and unknown Decision Results including Fact Gaps, explanation,
   scope, source provenance, a deterministic source-justified Next Question,
-  and independently evaluated Evidence Requirements;
+  independently evaluated Evidence Requirements, and the Rule Set Version
+  selected only from an explicit Decision Date;
 - keep bootstrap provenance and implementation-neutral transformation
   obligations separate;
 - validate and publish the separated contract, decision-core, and funding
@@ -44,9 +45,9 @@ ADR 0016 accepts a bounded evolution toward **Decision and Obligation
 Compilation**. ADR 0017 implements its first compiler profile and source-pinned
 **KfW 458 Applicant Eligibility Pilot**; ADR 0018 adds explicit Fact Questions
 and Question Selection Conventions v1; ADR 0019 adds Evidence Evaluation
-Conventions v1. The capability remains inside the Spec Compiler rather than
-becoming a second software system; obligation activation and dynamic version
-selection remain later slices in the
+Conventions v1; ADR 0020 adds Version Selection Conventions v1. The capability
+remains inside the Spec Compiler rather than becoming a second software system;
+obligation activation remains a later slice in the
 [roadmap](decision-and-obligation-roadmap.md).
 
 ### 1.2 Quality goals
@@ -102,7 +103,7 @@ Detailed quality scenarios are in section 10.
 | Compiler conformance | Separate SQL API and KfW 458 fixtures declare their profile-specific expected artifacts and are compiled twice by G1 |
 | Ontology publication | Three canonical OWL/RDFS vocabularies plus a separately generated SQL API example graph; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
 | Version control | Generated products are ignored except the versioned `sql_api_example` and `kfw_458_eligibility` reference bundles |
-| Decision compilation | One `schema:SoftwareApplication` conforming to `sco:DecisionProtocolV1`, one explicit `sdo:DecisionContract`, one pinned `sdo:RuleSetVersion`, boolean Conditions with JSON Pointers, one explicitly worded and prioritized Fact Question per Rule Condition, `requiresAllRules`, three outcomes, independently sourced Evidence Requirements with applicability Conditions and evidence types, complete Source Citations, authored Conformance Cases covering outcomes and Evidence Requirement statuses, and one complete positive Question Flow Case |
+| Decision compilation | One `schema:SoftwareApplication` conforming to `sco:DecisionProtocolV1`, one explicit `sdo:DecisionContract`, one stable Rule Set with source-backed non-overlapping Rule Set Versions selected by an explicit Decision Date, boolean Conditions with JSON Pointers, one explicitly worded and prioritized Fact Question per Rule Condition, `requiresAllRules`, three outcomes, version-local Evidence Requirements, complete Source Citations, authored Conformance Cases covering outcomes and Evidence Requirement statuses, one complete positive Question Flow Case, and paired Version Selection Cases |
 | Decision protocol | One UTF-8 JSON Decision Request on stdin and one JSON Decision Result on stdout; requests may carry semantic Evidence identities, types, and Assessments; repeated complete Case submissions may follow a returned Next Question; no HTTP, session, document format/storage, UI, or product-language requirement |
 
 Python and pytest constrain the toolchain. FastAPI, Pydantic, and Uvicorn are
@@ -184,7 +185,7 @@ views for this section.
 | --- | --- | --- |
 | CLI and Output Coordinator | `parse_args()`, `main()` | Validate the Product Bundle path and coordinate compilation and writes. |
 | RDF/SHACL Obligation Reader | `read_obligation_model()` and parsing helpers | Merge SQL-profile Turtle files, validate them, and build the Explicit Obligation Model. |
-| Decision Contract Reader | `read_decision_model()` and parsing helpers | Validate Decision Protocol conformance, decision and Evidence Requirement semantics, independent source identity, Fact Questions and priorities, Conformance Cases and Evidence Expectations, the Question Flow Case, and build the typed Explicit Decision and Obligation Model. |
+| Decision Contract Reader | `read_decision_model()` and parsing helpers | Validate Decision Protocol conformance, Rule Set Version identities, sources and half-open validity, exactly-one date selection, decision and version-local Evidence Requirement semantics, Fact Questions, Conformance Cases, Evidence Expectations, Question Flow and Version Selection Cases, and build the typed Explicit Decision and Obligation Model. |
 | Deterministic Fixture Synthesizer | `deterministic_value()` | Derive reproducible valid values from supported Shape boundaries. |
 | OpenAPI Contract Renderer | `build_openapi()` | Produce `generated/expected-openapi.json`. |
 | Decision Contract Renderer | `build_decision_contract()` | Produce `generated/decision-contract.json`, including authored Fact Questions, Evidence Requirements, Evidence conformance data, convention versions, and the Question Flow Case identity, from the typed decision model. |
@@ -214,7 +215,7 @@ remains a future extension of the typed model.
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
 | HTTP Obligation Verifier | Generated behavior test | Call the live endpoint and directly assert required fields, types, bounds, closure, and stored values. |
-| Decision Result Verifier | Generated KfW 458 contract test | Send authored Conformance Cases; assert outcomes, independent Evidence Requirement Evaluations, Evidence classifications, and provenance; and repeatedly submit Question Flow Case answers while verifying deterministic, source-justified Next Questions. |
+| Decision Result Verifier | Generated KfW 458 contract test | Send authored Conformance Cases; assert date-selected Rule Set Versions, historical outcome changes, independent Evidence Requirement Evaluations, Evidence classifications, and provenance; reject missing/uncovered/caller-selected versions; and repeatedly submit Question Flow Case answers while verifying deterministic, source-justified Next Questions. |
 | Runtime Regression Tests | `tools/tests/test_contract_runtime.py`, `tools/tests/test_decision_runtime.py` | Prove protocol validation and that parent and child product processes are removed after timeout or test completion. |
 
 No component decomposition is documented for the reference Product Runtime. It
@@ -284,12 +285,13 @@ sequenceDiagram
 
     Operator->>Harness: Run generated decision proofs
     Harness->>Manifest: Read Decision Protocol v1 adapter
-    Harness->>Contract: Build request from authored Conformance Case, Evidence, and Assessments
+    Harness->>Contract: Build request from authored stable Rule Set, Decision Date, Case, Evidence, and Assessments
     loop Until the Case has a determinate Decision Outcome
         Harness->>Product: Start process and write complete Case as one JSON Decision Request
-        Product->>Contract: Evaluate Rules and Evidence Requirements independently
-        Product-->>Harness: Decision Result with outcome, Evidence evaluations, and optional Next Question
-        Harness->>Harness: Assert result, Evidence status/classification, question relevance, and provenance
+        Product->>Contract: Select exactly one Rule Set Version by Decision Date
+        Product->>Contract: Evaluate selected Rules and Evidence Requirements independently
+        Product-->>Harness: Result with selected version/date, outcome, Evidence evaluations, and optional Next Question
+        Harness->>Harness: Assert version, result, Evidence status/classification, question relevance, and provenance
         alt Next Question exists
             Harness->>Harness: Add authored answer at returned JSON Pointer
         end
@@ -466,7 +468,8 @@ untraceable Rules, incomplete source identity, contradictory Conformance Cases,
 missing or multiply assigned Fact Questions, duplicate or non-positive question
 priorities, an invalid Question Flow Case, missing or contradictory Evidence
 Expectations, unknown Evidence Requirements, duplicate Evidence Assessments,
-invalid Evidence types, ambiguous profile selection, unknown placeholders, and
+invalid Evidence types, missing Decision Dates, overlapping or uncovered Rule
+Set Version validity, ambiguous profile selection, unknown placeholders, and
 protocol-version mismatches. Runtime failures include
 captured process output. OpenAPI is validated before subset comparison;
 Decision Results must be JSON objects.
@@ -510,7 +513,13 @@ Evidence fulfills an applicable requirement only with an explicit accepted
 Evidence Assessment. The resulting status, Evidence classifications,
 explanation, and separate source provenance are added to the Decision Result
 without changing Condition truth or the Decision Outcome.
-Ambiguous Specs,
+Version Selection Conventions v1 then select exactly one Rule Set Version from
+the stable Rule Set, explicit Decision Date, and authored half-open Validity
+Periods. Version identity and validity Source Citation are compilation inputs;
+the selected identity, label, and date are result fields. Requests cannot select
+a version and no wall-clock/latest default exists. Missing dates, gaps, and
+overlaps fail; generated Decision-product and Compiler-product black-box tests
+exercise the historical boundary and ambiguity diagnostics. Ambiguous Specs,
 conflicting Facts, ambiguous Rule Set Version applicability, and incompatible
 entailed outcomes remain errors. External Source Revisions are reached through
 Source Citations in authored Specs and do not bypass ADR 0001's permitted
@@ -539,6 +548,7 @@ requirement origins.
 | [0017](decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.md) | A typed decision model compiles the KfW 458 pilot into a Decision Contract and black-box proofs executed through Decision Protocol v1; decision core and funding vocabularies remain separate. | Accepted; implements and refines ADR 0016 and supersedes ADR 0003's single-reference-bundle consequence |
 | [0018](decisions/0018-select-next-fact-question-from-current-fact-gaps.md) | Question Selection Conventions v1 select one explicit Fact Question from current Fact Gaps and prove stateless progression through repeated Decision Protocol v1 requests. | Accepted; extends ADR 0017 and implements Issue #3 |
 | [0019](decisions/0019-evaluate-evidence-requirements-separately-from-conditions.md) | Evidence Evaluation Conventions v1 evaluate independently sourced Evidence Requirements and explicitly assessed Evidence without changing supported Conditions or Decision Outcomes. | Accepted; extends ADR 0017 and implements Issue #4 |
+| [0020](decisions/0020-select-rule-set-version-only-from-validity-and-decision-date.md) | Version Selection Conventions v1 derive exactly one source-backed Rule Set Version from stable Rule Set identity, authored validity, and explicit Decision Date without today/latest defaults. | Accepted; extends ADR 0017 and implements Issue #5 |
 
 ## 10. Quality requirements
 
@@ -557,6 +567,7 @@ requirement origins.
 | Q-11 | Decision explainability | Given any KfW 458 Decision Result, a reviewer can identify the selected Rule Set Version, every decisive Rule and Condition Evaluation, any Fact Gap, and the Spec statement plus Source Citation that supports it. |
 | Q-12 | Question relevance and progress | Given an incomplete KfW 458 Case, the product returns the lowest-priority authored Fact Question from the current Fact Gaps with Rule and source justification; submitting authored answers repeatedly reaches a determinate result, while a determinate result returns no Next Question. |
 | Q-13 | Evidence separation | Given a satisfied ownership Condition, the KfW 458 Decision Result reports the independent Evidence Requirement as `fulfilled`, `missing`, or `not_applicable`; changing an Evidence Assessment changes that status and classification but never the Condition Evaluation or Decision Outcome, and the requirement exposes its own Source Citation. |
+| Q-14 | Historical reproducibility | Given identical KfW 458 applicant and project Facts dated 2026-07-20 and 2026-07-21, results select the 12/2025 and 07/2026 Rule Set Versions respectively, report the date and version, and produce the two authored source-backed outcomes; missing, uncovered, or overlapping applicability fails explicitly. |
 
 ## 11. Risks and technical debt
 
@@ -589,6 +600,7 @@ requirement origins.
 | The compiler, Decision Product reference implementation, and generated proof share Evidence Evaluation Conventions v1. | Authored cases cover all three requirement statuses and a rejected-Evidence mutation, but an independent implementation is still needed before claiming semantic diversity. |
 | Evidence Assessment is explicit input, not automatic document validation. | A result reports the supplied assessment semantics only; never imply document authenticity or content correctness, and add ingestion or validation only through a sourced later contract. |
 | The KfW source statement is manually curated. | The compiler proves identity and traceability, not transcription completeness or legal correctness; retain human review and the scope note. |
+| Authored Rule Set Version intervals may contain gaps or accidental overlaps. | The compiler rejects overlaps globally and rejects any Conformance Case or runtime request whose Decision Date selects zero or multiple versions; no latest-version fallback masks catalogue defects. |
 
 ## 12. Glossary
 
@@ -604,7 +616,7 @@ requirement origins.
 | Shape | SHACL description of valid resource data. |
 | Contract Graph | RDF graph formed by merging the Product Bundle's sorted Turtle files. |
 | Explicit Obligation Model | Normalized in-memory representation containing only explicitly sourced, externally testable obligations used by every renderer. |
-| Explicit Decision and Obligation Model | Typed, immutable in-memory representation used by Decision-profile renderers; it contains decision, evidence-evaluation, and provenance semantics while obligation activation remains deferred. |
+| Explicit Decision and Obligation Model | Typed, immutable in-memory representation used by Decision-profile renderers; it contains version-selection, decision, evidence-evaluation, and provenance semantics while obligation activation remains deferred. |
 | Compiler Convention | Named, versioned deterministic mapping not directly expressed by a spec statement. |
 | Runtime Protocol | Technology-independent contract for starting and observing a product. |
 | Decision Protocol | Technology-independent process contract for exchanging one UTF-8 JSON Decision Request and Decision Result. |
@@ -623,9 +635,9 @@ requirement origins.
 | Contract Verification Harness | pytest process that runs generated black-box proofs with shared tool components. |
 | Stochastic step | Product-code creation or modification by a human or AI agent within deterministic boundaries. |
 | Decision and Obligation Compilation | Spec Compiler capability that derives source-backed Decision Contracts, Evidence Requirement Evaluations, and proofs, with obligations reserved for later profiles, from explicit Specs. |
-| Decision Contract | Implementation-neutral contract for one scoped decision question, pinned Rule Set Version, outcomes, Rules, Conditions, Evidence Requirements, provenance, and evaluation conventions. |
-| Decision Request | Decision Protocol v1 JSON input naming contract, version, date, Case Facts, and optional supplied Evidence with Assessments. |
-| Decision Result | Decision Protocol v1 JSON output containing outcome, Condition Evaluations, decisive Rules, gaps, at most one Next Question, Evidence Requirement Evaluations, provenance, explanation, and scope. |
+| Decision Contract | Implementation-neutral contract for one scoped decision question, candidate Rule Set Versions, outcomes, Rules, Conditions, Evidence Requirements, provenance, and evaluation conventions. |
+| Decision Request | Decision Protocol v1 JSON input naming contract, stable Rule Set, date, Case Facts, and optional supplied Evidence with Assessments; it does not select a version. |
+| Decision Result | Decision Protocol v1 JSON output containing selected Rule Set Version and date, outcome, Condition Evaluations, decisive Rules, gaps, at most one Next Question, Evidence Requirement Evaluations, provenance, explanation, and scope. |
 | Rule Set | Stable identity for a governed collection of related Rules across revisions. |
 | Rule Set Version | One immutable, explicitly identified revision of a Rule Set with declared applicability. |
 | Rule | Normative proposition in a Spec that relates Conditions to an explicit conclusion or Obligation. |
@@ -634,6 +646,7 @@ requirement origins.
 | Fact Question | Authored prompt tied to one Condition and input Fact, with an explicit priority. |
 | Next Question | At most one Fact Question selected from current Fact Gaps while the Decision Outcome remains undetermined. |
 | Question Flow Case | Complete positive Conformance Case supplying authored answers for the generated multi-step question-flow proof. |
+| Version Selection Case | Conformance Case whose expected Rule Set Version is a proof oracle for selection from its explicit Decision Date. |
 | Condition | Truth-valued predicate referenced by a Rule and evaluated from explicit Facts and named conventions. |
 | Condition Evaluation | `satisfied`, `violated`, or `unknown` result for one Condition within one Decision. |
 | Decision | Evaluation of one scoped question for one Case against exactly one applicable Rule Set Version. |
@@ -653,4 +666,4 @@ requirement origins.
 | Decision and Obligation Core Ontology | Public `sdo:` vocabulary defining domain-independent decision, rule, condition, case, evidence, provenance, and temporal concepts. |
 | Domain Ontology | Vocabulary whose terms carry meaning specific to one problem domain. |
 | Funding Domain Ontology | Public `funding:` Domain Ontology for funding programs, applicants, projects, scoped eligibility facts, and outcomes. |
-| KfW 458 Applicant Eligibility Pilot | First bounded Case family, limited to natural-person applicant eligibility under the pinned July 2026 source revision. |
+| KfW 458 Applicant Eligibility Pilot | First bounded Case family, limited to natural-person applicant eligibility under the December 2025 or July 2026 source revision selected by Decision Date. |

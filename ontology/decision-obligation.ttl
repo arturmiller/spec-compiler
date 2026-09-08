@@ -16,12 +16,12 @@
     dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "sdo" ;
     vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision/#" ;
-    owl:versionInfo "0.2.0-experimental" .
+    owl:versionInfo "0.3.0-experimental" .
 
 sdo:DecisionContract a owl:Class ;
     rdfs:label "Decision contract"@en ;
     rdfs:label "Entscheidungsvertrag"@de ;
-    rdfs:comment "Versioned specification of a decision question, accepted Case facts, Rule Set Version, outcomes, and observable result obligations."@en .
+    rdfs:comment "Versioned specification of a decision question, accepted Case facts, candidate Rule Set Versions, outcomes, and observable result obligations."@en .
 
 sdo:RuleSet a owl:Class ;
     rdfs:label "Rule set"@en ;
@@ -85,6 +85,12 @@ sdo:QuestionFlowCase a owl:Class ;
     rdfs:label "Frageablauf-Konformitätsfall"@de ;
     rdfs:comment "A complete positive Conformance Case whose Facts are supplied as answers in the generated multi-step question-flow proof."@en .
 
+sdo:VersionSelectionCase a owl:Class ;
+    rdfs:subClassOf sdo:ConformanceCase ;
+    rdfs:label "version selection case"@en ;
+    rdfs:label "Versionsauswahl-Konformitätsfall"@de ;
+    rdfs:comment "A Conformance Case that proves temporal Rule Set Version selection from its explicit Decision Date."@en .
+
 sdo:EvidenceRequirement a owl:Class ;
     rdfs:label "Evidence requirement"@en ;
     rdfs:label "Nachweisanforderung"@de ;
@@ -136,6 +142,7 @@ sdo:SourceCitation a owl:Class ;
 sdo:usesRuleSetVersion a owl:ObjectProperty ;
     rdfs:label "uses rule set version"@en ;
     rdfs:label "verwendet Regelwerkversion"@de ;
+    rdfs:domain sdo:DecisionContract ;
     rdfs:range sdo:RuleSetVersion .
 
 sdo:hasRule a owl:ObjectProperty ;
@@ -165,8 +172,14 @@ sdo:sourceCitation a owl:ObjectProperty ;
 sdo:hasEvidenceRequirement a owl:ObjectProperty ;
     rdfs:label "has evidence requirement"@en ;
     rdfs:label "hat Nachweisanforderung"@de ;
-    rdfs:domain sdo:DecisionContract ;
+    rdfs:domain sdo:RuleSetVersion ;
     rdfs:range sdo:EvidenceRequirement .
+
+sdo:versionSourceCitation a owl:ObjectProperty ;
+    rdfs:label "version source citation"@en ;
+    rdfs:label "Quellenfundstelle der Version"@de ;
+    rdfs:domain sdo:RuleSetVersion ;
+    rdfs:range sdo:SourceCitation .
 
 sdo:supportsCondition a owl:ObjectProperty ;
     rdfs:label "supports condition"@en ;
@@ -275,6 +288,13 @@ sdo:expectsOutcome a owl:ObjectProperty ;
     rdfs:label "erwartet Ausgang"@de ;
     rdfs:domain sdo:ConformanceCase ;
     rdfs:range sdo:DecisionOutcome .
+
+sdo:expectsRuleSetVersion a owl:ObjectProperty ;
+    rdfs:label "expects rule set version"@en ;
+    rdfs:label "erwartet Regelwerkversion"@de ;
+    rdfs:comment "A conformance oracle for the version derived from the Decision Date; it is not a selection input."@en ;
+    rdfs:domain sdo:ConformanceCase ;
+    rdfs:range sdo:RuleSetVersion .
 
 sdo:hasFact a owl:ObjectProperty ;
     rdfs:label "has fact"@en ;

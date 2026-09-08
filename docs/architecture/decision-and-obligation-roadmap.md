@@ -2,7 +2,9 @@
 
 Status: Living roadmap. The architectural basis was accepted in
 [Issue #1](https://github.com/arturmiller/spec-compiler/issues/1); the first
-runtime slice is implemented by Issue #2 and ADR 0017.
+runtime slice is implemented by Issue #2 and ADR 0017. Issues #3 through #5
+implement question selection, evidence evaluation, and historical Rule Set
+Version selection.
 
 ## Purpose
 
@@ -14,15 +16,16 @@ and failure on ambiguity.
 
 This roadmap fixes vocabulary, semantic boundaries, ontology ownership, a first
 pilot, and non-goals. It distinguishes the implemented decision,
-question-selection, and evidence-evaluation slices from later obligation and
-version-selection slices.
+question-selection, evidence-evaluation, and version-selection slices from
+later obligation slices.
 
 ## Semantic model
 
 The typed, immutable **Explicit Decision and Obligation Model** now exists
 alongside the SQL-oriented Explicit Obligation Model. Issue #2 materializes the
-decision, rule, condition, case, fact-gap, and provenance subset. Obligations
-and Issue #4 adds the evidence-requirement subset. Obligation activation
+decision, rule, condition, case, fact-gap, and provenance subset. Issue #4 adds
+the evidence-requirement subset and Issue #5 adds source-backed historical
+Rule Set Version selection. Obligation activation
 remains an accepted target semantic for a later slice.
 
 | Concern | Accepted semantics |
@@ -71,7 +74,7 @@ architectural decision. Issue #6 supplies the first planned cross-domain test.
 
 For a natural-person Case, determine whether the supplied applicant facts
 satisfy the modeled applicant-eligibility rules of KfW product 458 under the
-pinned July 2026 Rule Set Version.
+Rule Set Version selected by the explicit Decision Date.
 
 `eligible` means only a positive answer to this scoped applicant question. It is
 not a statement about measure eligibility, application completeness, funding
@@ -79,28 +82,33 @@ amount, KfW approval, available budget, or legal entitlement.
 
 ### Source register
 
-| Field | Selected value |
-| --- | --- |
-| Source | KfW Merkblatt, Zuschuss Nr. 458, “BEG Heizungsförderung für Privatpersonen – Wohngebäude” |
-| Source Revision | `KFW-458-MERKBLATT-2026-07` |
-| Publisher | KfW Bankengruppe |
-| Stand / identifier | 07/2026; Bestellnummer 600 000 5131 |
-| Declared validity | Valid from 2026-07-21 |
-| Authoritative passages for the pilot | PDF page 2, “Wer kann Anträge stellen?” and its explicit exclusions; PDF page 8, “Nachweise”, first paragraph, for the independently cited ownership Evidence Requirement |
-| Version catalogue | [KfW product 458 document archive](https://www.kfw.de/partner/KfW-Partnerportal/Service/Dokumente-zum-Produkt/458/index.jsp) |
-| Retrieved document | [KfW Merkblatt 458](https://www.kfw.de/PDF/Download-Center/F%C3%B6rderprogramme-%28Inlandsf%C3%B6rderung%29/PDF-Dokumente/6000005131_M_458.pdf) |
-| Retrieval date | 2026-09-04 |
-| Content identity | 256,308 bytes; SHA-256 `27056983339718d66cb02e9dd526db5787df742350de15eb7821040299d9fd5d` |
+| Field | December 2025 revision | July 2026 revision |
+| --- | --- | --- |
+| Source | KfW Merkblatt, Zuschuss Nr. 458 | Same stable Source |
+| Source Revision | `Kfw458Merkblatt2025_12` | `Kfw458Merkblatt2026_07` |
+| Stand / identifier | 12/2025; Bestellnummer 600 000 5131 | 07/2026; Bestellnummer 600 000 5131 |
+| Declared validity | Valid from 2025-12-10; modeled until 2026-07-21 exclusive | Valid from 2026-07-21; open end |
+| Authoritative passages | Page 1 validity; page 2 applicant categories and GbR exclusion | Page 1 validity; page 2 categories, GbR and usufruct exclusions; page 8 ownership Evidence Requirement |
+| Retrieved document | [Archived KfW Merkblatt 458](https://www.kfw.de/partner/Dokumente/Archiv/750-2025-Q4/6000005131_M_458_2025_12_Schwarz.pdf) | [Current KfW Merkblatt 458](https://www.kfw.de/PDF/Download-Center/F%C3%B6rderprogramme-%28Inlandsf%C3%B6rderung%29/PDF-Dokumente/6000005131_M_458.pdf) |
+| Content identity | 250,112 bytes; SHA-256 `0bbe3f9a82b2fdfc2ca8f9037b73e01093aa2ce49709681eba152c2800610369` | 256,308 bytes; SHA-256 `27056983339718d66cb02e9dd526db5787df742350de15eb7821040299d9fd5d` |
+
+The official version catalogue is the [KfW product 458 document
+archive](https://www.kfw.de/partner/KfW-Partnerportal/Service/Dokumente-zum-Produkt/458/index.jsp).
 
 ### Source selection review
 
 The official KfW document catalogue identifies a July 2026 revision and retains
-earlier revisions separately. The retrieved PDF itself declares Stand 07/2026,
+the December 2025 revision separately. Both PDFs state their validity dates.
+Page 2 of the December revision lists the GbR exclusion but no usufruct
+exclusion; page 2 of the July revision adds that exclusion. Therefore identical
+modeled usufruct-applicant Facts yield `eligible` on 2026-07-20 and `ineligible`
+on 2026-07-21. The July PDF declares Stand 07/2026,
 Bestellnummer 600 000 5131, and validity from 2026-07-21. Its page 2 contains the
 selected applicant categories and explicit exclusions. Page 8 separately
 requires self-using owners claiming the climate-speed or income bonus to submit
-a land-register excerpt as ownership Evidence. The recorded length and SHA-256
-identify the exact bytes reviewed on 2026-09-04 and reverified on 2026-09-07.
+a land-register excerpt as ownership Evidence. The recorded lengths and
+SHA-256 values identify the exact current bytes reverified on 2026-09-08 and
+the archived bytes reviewed on 2026-09-08.
 
 The Merkblatt states that the program is based on the BEG EM guideline, but the
 pilot deliberately compiles only the product-specific applicant passage. If a
@@ -109,8 +117,8 @@ document, that document must be registered as its own pinned Source Revision
 and cited explicitly; authority is never inherited through an unmodeled link.
 
 The version catalogue is evidence for document identity and version history; it
-does not itself supply compiled eligibility Rules. The pinned Merkblatt passage
-is the sole external Source Revision for the first pilot. An authored Spec must
+does not itself supply compiled eligibility Rules. Both selected Merkblatt
+revisions are external Source Revisions. An authored Spec must
 represent and cite each selected statement before it can produce a generated
 requirement or result.
 
@@ -135,10 +143,11 @@ The pilot produces:
   `missing`, or `not_applicable`, with classifications for supplied Evidence
   and its own page-8 Source Citation;
 - an error for input outside the pilot boundary, conflicting Facts, ambiguous
-  Rules, or an unpinned Rule Set Version.
+  Rules, or a missing or non-unique applicable Rule Set Version.
 
-The initial fixture Decision Date is 2026-09-04 and the Rule Set Version is
-explicitly pinned. Dynamic version selection is deferred to Issue #5.
+Version Selection Conventions v1 use only the stable Rule Set, the explicit
+Decision Date, and the authored half-open Validity Periods. The caller cannot
+pin a version and no today/latest default exists.
 
 ### Explicitly excluded from the pilot
 
@@ -158,7 +167,7 @@ explicitly pinned. Dynamic version selection is deferred to Issue #5.
 | [#2](https://github.com/arturmiller/spec-compiler/issues/2) | **Implemented:** compile the pinned pilot end to end into `eligible`, `ineligible`, and `unknown` Decision Results with source provenance through Decision Protocol v1. | This roadmap |
 | [#3](https://github.com/arturmiller/spec-compiler/issues/3) | **Implemented:** derive one source-justified Next Question from current Fact Gaps and prove repeated answer submission to a determinate result. | #2 |
 | [#4](https://github.com/arturmiller/spec-compiler/issues/4) | **Implemented:** evaluate Conditions separately from independently sourced Evidence Requirements; classify supplied Evidence and prove `fulfilled`, `missing`, and `not_applicable` through Decision Protocol v1. | #2 |
-| [#5](https://github.com/arturmiller/spec-compiler/issues/5) | Select exactly one applicable Rule Set Version from an explicit Decision Date. | #2 |
+| [#5](https://github.com/arturmiller/spec-compiler/issues/5) | **Implemented:** select exactly one source-backed Rule Set Version from an explicit Decision Date and prove historical outcome change plus ambiguity failures. | #2 |
 | [#6](https://github.com/arturmiller/spec-compiler/issues/6) | Test core-ontology reuse with a cloud-compliance decision slice. | #3, #4, #5 |
 
 Each slice must update architecture and ontology documentation with its actual

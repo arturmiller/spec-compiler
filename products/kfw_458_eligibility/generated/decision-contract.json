@@ -4,14 +4,291 @@
   "decision_conventions_version": 1,
   "question_selection_conventions_version": 1,
   "evidence_evaluation_conventions_version": 1,
+  "version_selection_conventions_version": 1,
   "product": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibilityEvaluator",
-  "decision_contract": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision2026_07",
+  "decision_contract": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision",
   "rule_set": {
     "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules",
-    "version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
-    "valid_from": "2026-07-21",
-    "valid_until": null,
-    "requires_all_rules": true
+    "versions": [
+      {
+        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2025_12",
+        "version": "2025-12",
+        "valid_from": "2025-12-10",
+        "valid_until": "2026-07-21",
+        "source": {
+          "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationRuleSetVersion2025_12",
+          "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2025_12",
+          "locator": "PDF page 1, publication metadata",
+          "statement": "The KfW leaflet is revision 12/2025 and states that it is valid from 10 December 2025."
+        },
+        "requires_all_rules": true,
+        "rules": [
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleBuildingInGermany2025_12",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#buildingInGermany",
+              "input_json_pointer": "/case/project/buildingInGermany",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionBuildingInGermany",
+                "text": "Is the residential building located in Germany?",
+                "priority": 60
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2025_12",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2025_12",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleExistingResidentialBuilding2025_12",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#existingResidentialBuilding",
+              "input_json_pointer": "/case/project/existingResidentialBuilding",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionExistingResidentialBuilding",
+                "text": "Is the project for an existing residential building?",
+                "priority": 50
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2025_12",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2025_12",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNaturalPerson2025_12",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#naturalPerson",
+              "input_json_pointer": "/case/applicant/naturalPerson",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionNaturalPerson",
+                "text": "Is the applicant a natural person (private individual)?",
+                "priority": 10
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2025_12",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2025_12",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNotOwnershipViaGbR2025_12",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#ownershipViaGbR",
+              "input_json_pointer": "/case/applicant/ownershipViaGbR",
+              "expected_boolean": false,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwnershipViaGbR",
+                "text": "Is a GbR entered as owner, or is the applicant one of its partners?",
+                "priority": 30
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationGbRExclusion2025_12",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2025_12",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', explicit exclusions",
+              "statement": "A GbR entered as owner and its partners are not eligible applicants; this revision states no usufruct exclusion."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleOwner2025_12",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#owner",
+              "input_json_pointer": "/case/applicant/owner",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwner",
+                "text": "Is the applicant an owner of the residential building?",
+                "priority": 20
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2025_12",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2025_12",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          }
+        ],
+        "evidence_requirements": []
+      },
+      {
+        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
+        "version": "2026-07",
+        "valid_from": "2026-07-21",
+        "valid_until": null,
+        "source": {
+          "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationRuleSetVersion2026_07",
+          "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+          "locator": "PDF page 1, publication metadata",
+          "statement": "The KfW leaflet is revision 07/2026 and states that it is valid from 21 July 2026."
+        },
+        "requires_all_rules": true,
+        "rules": [
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleBuildingInGermany2026_07",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#buildingInGermany",
+              "input_json_pointer": "/case/project/buildingInGermany",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionBuildingInGermany",
+                "text": "Is the residential building located in Germany?",
+                "priority": 60
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2026_07",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleExistingResidentialBuilding2026_07",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#existingResidentialBuilding",
+              "input_json_pointer": "/case/project/existingResidentialBuilding",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionExistingResidentialBuilding",
+                "text": "Is the project for an existing residential building?",
+                "priority": 50
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2026_07",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNaturalPerson2026_07",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#naturalPerson",
+              "input_json_pointer": "/case/applicant/naturalPerson",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionNaturalPerson",
+                "text": "Is the applicant a natural person (private individual)?",
+                "priority": 10
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2026_07",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNoUsufructRight2026_07",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNoUsufructRight",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#hasUsufructRight",
+              "input_json_pointer": "/case/applicant/hasUsufructRight",
+              "expected_boolean": false,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionUsufructRight",
+                "text": "Has a usufruct right to the residential building been established for the applicant?",
+                "priority": 40
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationUsufructExclusion2026_07",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', second explicit exclusion",
+              "statement": "A person for whom a usufruct right to a residential building has been established is not an eligible applicant."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNotOwnershipViaGbR2026_07",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#ownershipViaGbR",
+              "input_json_pointer": "/case/applicant/ownershipViaGbR",
+              "expected_boolean": false,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwnershipViaGbR",
+                "text": "Is a GbR entered as owner, or is the applicant one of its partners?",
+                "priority": 30
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationGbRExclusion2026_07",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', first explicit exclusion",
+              "statement": "A GbR entered as owner and its partners are not eligible applicants."
+            }
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleOwner2026_07",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#owner",
+              "input_json_pointer": "/case/applicant/owner",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwner",
+                "text": "Is the applicant an owner of the residential building?",
+                "priority": 20
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants2026_07",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+              "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
+              "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
+            }
+          }
+        ],
+        "evidence_requirements": [
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
+            "supports_condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+            "applicability_conditions": [
+              {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
+                "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#claimsClimateOrIncomeBonus",
+                "input_json_pointer": "/case/applicant/claimsClimateOrIncomeBonus",
+                "expected_boolean": true
+              },
+              {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+                "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#selfUsesResidentialProperty",
+                "input_json_pointer": "/case/applicant/selfUsesResidentialProperty",
+                "expected_boolean": true
+              }
+            ],
+            "required_evidence_type": "https://arturmiller.github.io/spec-compiler/ontology/funding/#LandRegisterExcerpt",
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationOwnershipEvidenceForApplicantBonus2026_07",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
+              "locator": "PDF page 8, section 'Nachweise', first paragraph",
+              "statement": "Self-using owners claiming the climate-speed bonus or income bonus must submit a land-register excerpt as evidence of ownership."
+            }
+          }
+        ]
+      }
+    ]
   },
   "outcomes": {
     "positive": {
@@ -27,9 +304,24 @@
       "code": "unknown"
     }
   },
-  "scope_note": "This result covers only the modeled natural-person applicant-eligibility question for KfW product 458. It does not assess the measure, calculate funding, provide advice, or represent a KfW commitment or approval.",
+  "scope_note": "This result covers only the modeled natural-person applicant-eligibility question for KfW product 458 at the supplied decision date. It does not assess the measure, calculate funding, provide advice, or represent a KfW commitment or approval.",
   "question_flow_case": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibleApplicantCase",
+  "version_selection_cases": [
+    "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#HistoricalUsufructApplicantCase",
+    "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#IneligibleUsufructCase"
+  ],
   "source_revisions": [
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2025_12",
+      "source": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt",
+      "title": "BEG Heizungsförderung für Privatpersonen – Wohngebäude",
+      "identifier": "600 000 5131",
+      "version": "2025-12",
+      "valid_from": "2025-12-10",
+      "content_url": "https://www.kfw.de/partner/Dokumente/Archiv/750-2025-Q4/6000005131_M_458_2025_12_Schwarz.pdf",
+      "content_sha256": "0bbe3f9a82b2fdfc2ca8f9037b73e01093aa2ce49709681eba152c2800610369",
+      "byte_size": 250112
+    },
     {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
       "source": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt",
@@ -42,159 +334,11 @@
       "byte_size": 256308
     }
   ],
-  "rules": [
-    {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleBuildingInGermany",
-      "condition": {
-        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
-        "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#buildingInGermany",
-        "input_json_pointer": "/case/project/buildingInGermany",
-        "expected_boolean": true,
-        "question": {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionBuildingInGermany",
-          "text": "Is the residential building located in Germany?",
-          "priority": 60
-        }
-      },
-      "source": {
-        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",
-        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
-        "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
-        "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
-      }
-    },
-    {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleExistingResidentialBuilding",
-      "condition": {
-        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
-        "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#existingResidentialBuilding",
-        "input_json_pointer": "/case/project/existingResidentialBuilding",
-        "expected_boolean": true,
-        "question": {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionExistingResidentialBuilding",
-          "text": "Is the project for an existing residential building?",
-          "priority": 50
-        }
-      },
-      "source": {
-        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",
-        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
-        "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
-        "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
-      }
-    },
-    {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNaturalPerson",
-      "condition": {
-        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
-        "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#naturalPerson",
-        "input_json_pointer": "/case/applicant/naturalPerson",
-        "expected_boolean": true,
-        "question": {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionNaturalPerson",
-          "text": "Is the applicant a natural person (private individual)?",
-          "priority": 10
-        }
-      },
-      "source": {
-        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",
-        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
-        "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
-        "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
-      }
-    },
-    {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNoUsufructRight",
-      "condition": {
-        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNoUsufructRight",
-        "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#hasUsufructRight",
-        "input_json_pointer": "/case/applicant/hasUsufructRight",
-        "expected_boolean": false,
-        "question": {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionUsufructRight",
-          "text": "Has a usufruct right to the residential building been established for the applicant?",
-          "priority": 40
-        }
-      },
-      "source": {
-        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationUsufructExclusion",
-        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
-        "locator": "PDF page 2, section 'Wer kann Anträge stellen?', second explicit exclusion",
-        "statement": "A person for whom a usufruct right to a residential building has been established is not an eligible applicant."
-      }
-    },
-    {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleNotOwnershipViaGbR",
-      "condition": {
-        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
-        "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#ownershipViaGbR",
-        "input_json_pointer": "/case/applicant/ownershipViaGbR",
-        "expected_boolean": false,
-        "question": {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwnershipViaGbR",
-          "text": "Is a GbR entered as owner, or is the applicant one of its partners?",
-          "priority": 30
-        }
-      },
-      "source": {
-        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationGbRExclusion",
-        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
-        "locator": "PDF page 2, section 'Wer kann Anträge stellen?', first explicit exclusion",
-        "statement": "A GbR entered as owner and its partners are not eligible applicants."
-      }
-    },
-    {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#RuleOwner",
-      "condition": {
-        "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
-        "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#owner",
-        "input_json_pointer": "/case/applicant/owner",
-        "expected_boolean": true,
-        "question": {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#QuestionOwner",
-          "text": "Is the applicant an owner of the residential building?",
-          "priority": 20
-        }
-      },
-      "source": {
-        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationEligibleApplicants",
-        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
-        "locator": "PDF page 2, section 'Wer kann Anträge stellen?', eligible applicant categories",
-        "statement": "Natural persons who own existing residential buildings in Germany are within the listed eligible applicant categories."
-      }
-    }
-  ],
-  "evidence_requirements": [
-    {
-      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
-      "supports_condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
-      "applicability_conditions": [
-        {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
-          "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#claimsClimateOrIncomeBonus",
-          "input_json_pointer": "/case/applicant/claimsClimateOrIncomeBonus",
-          "expected_boolean": true
-        },
-        {
-          "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
-          "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/funding/#selfUsesResidentialProperty",
-          "input_json_pointer": "/case/applicant/selfUsesResidentialProperty",
-          "expected_boolean": true
-        }
-      ],
-      "required_evidence_type": "https://arturmiller.github.io/spec-compiler/ontology/funding/#LandRegisterExcerpt",
-      "source": {
-        "citation": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CitationOwnershipEvidenceForApplicantBonus",
-        "source_revision": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#Kfw458Merkblatt2026_07",
-        "locator": "PDF page 8, section 'Nachweise', first paragraph",
-        "statement": "Self-using owners claiming the climate-speed bonus or income bonus must submit a land-register excerpt as evidence of ownership."
-      }
-    }
-  ],
   "conformance_cases": [
     {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#CompleteOwnerEvidenceCase",
       "decision_date": "2026-09-04",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
       "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
       "facts": [
         {
@@ -236,7 +380,7 @@
           "evidence_type": "https://arturmiller.github.io/spec-compiler/ontology/funding/#LandRegisterExcerpt",
           "assessments": [
             {
-              "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+              "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
               "accepted": true
             }
           ]
@@ -244,7 +388,7 @@
       ],
       "expected_evidence_statuses": [
         {
-          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
           "status": "fulfilled"
         }
       ]
@@ -252,6 +396,7 @@
     {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibleApplicantCase",
       "decision_date": "2026-09-04",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
       "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
       "facts": [
         {
@@ -290,14 +435,57 @@
       "evidence": [],
       "expected_evidence_statuses": [
         {
-          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
           "status": "not_applicable"
         }
       ]
     },
     {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#HistoricalUsufructApplicantCase",
+      "decision_date": "2026-07-20",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2025_12",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionBuildingInGermany",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionClaimsClimateOrIncomeBonus",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionExistingResidentialBuilding",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNaturalPerson",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNoUsufructRight",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionNotOwnershipViaGbR",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionOwner",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ConditionSelfUsesResidentialProperty",
+          "value": false
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": []
+    },
+    {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#IneligibleUsufructCase",
-      "decision_date": "2026-09-04",
+      "decision_date": "2026-07-21",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
       "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Ineligible",
       "facts": [
         {
@@ -336,7 +524,7 @@
       "evidence": [],
       "expected_evidence_statuses": [
         {
-          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
           "status": "not_applicable"
         }
       ]
@@ -344,6 +532,7 @@
     {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#MissingOwnerEvidenceCase",
       "decision_date": "2026-09-04",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
       "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
       "facts": [
         {
@@ -382,7 +571,7 @@
       "evidence": [],
       "expected_evidence_statuses": [
         {
-          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
           "status": "missing"
         }
       ]
@@ -390,6 +579,7 @@
     {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#NonApplicableOwnerEvidenceCase",
       "decision_date": "2026-09-04",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
       "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
       "facts": [
         {
@@ -428,7 +618,7 @@
       "evidence": [],
       "expected_evidence_statuses": [
         {
-          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
           "status": "not_applicable"
         }
       ]
@@ -436,6 +626,7 @@
     {
       "id": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#UnknownOwnershipCase",
       "decision_date": "2026-09-04",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07",
       "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/funding/#Unknown",
       "facts": [
         {
@@ -470,7 +661,7 @@
       "evidence": [],
       "expected_evidence_statuses": [
         {
-          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus",
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#OwnershipEvidenceRequirementForApplicantBonus2026_07",
           "status": "not_applicable"
         }
       ]

@@ -5,6 +5,7 @@
   "decision_protocol_version": 1,
   "question_selection_conventions_version": 1,
   "evidence_evaluation_conventions_version": 1,
+  "version_selection_conventions_version": 1,
   "work_items": [
     {
       "id": "kfw-458.decision-runtime",
@@ -18,7 +19,7 @@
       ],
       "sources": [
         "Decision Protocol v1: manifest-driven process and JSON transport",
-        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision2026_07`"
+        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision`"
       ],
       "test": "products/kfw_458_eligibility/tests/test_contract.py::test_decision_product_runtime",
       "excluded": [
@@ -27,11 +28,35 @@
       ]
     },
     {
+      "id": "kfw-458.version-selection",
+      "title": "Select the Rule Set Version by Decision Date",
+      "goal": "Reproduce decisions in their declared temporal context without a current-date or latest-version default.",
+      "depends_on": [
+        "kfw-458.decision-runtime"
+      ],
+      "obligations": [
+        "The Decision Request identifies the stable Rule Set and an explicit ISO Decision Date.",
+        "Exactly one Rule Set Version is selected from authored half-open validity intervals.",
+        "Every Decision Result reports the selected Rule Set Version and Decision Date.",
+        "Missing dates, uncovered dates, caller-selected versions, and overlapping validity intervals fail with actionable diagnostics.",
+        "Identical facts produce the two source-backed historical outcomes declared by the Version Selection Cases."
+      ],
+      "sources": [
+        "`specs/`: Rule Set Versions, validity intervals, version Source Citations, and Version Selection Cases",
+        "Version Selection Conventions v1: date-only, exactly-one applicability"
+      ],
+      "test": "products/kfw_458_eligibility/tests/test_contract.py::test_decision_date_selects_historical_rule_set_version",
+      "excluded": [
+        "A silent current-date or latest-version default",
+        "Caller control over the selected Rule Set Version"
+      ]
+    },
+    {
       "id": "kfw-458.applicant-eligibility",
       "title": "Evaluate KfW 458 applicant eligibility",
       "goal": "Return the specified applicant-eligibility outcome for each explicit Case.",
       "depends_on": [
-        "kfw-458.decision-runtime"
+        "kfw-458.version-selection"
       ],
       "obligations": [
         "All declared Conditions are evaluated as satisfied, violated, or unknown.",
@@ -41,7 +66,7 @@
         "The eligible, ineligible, and unknown conformance Cases pass end to end."
       ],
       "sources": [
-        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision2026_07`",
+        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision`",
         "`specs/`: Rules, Conditions, expected values, outcomes, and conformance Cases",
         "Decision Conventions v1: explicit requires-all aggregation"
       ],

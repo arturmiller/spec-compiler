@@ -22,12 +22,12 @@ def _value_at_pointer(document: dict, pointer: str):
     return target
 
 
-def _evaluate_evidence_requirements(contract: dict, request: dict) -> list[dict]:
+def _evaluate_evidence_requirements(version: dict, request: dict) -> list[dict]:
     supplied = request.get("evidence", [])
     if not isinstance(supplied, list):
         raise ValueError("Decision Request evidence must be a list")
     known_requirements = {
-        requirement["id"] for requirement in contract["evidence_requirements"]
+        requirement["id"] for requirement in version["evidence_requirements"]
     }
     normalized_evidence = []
     evidence_ids = set()
@@ -78,7 +78,7 @@ def _evaluate_evidence_requirements(contract: dict, request: dict) -> list[dict]
         )
 
     evaluations = []
-    for requirement in contract["evidence_requirements"]:
+    for requirement in version["evidence_requirements"]:
         applicability = []
         for condition in requirement["applicability_conditions"]:
             actual = _value_at_pointer(request, condition["input_json_pointer"])
@@ -150,26 +150,39 @@ def evaluate(contract: dict, request: dict) -> dict:
     if request.get("decision_contract") != contract["decision_contract"]:
         raise ValueError("Decision Request selects an unsupported Decision Contract")
     rule_set = contract["rule_set"]
-    if request.get("rule_set_version") != rule_set["version"]:
-        raise ValueError("Decision Request must pin the compiled Rule Set Version")
+    if request.get("rule_set") != rule_set["id"]:
+        raise ValueError("Decision Request selects an unsupported Rule Set")
+    if "rule_set_version" in request:
+        raise ValueError(
+            "Decision Request must not select a Rule Set Version; it is derived "
+            "from decision_date"
+        )
     try:
         decision_date = date.fromisoformat(request["decision_date"])
     except (KeyError, TypeError, ValueError) as error:
         raise ValueError("Decision Request must contain an ISO decision_date") from error
-    valid_from = date.fromisoformat(rule_set["valid_from"])
-    valid_until = (
-        date.fromisoformat(rule_set["valid_until"])
-        if rule_set["valid_until"] is not None
-        else None
-    )
-    if decision_date < valid_from or (
-        valid_until is not None and decision_date >= valid_until
-    ):
-        raise ValueError("Decision date falls outside the pinned Rule Set Version")
+    applicable_versions = []
+    for candidate in rule_set["versions"]:
+        valid_from = date.fromisoformat(candidate["valid_from"])
+        valid_until = (
+            date.fromisoformat(candidate["valid_until"])
+            if candidate["valid_until"] is not None
+            else None
+        )
+        if decision_date >= valid_from and (
+            valid_until is None or decision_date < valid_until
+        ):
+            applicable_versions.append(candidate)
+    if len(applicable_versions) != 1:
+        raise ValueError(
+            f"Decision Date {request['decision_date']} matches "
+            f"{len(applicable_versions)} Rule Set Versions; expected exactly one"
+        )
+    version = applicable_versions[0]
 
     evaluations = []
     fact_gaps = []
-    for rule in contract["rules"]:
+    for rule in version["rules"]:
         condition = rule["condition"]
         actual = _value_at_pointer(request, condition["input_json_pointer"])
         if actual is MISSING:
@@ -217,13 +230,13 @@ def evaluate(contract: dict, request: dict) -> dict:
         decisive_rules = unknown
     else:
         outcome_role = "positive"
-        decisive_rules = [rule["id"] for rule in contract["rules"]]
+        decisive_rules = [rule["id"] for rule in version["rules"]]
     outcome = contract["outcomes"][outcome_role]
     evidence_requirement_evaluations = _evaluate_evidence_requirements(
-        contract, request
+        version, request
     )
 
-    rule_by_id = {rule["id"]: rule for rule in contract["rules"]}
+    rule_by_id = {rule["id"]: rule for rule in version["rules"]}
     provenance = [
         {
             "rule": rule_id,
@@ -260,7 +273,7 @@ def evaluate(contract: dict, request: dict) -> dict:
         }
     if outcome_role == "positive":
         explanation = (
-            f"{outcome['code']}: all {len(contract['rules'])} modeled applicant "
+            f"{outcome['code']}: all {len(version['rules'])} modeled applicant "
             "eligibility conditions are satisfied."
         )
     elif outcome_role == "negative":
@@ -272,7 +285,9 @@ def evaluate(contract: dict, request: dict) -> dict:
 
     return {
         "decision_contract": contract["decision_contract"],
-        "rule_set_version": rule_set["version"],
+        "rule_set": rule_set["id"],
+        "rule_set_version": version["id"],
+        "rule_set_version_label": version["version"],
         "decision_date": request["decision_date"],
         "outcome": outcome["code"],
         "outcome_id": outcome["id"],

@@ -61,7 +61,8 @@ beide Läufe müssen byte-identische Vertragsartefakte erreichen. Das gilt für
 beide deklarierten Conformance Fixtures und damit für beide Compilerprofile.
 
 Das Decision-Profil kompiliert einen expliziten `sdo:DecisionContract`, eine
-gepinnte Rule Set Version und vollständige Source Provenance nach
+aus einem expliziten Decision Date ausgewählte Rule Set Version und vollständige
+Source Provenance nach
 `generated/decision-contract.json`. Das Decision Product erhält über sein
 Manifest einen UTF-8-JSON-Request auf stdin und liefert genau ein JSON-Resultat
 auf stdout. Der Vertrag fordert kein HTTP, Python oder RDF im Produkt. Ein
@@ -80,6 +81,12 @@ Grundbuchauszug für selbstnutzende Eigentümer mit Bonusanspruch unabhängig al
 Evidence nur anhand expliziter Assessments. Der Resultatpfad enthält eine eigene
 Source Citation; Dateiformat, Upload, Speicherung und automatische
 Dokumentenprüfung bleiben außerhalb des Vertrags.
+
+Version Selection Conventions v1 wählen die Version ausschließlich aus dem
+stabilen Rule Set, dem expliziten Decision Date und den autorisierten
+halboffenen Validity Periods. Der Request darf keine Version vorgeben; jedes
+Result nennt die abgeleitete Version und das Datum. Fehlende Daten, Lücken und
+Überlappungen scheitern explizit, statt auf „heute“ oder „latest“ auszuweichen.
 
 Der Bootstrap-Prozess verwendet ausdrücklich die Strategie
 `sco:ModifyExistingImplementation`. Dadurch ist die vorhandene Python-

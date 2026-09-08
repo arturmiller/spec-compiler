@@ -6,12 +6,13 @@
 | --- | --- | --- |
 | **Decision and Obligation Compilation** | The Spec Compiler capability that derives source-backed Decision Contracts, Evidence Requirement Evaluations, and proofs, with obligations reserved for later profiles, from explicit specifications. | Eligibility engine, rules bot |
 | **Explicit Decision and Obligation Model** | The typed, immutable normalized model containing only explicit decision, evidence, and provenance semantics shared by deterministic renderers; obligation activation remains deferred. | Universal domain model, knowledge base |
-| **Decision Contract** | The implementation-neutral contract that fixes the scoped question, Rule Set Version, outcomes, Rules, Conditions, Evidence Requirements, provenance, and evaluation conventions for a Decision Product. | Decision result, runtime protocol |
+| **Decision Contract** | The implementation-neutral contract that fixes the scoped question, candidate Rule Set Versions, outcomes, Rules, Conditions, Evidence Requirements, provenance, and evaluation conventions for a Decision Product. | Decision result, runtime protocol |
 | **Decision Product** | A separately executed software product that implements a Decision Contract behind Decision Protocol v1. | Spec Compiler, KfW approval service |
-| **Decision Request** | One Decision Protocol v1 JSON input naming the Decision Contract, Rule Set Version, Decision Date, supplied Case Facts, and optional supplied Evidence with Assessments. | Application, questionnaire |
-| **Decision Result** | One machine-readable Decision Protocol v1 output containing the Outcome, Condition Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Evidence Requirement Evaluations, Provenance, Explanation, and scope note. | Approval, advice |
+| **Decision Request** | One Decision Protocol v1 JSON input naming the Decision Contract, stable Rule Set, Decision Date, supplied Case Facts, and optional supplied Evidence with Assessments; it never selects a Rule Set Version. | Application, questionnaire |
+| **Decision Result** | One machine-readable Decision Protocol v1 output containing the selected Rule Set Version and Decision Date, Outcome, Condition Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Evidence Requirement Evaluations, Provenance, Explanation, and scope note. | Approval, advice |
 | **Rule Set** | A stable identity for a governed collection of related Rules across revisions. | Policy document, latest rules |
 | **Rule Set Version** | One immutable, explicitly identified revision of a Rule Set with declared applicability. | Current version, latest version |
+| **Version Selection Case** | A Conformance Case whose expected version is an oracle proving selection from its explicit Decision Date; paired Cases can keep all other inputs identical. | Version selector, current case |
 | **Rule** | A normative proposition in a Spec that relates one or more Conditions to an explicit conclusion or Obligation. | Business logic, heuristic |
 | **Fact** | An explicitly supplied assertion about the Case evaluated by a Decision. | Assumption, answer |
 | **Fact Gap** | The recorded absence of a Fact required to evaluate a Condition. | Unknown Fact, false Fact |
@@ -53,12 +54,13 @@
 | **Decision and Obligation Core Ontology** | The public `sdo:` vocabulary for domain-independent decision, rule, condition, case, evidence, provenance, and temporal concepts; obligation activation remains planned. | Funding ontology, universal ontology |
 | **Domain Ontology** | A vocabulary whose terms carry meaning specific to one problem domain and may use the core ontology without becoming part of it. | Core extension by default |
 | **Funding Domain Ontology** | The public `funding:` Domain Ontology for funding programs, applicants, projects, scoped eligibility facts, and funding-specific outcomes. | KfW ontology, core ontology |
-| **KfW 458 Applicant Eligibility Pilot** | The bounded first Case family that evaluates only natural-person applicant eligibility under the pinned July 2026 KfW 458 source revision. | KfW advisor, funding approval |
+| **KfW 458 Applicant Eligibility Pilot** | The bounded first Case family that evaluates only natural-person applicant eligibility under the December 2025 or July 2026 KfW 458 source revision selected by Decision Date. | KfW advisor, funding approval |
 
 ## Relationships
 
 - One **Rule Set** has one or more **Rule Set Versions**; a **Decision** uses
-  exactly one applicable version.
+  exactly one version selected from authored half-open Validity Periods by its
+  explicit **Decision Date**.
 - A **Decision Product** receives a **Decision Request** and emits one
   **Decision Result** through Decision Protocol v1 while implementing the
   referenced **Decision Contract**.

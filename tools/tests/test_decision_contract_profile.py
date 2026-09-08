@@ -31,11 +31,19 @@ def test_decision_model_preserves_applicant_project_and_source_semantics():
 
     assert model.product == str(KFW458.EligibilityEvaluator)
     assert model.rule_set == str(KFW458.ApplicantEligibilityRules)
-    assert model.rule_set_version == str(KFW458.ApplicantEligibilityRules2026_07)
-    assert model.valid_from == "2026-07-21"
-    assert len(model.rules) == 6
+    assert [version.identifier for version in model.rule_set_versions] == [
+        str(KFW458.ApplicantEligibilityRules2025_12),
+        str(KFW458.ApplicantEligibilityRules2026_07),
+    ]
+    historical, current = model.rule_set_versions
+    assert historical.valid_from == "2025-12-10"
+    assert historical.valid_until == "2026-07-21"
+    assert current.valid_from == "2026-07-21"
+    assert current.valid_until is None
+    assert len(historical.rules) == 5
+    assert len(current.rules) == 6
     assert {
-        rule.condition.input_json_pointer.split("/")[2] for rule in model.rules
+        rule.condition.input_json_pointer.split("/")[2] for rule in current.rules
     } == {"applicant", "project"}
     assert {case.expected_outcome for case in model.conformance_cases} == {
         str(FUNDING.Eligible),
@@ -43,13 +51,21 @@ def test_decision_model_preserves_applicant_project_and_source_semantics():
         str(FUNDING.Unknown),
     }
     assert {
-        rule.source.source_revision for rule in model.rules
-    } == {str(KFW458.Kfw458Merkblatt2026_07)}
-    assert all(rule.source.statement for rule in model.rules)
+        version.source.source_revision for version in model.rule_set_versions
+    } == {
+        str(KFW458.Kfw458Merkblatt2025_12),
+        str(KFW458.Kfw458Merkblatt2026_07),
+    }
+    assert all(
+        rule.source.source_revision == version.source.source_revision
+        for version in model.rule_set_versions
+        for rule in version.rules
+    )
+    assert all(rule.source.statement for rule in current.rules)
     assert model.question_flow_case == str(KFW458.EligibleApplicantCase)
     assert {
         rule.condition.identifier: rule.condition.question.priority
-        for rule in model.rules
+        for rule in current.rules
     } == {
         str(KFW458.ConditionNaturalPerson): 10,
         str(KFW458.ConditionOwner): 20,
@@ -58,18 +74,29 @@ def test_decision_model_preserves_applicant_project_and_source_semantics():
         str(KFW458.ConditionExistingResidentialBuilding): 50,
         str(KFW458.ConditionBuildingInGermany): 60,
     }
-    assert all(rule.condition.question.text for rule in model.rules)
+    assert all(rule.condition.question.text for rule in current.rules)
+    selection_cases = [
+        case
+        for case in model.conformance_cases
+        if case.identifier in model.version_selection_cases
+    ]
+    assert len(selection_cases) == 2
+    assert selection_cases[0].facts == selection_cases[1].facts
+    assert len({case.expected_rule_set_version for case in selection_cases}) == 2
+    assert len({case.expected_outcome for case in selection_cases}) == 2
+    assert all(version.source.statement for version in model.rule_set_versions)
 
 
 def test_missing_case_fact_is_preserved_as_unknown_instead_of_false():
     model = read_decision_model(PRODUCT_ROOT, _graph())
+    current = model.rule_set_versions[-1]
     unknown = next(
         case
         for case in model.conformance_cases
         if case.expected_outcome == str(FUNDING.Unknown)
     )
 
-    rule_conditions = {rule.condition.identifier for rule in model.rules}
+    rule_conditions = {rule.condition.identifier for rule in current.rules}
     assert len(
         [condition for condition, _ in unknown.facts if condition in rule_conditions]
     ) == 5
@@ -78,10 +105,11 @@ def test_missing_case_fact_is_preserved_as_unknown_instead_of_false():
 
 def test_evidence_requirement_is_separate_and_independently_sourced():
     model = read_decision_model(PRODUCT_ROOT, _graph())
-    requirement = model.evidence_requirements[0]
+    current = model.rule_set_versions[-1]
+    requirement = current.evidence_requirements[0]
     owner_rule = next(
         rule
-        for rule in model.rules
+        for rule in current.rules
         if rule.condition.identifier == str(KFW458.ConditionOwner)
     )
     cases_by_status = {
@@ -94,7 +122,7 @@ def test_evidence_requirement_is_separate_and_independently_sourced():
 
     assert requirement.supports_condition == str(KFW458.ConditionOwner)
     assert requirement.source.citation == str(
-        KFW458.CitationOwnershipEvidenceForApplicantBonus
+        KFW458.CitationOwnershipEvidenceForApplicantBonus2026_07
     )
     assert requirement.source.citation != owner_rule.source.citation
     assert set(cases_by_status) == {"fulfilled", "missing", "not_applicable"}
@@ -108,7 +136,7 @@ def test_evidence_requirement_without_its_own_source_is_rejected():
     graph = _graph()
     graph.remove(
         (
-            KFW458.OwnershipEvidenceRequirementForApplicantBonus,
+            KFW458.OwnershipEvidenceRequirementForApplicantBonus2026_07,
             SDO.evidenceSourceCitation,
             None,
         )
@@ -134,7 +162,7 @@ def test_fulfilled_evidence_expectation_requires_an_accepted_assessment():
 
 def test_rule_without_source_citation_is_rejected():
     graph = _graph()
-    graph.remove((KFW458.RuleNaturalPerson, SDO.sourceCitation, None))
+    graph.remove((KFW458.RuleNaturalPerson2026_07, SDO.sourceCitation, None))
 
     with pytest.raises(ValueError, match="Expected exactly one.*sourceCitation"):
         read_decision_model(PRODUCT_ROOT, graph)
@@ -150,7 +178,7 @@ def test_source_revision_without_content_identity_is_rejected():
 
 def test_empty_source_statement_is_rejected():
     graph = _graph()
-    graph.set((KFW458.CitationGbRExclusion, SDO.sourceStatement, Literal("")))
+    graph.set((KFW458.CitationGbRExclusion2026_07, SDO.sourceStatement, Literal("")))
 
     with pytest.raises(ValueError, match="statement must not be empty"):
         read_decision_model(PRODUCT_ROOT, graph)
@@ -160,7 +188,7 @@ def test_ambiguous_decision_outcome_is_rejected():
     graph = _graph()
     graph.add(
         (
-            KFW458.ApplicantEligibilityDecision2026_07,
+            KFW458.ApplicantEligibilityDecision,
             SDO.positiveOutcome,
             FUNDING.Ineligible,
         )
@@ -306,6 +334,8 @@ def test_fact_question_for_an_unused_condition_is_not_compiled():
     )
 
     compiled_questions = {
-        rule["condition"]["question"]["id"] for rule in contract["rules"]
+        rule["condition"]["question"]["id"]
+        for version in contract["rule_set"]["versions"]
+        for rule in version["rules"]
     }
     assert str(irrelevant_question) not in compiled_questions
