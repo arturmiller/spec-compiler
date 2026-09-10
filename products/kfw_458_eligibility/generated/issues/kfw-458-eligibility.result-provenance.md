@@ -8,7 +8,7 @@ Expose decisive Rules, source statements, and Fact Gaps in every result.
 
 ## Dependencies
 
-- `kfw-458.applicant-eligibility`
+- `kfw-458-eligibility.decision-evaluation`
 
 ## Obligations
 

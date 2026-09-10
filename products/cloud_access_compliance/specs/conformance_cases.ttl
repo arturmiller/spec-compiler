@@ -1,0 +1,109 @@
+@prefix cloudiam: <https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#> .
+@prefix cloud: <https://arturmiller.github.io/spec-compiler/ontology/cloud/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cloudiam:FactUniqueUsersTrue a sdo:CaseFact ;
+    sdo:forCondition cloudiam:ConditionUniqueOrganizationalUsers ;
+    sdo:booleanValue true .
+cloudiam:FactMfaTrue a sdo:CaseFact ;
+    sdo:forCondition cloudiam:ConditionPrivilegedMfa ;
+    sdo:booleanValue true .
+cloudiam:FactMfaFalse a sdo:CaseFact ;
+    sdo:forCondition cloudiam:ConditionPrivilegedMfa ;
+    sdo:booleanValue false .
+cloudiam:FactPrivilegedAccountsTrue a sdo:CaseFact ;
+    sdo:forCondition cloudiam:ConditionHasPrivilegedAccounts ;
+    sdo:booleanValue true .
+cloudiam:FactPrivilegedAccountsFalse a sdo:CaseFact ;
+    sdo:forCondition cloudiam:ConditionHasPrivilegedAccounts ;
+    sdo:booleanValue false .
+
+cloudiam:SatisfiedCompleteEvidenceCase a sdo:ConformanceCase, sdo:QuestionFlowCase ;
+    dcterms:title "Satisfied controls with accepted MFA mechanism evidence"@en ;
+    sdo:forDecisionContract cloudiam:PrivilegedAccessComplianceDecision ;
+    sdo:decisionDate "2026-09-10"^^xsd:date ;
+    sdo:expectsRuleSetVersion cloudiam:PrivilegedAccessPolicyNistRev5 ;
+    sdo:expectsOutcome cloud:Satisfied ;
+    sdo:hasFact cloudiam:FactUniqueUsersTrue, cloudiam:FactMfaTrue, cloudiam:FactPrivilegedAccountsTrue ;
+    sdo:hasEvidence cloudiam:AcceptedMfaMechanismTest ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement cloudiam:MfaMechanismTestRequirement ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementFulfilled
+    ] ;
+    sdo:hasObligationExpectation
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationUniqueOrganizationalUsers ; sdo:expectedObligationStatus sdo:ObligationFulfilled ],
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationPrivilegedMfa ; sdo:expectedObligationStatus sdo:ObligationFulfilled ] .
+
+cloudiam:AcceptedMfaMechanismTest a sdo:Evidence ;
+    sdo:evidenceType cloud:AuthenticationMechanismTestResult ;
+    sdo:hasEvidenceAssessment cloudiam:AcceptedMfaMechanismAssessment .
+cloudiam:AcceptedMfaMechanismAssessment a sdo:EvidenceAssessment ;
+    sdo:assessesEvidenceRequirement cloudiam:MfaMechanismTestRequirement ;
+    sdo:accepted true .
+
+cloudiam:SatisfiedMissingEvidenceCase a sdo:ConformanceCase ;
+    dcterms:title "Satisfied controls with missing MFA mechanism evidence"@en ;
+    sdo:forDecisionContract cloudiam:PrivilegedAccessComplianceDecision ;
+    sdo:decisionDate "2026-09-10"^^xsd:date ;
+    sdo:expectsRuleSetVersion cloudiam:PrivilegedAccessPolicyNistRev5 ;
+    sdo:expectsOutcome cloud:Satisfied ;
+    sdo:hasFact cloudiam:FactUniqueUsersTrue, cloudiam:FactMfaTrue, cloudiam:FactPrivilegedAccountsTrue ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement cloudiam:MfaMechanismTestRequirement ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementMissing
+    ] ;
+    sdo:hasObligationExpectation
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationUniqueOrganizationalUsers ; sdo:expectedObligationStatus sdo:ObligationFulfilled ],
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationPrivilegedMfa ; sdo:expectedObligationStatus sdo:ObligationFulfilled ] .
+
+cloudiam:SatisfiedNoPrivilegedAccountsCase a sdo:ConformanceCase ;
+    dcterms:title "Satisfied controls without privileged accounts in the supplied profile"@en ;
+    sdo:forDecisionContract cloudiam:PrivilegedAccessComplianceDecision ;
+    sdo:decisionDate "2026-09-10"^^xsd:date ;
+    sdo:expectsRuleSetVersion cloudiam:PrivilegedAccessPolicyNistRev5 ;
+    sdo:expectsOutcome cloud:Satisfied ;
+    sdo:hasFact cloudiam:FactUniqueUsersTrue, cloudiam:FactMfaTrue, cloudiam:FactPrivilegedAccountsFalse ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement cloudiam:MfaMechanismTestRequirement ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementNotApplicable
+    ] ;
+    sdo:hasObligationExpectation
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationUniqueOrganizationalUsers ; sdo:expectedObligationStatus sdo:ObligationFulfilled ],
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationPrivilegedMfa ; sdo:expectedObligationStatus sdo:ObligationFulfilled ] .
+
+cloudiam:ViolatedMfaCase a sdo:ConformanceCase ;
+    dcterms:title "Violated privileged-access MFA control"@en ;
+    sdo:forDecisionContract cloudiam:PrivilegedAccessComplianceDecision ;
+    sdo:decisionDate "2026-09-10"^^xsd:date ;
+    sdo:expectsRuleSetVersion cloudiam:PrivilegedAccessPolicyNistRev5 ;
+    sdo:expectsOutcome cloud:Violated ;
+    sdo:hasFact cloudiam:FactUniqueUsersTrue, cloudiam:FactMfaFalse, cloudiam:FactPrivilegedAccountsTrue ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement cloudiam:MfaMechanismTestRequirement ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementMissing
+    ] ;
+    sdo:hasObligationExpectation
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationUniqueOrganizationalUsers ; sdo:expectedObligationStatus sdo:ObligationFulfilled ],
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationPrivilegedMfa ; sdo:expectedObligationStatus sdo:ObligationViolated ] .
+
+cloudiam:UnknownMfaCase a sdo:ConformanceCase ;
+    dcterms:title "Unknown privileged-access MFA control"@en ;
+    sdo:forDecisionContract cloudiam:PrivilegedAccessComplianceDecision ;
+    sdo:decisionDate "2026-09-10"^^xsd:date ;
+    sdo:expectsRuleSetVersion cloudiam:PrivilegedAccessPolicyNistRev5 ;
+    sdo:expectsOutcome cloud:Unknown ;
+    sdo:hasFact cloudiam:FactUniqueUsersTrue, cloudiam:FactPrivilegedAccountsTrue ;
+    sdo:hasEvidenceExpectation [
+        a sdo:EvidenceExpectation ;
+        sdo:expectsEvidenceRequirement cloudiam:MfaMechanismTestRequirement ;
+        sdo:expectedEvidenceStatus sdo:EvidenceRequirementMissing
+    ] ;
+    sdo:hasObligationExpectation
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationUniqueOrganizationalUsers ; sdo:expectedObligationStatus sdo:ObligationFulfilled ],
+        [ a sdo:ObligationExpectation ; sdo:expectsObligation cloudiam:ObligationPrivilegedMfa ; sdo:expectedObligationStatus sdo:ObligationUnknown ] .

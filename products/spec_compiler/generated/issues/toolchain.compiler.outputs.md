@@ -13,6 +13,10 @@ Compile a valid Product Bundle through Compiler Protocol v1.
 ## Obligations
 
 - Input specs are discovered using `specs/*.ttl`.
+- The `CloudAccessComplianceFixture` conformance fixture emits `generated/decision-contract.json`.
+- The `CloudAccessComplianceFixture` conformance fixture emits `generated/issues/*.md`.
+- The `CloudAccessComplianceFixture` conformance fixture emits `generated/work-graph.json`.
+- The `CloudAccessComplianceFixture` conformance fixture emits `tests/test_contract.py`.
 - The `Kfw458Fixture` conformance fixture emits `generated/decision-contract.json`.
 - The `Kfw458Fixture` conformance fixture emits `generated/issues/*.md`.
 - The `Kfw458Fixture` conformance fixture emits `generated/work-graph.json`.

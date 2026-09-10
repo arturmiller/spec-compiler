@@ -1,0 +1,52 @@
+@prefix cloudiam: <https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix schema: <https://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cloudiam:NistSp80053 a sdo:Source ;
+    dcterms:title "NIST Special Publication 800-53"@en .
+
+cloudiam:NistSp80053Rev5Update1 a sdo:SourceRevision ;
+    dcterms:isVersionOf cloudiam:NistSp80053 ;
+    dcterms:title "Security and Privacy Controls for Information Systems and Organizations"@en ;
+    dcterms:identifier "NIST SP 800-53 Rev. 5" ;
+    owl:versionInfo "Revision 5, updates through 2020-12-10" ;
+    sdo:validFrom "2020-12-10"^^xsd:date ;
+    schema:contentUrl <https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r5.pdf> ;
+    sdo:byteSize 6073678 ;
+    sdo:contentSha256 "fc63bcd61715d0181dd8e85998b1e6201ae3515fc6626102101cab1841e11ec6" .
+
+cloudiam:NistSp80053A a sdo:Source ;
+    dcterms:title "NIST Special Publication 800-53A"@en .
+
+cloudiam:NistSp80053ARev5 a sdo:SourceRevision ;
+    dcterms:isVersionOf cloudiam:NistSp80053A ;
+    dcterms:title "Assessing Security and Privacy Controls in Information Systems and Organizations"@en ;
+    dcterms:identifier "NIST SP 800-53A Rev. 5" ;
+    owl:versionInfo "Revision 5" ;
+    sdo:validFrom "2022-01-25"^^xsd:date ;
+    schema:contentUrl <https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53Ar5.pdf> ;
+    sdo:byteSize 7469808 ;
+    sdo:contentSha256 "75665570048b969ad465a4f4f1db425ce505c374951c2c64e462949c6b21be47" .
+
+cloudiam:CitationPolicyVersion a sdo:SourceCitation ;
+    sdo:citesSourceRevision cloudiam:NistSp80053Rev5Update1 ;
+    sdo:sourceLocator "PDF title page, publication and update metadata" ;
+    sdo:sourceStatement "The selected policy source is NIST SP 800-53 Revision 5 with updates through 10 December 2020." .
+
+cloudiam:CitationIa2 a sdo:SourceCitation ;
+    sdo:citesSourceRevision cloudiam:NistSp80053Rev5Update1 ;
+    sdo:sourceLocator "PDF page 158 (printed page 132), control IA-2" ;
+    sdo:sourceStatement "Control IA-2 requires organizational users to be uniquely identified and authenticated and their identities associated with processes acting on their behalf." .
+
+cloudiam:CitationIa2_1 a sdo:SourceCitation ;
+    sdo:citesSourceRevision cloudiam:NistSp80053Rev5Update1 ;
+    sdo:sourceLocator "PDF page 158 (printed page 132), control IA-2(1)" ;
+    sdo:sourceStatement "Control IA-2(1) requires multi-factor authentication for access to privileged accounts." .
+
+cloudiam:CitationIa2_1Assessment a sdo:SourceCitation ;
+    sdo:citesSourceRevision cloudiam:NistSp80053ARev5 ;
+    sdo:sourceLocator "PDF pages 255-256 (printed pages 244-245), assessment objective IA-02(01)" ;
+    sdo:sourceStatement "The IA-2(1) assessment examines relevant policy, design, configuration, audit, and account-list evidence and tests mechanisms that implement multi-factor authentication." .

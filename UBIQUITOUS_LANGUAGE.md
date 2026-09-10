@@ -4,12 +4,12 @@
 
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
-| **Decision and Obligation Compilation** | The Spec Compiler capability that derives source-backed Decision Contracts, Evidence Requirement Evaluations, and proofs, with obligations reserved for later profiles, from explicit specifications. | Eligibility engine, rules bot |
-| **Explicit Decision and Obligation Model** | The typed, immutable normalized model containing only explicit decision, evidence, and provenance semantics shared by deterministic renderers; obligation activation remains deferred. | Universal domain model, knowledge base |
-| **Decision Contract** | The implementation-neutral contract that fixes the scoped question, candidate Rule Set Versions, outcomes, Rules, Conditions, Evidence Requirements, provenance, and evaluation conventions for a Decision Product. | Decision result, runtime protocol |
+| **Decision and Obligation Compilation** | The Spec Compiler capability that derives source-backed Decision Contracts, Obligation and Evidence Requirement Evaluations, and proofs from explicit specifications. | Eligibility engine, rules bot |
+| **Explicit Decision and Obligation Model** | The typed, immutable normalized model containing only explicit decision, obligation, evidence, temporal, interaction, and provenance semantics shared by deterministic renderers. | Universal domain model, knowledge base |
+| **Decision Contract** | The implementation-neutral contract that fixes the scoped question, candidate Rule Set Versions, outcomes, Rules, Conditions, Obligations, Evidence Requirements, provenance, and evaluation conventions for a Decision Product. | Decision result, runtime protocol |
 | **Decision Product** | A separately executed software product that implements a Decision Contract behind Decision Protocol v1. | Spec Compiler, KfW approval service |
 | **Decision Request** | One Decision Protocol v1 JSON input naming the Decision Contract, stable Rule Set, Decision Date, supplied Case Facts, and optional supplied Evidence with Assessments; it never selects a Rule Set Version. | Application, questionnaire |
-| **Decision Result** | One machine-readable Decision Protocol v1 output containing the selected Rule Set Version and Decision Date, Outcome, Condition Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Evidence Requirement Evaluations, Provenance, Explanation, and scope note. | Approval, advice |
+| **Decision Result** | One machine-readable Decision Protocol v1 output containing the selected Rule Set Version and Decision Date, Outcome, Condition and Obligation Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Evidence Requirement Evaluations, Provenance, Explanation, and scope note. | Approval, advice |
 | **Rule Set** | A stable identity for a governed collection of related Rules across revisions. | Policy document, latest rules |
 | **Rule Set Version** | One immutable, explicitly identified revision of a Rule Set with declared applicability. | Current version, latest version |
 | **Version Selection Case** | A Conformance Case whose expected version is an oracle proving selection from its explicit Decision Date; paired Cases can keep all other inputs identical. | Version selector, current case |
@@ -30,6 +30,7 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **Obligation** | An explicitly sourced requirement that applies to a Case when its Rule applies. | Evidence, task |
+| **Obligation Evaluation** | The result `fulfilled`, `violated`, or `unknown` for one Rule-imposed Obligation; under Obligation Evaluation Conventions v1 it projects the Rule Condition state and inherits the Rule Source Citation. | Decision Outcome, Evidence Requirement Evaluation |
 | **Evidence Requirement** | An explicitly sourced requirement for information or an artifact that can support a Fact or an Obligation's fulfillment. | Obligation, proof |
 | **Evidence** | Supplied information or an artifact offered in support of a Fact or fulfillment claim without being treated as conclusive by mere presence. | Guaranteed proof, requirement |
 | **Evidence Assessment** | An explicit acceptance or rejection of one supplied Evidence item for one Evidence Requirement. | Evidence presence, automatic validation |
@@ -51,10 +52,12 @@
 | Term | Definition | Aliases to avoid |
 | --- | --- | --- |
 | **SHACL Contract Ontology** | The existing public `sco:` vocabulary for executable product and transformation contracts. | Decision ontology |
-| **Decision and Obligation Core Ontology** | The public `sdo:` vocabulary for domain-independent decision, rule, condition, case, evidence, provenance, and temporal concepts; obligation activation remains planned. | Funding ontology, universal ontology |
+| **Decision and Obligation Core Ontology** | The public `sdo:` vocabulary for domain-independent decision, rule, condition, case, obligation, evidence, provenance, interaction, and temporal concepts. | Funding ontology, universal ontology |
 | **Domain Ontology** | A vocabulary whose terms carry meaning specific to one problem domain and may use the core ontology without becoming part of it. | Core extension by default |
 | **Funding Domain Ontology** | The public `funding:` Domain Ontology for funding programs, applicants, projects, scoped eligibility facts, and funding-specific outcomes. | KfW ontology, core ontology |
+| **Cloud Compliance Domain Ontology** | The public `cloud:` Domain Ontology for cloud systems, cloud identity Facts, scoped compliance decisions, assessment Evidence types, and cloud-specific outcomes. | NIST core ontology, decision core |
 | **KfW 458 Applicant Eligibility Pilot** | The bounded first Case family that evaluates only natural-person applicant eligibility under the December 2025 or July 2026 KfW 458 source revision selected by Decision Date. | KfW advisor, funding approval |
+| **Cloud Privileged-Access Compliance Slice** | The bounded second Case family that evaluates only NIST SP 800-53 Rev. 5 controls IA-2 and IA-2(1) against supplied Cloud System profile Facts. | NIST certification, security guarantee |
 
 ## Relationships
 
@@ -68,6 +71,9 @@
   **Validity Period**.
 - A **Rule** references one or more **Conditions** and exactly identifies its
   conclusion or **Obligation**.
+- Under Obligation Evaluation Conventions v1, a Rule Condition Evaluation maps
+  `satisfied` to a `fulfilled` **Obligation Evaluation**, `violated` to
+  `violated`, and `unknown` to `unknown`.
 - A **Condition** has exactly one **Condition Evaluation** within a **Decision**.
 - An unknown **Condition Evaluation** identifies at least one **Fact Gap**.
 - One **Fact Question** elicits the Fact for exactly one **Condition**. An
@@ -87,7 +93,8 @@
   explicit accepted **Evidence Assessment** makes an applicable Evidence
   Requirement Evaluation `fulfilled`; otherwise it is `missing`.
 - The **Funding Domain Ontology** may use the **Decision and Obligation Core
-  Ontology**; neither is part of the **SHACL Contract Ontology**.
+  Ontology**. The **Cloud Compliance Domain Ontology** uses the same core
+  semantics; neither Domain Ontology is part of the **SHACL Contract Ontology**.
 
 ## Example dialogue
 

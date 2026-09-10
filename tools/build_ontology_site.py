@@ -18,10 +18,12 @@ ROOT = Path(__file__).parents[1]
 ONTOLOGY = ROOT / "ontology" / "shacl-contract.ttl"
 DECISION_ONTOLOGY = ROOT / "ontology" / "decision-obligation.ttl"
 FUNDING_ONTOLOGY = ROOT / "ontology" / "funding.ttl"
+CLOUD_ONTOLOGY = ROOT / "ontology" / "cloud-compliance.ttl"
 OUTPUT = ROOT / "build" / "ontology-site"
 REFERENCE_OUTPUT = OUTPUT / "ontology"
 DECISION_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "decision"
 FUNDING_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "funding"
+CLOUD_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "cloud"
 SQL_API_OUTPUT = OUTPUT / "examples" / "sql-api"
 CACHE = ROOT / ".cache" / "widoco"
 WIDOCO_VERSION = "1.4.25"
@@ -40,6 +42,9 @@ SDO = Namespace(DECISION_VOCABULARY_IRI)
 FUNDING_ONTOLOGY_IRI = ONTOLOGY_IRI + "funding/"
 FUNDING_VOCABULARY_IRI = FUNDING_ONTOLOGY_IRI + "#"
 FUNDING = Namespace(FUNDING_VOCABULARY_IRI)
+CLOUD_ONTOLOGY_IRI = ONTOLOGY_IRI + "cloud/"
+CLOUD_VOCABULARY_IRI = CLOUD_ONTOLOGY_IRI + "#"
+CLOUD = Namespace(CLOUD_VOCABULARY_IRI)
 SQL_API_IRI = "https://arturmiller.github.io/spec-compiler/resources/sql-api/"
 ARTICLE = Namespace(SQL_API_IRI + "#")
 SQL_API_VISUALIZATION_IRI = SQL_API_IRI + "visualization/"
@@ -51,11 +56,16 @@ RESOURCE_PUBLICATIONS = {
         "funding/kfw-458",
         "KfW 458 applicant eligibility resources",
     ),
+    "cloud_access_compliance": (
+        "cloud/privileged-access",
+        "Cloud privileged-access compliance resources",
+    ),
 }
 ONTOLOGY_PUBLICATIONS = (
     (ONTOLOGY, ONTOLOGY_IRI, VOCABULARY_IRI),
     (DECISION_ONTOLOGY, DECISION_ONTOLOGY_IRI, DECISION_VOCABULARY_IRI),
     (FUNDING_ONTOLOGY, FUNDING_ONTOLOGY_IRI, FUNDING_VOCABULARY_IRI),
+    (CLOUD_ONTOLOGY, CLOUD_ONTOLOGY_IRI, CLOUD_VOCABULARY_IRI),
 )
 
 
@@ -177,17 +187,19 @@ def _write_landing_page() -> None:
 </head>
 <body>
   <h1>Spec Compiler ontologies</h1>
-  <p>Separate experimental vocabularies for executable contracts, reusable decision semantics, and funding-domain concepts.</p>
+  <p>Separate experimental vocabularies for executable contracts, reusable decision semantics, funding concepts, and cloud-compliance concepts.</p>
   <nav>
     <a class="card" href="ontology/index-en.html"><strong>SHACL Contract Ontology</strong>Executable product and protocol contracts</a>
     <a class="card" href="ontology/decision/index-en.html"><strong>Decision and Obligation Core Ontology</strong>Domain-independent decision semantics</a>
     <a class="card" href="ontology/funding/index-en.html"><strong>Funding Domain Ontology</strong>Funding programs and scoped eligibility</a>
+    <a class="card" href="ontology/cloud/index-en.html"><strong>Cloud Compliance Domain Ontology</strong>Cloud systems and scoped policy decisions</a>
     <a class="card" href="ontology/webvowl/index.html"><strong>Contract graph</strong>Explore the contract vocabulary with WebVOWL</a>
     <a class="card" href="ontology/decision/webvowl/index.html"><strong>Decision graph</strong>Explore the core decision vocabulary</a>
     <a class="card" href="ontology/funding/webvowl/index.html"><strong>Funding graph</strong>Explore the funding vocabulary</a>
+    <a class="card" href="ontology/cloud/webvowl/index.html"><strong>Cloud graph</strong>Explore the cloud-compliance vocabulary</a>
     <a class="card" href="examples/sql-api/webvowl/index.html"><strong>SQL API example graph</strong>Explore Article, description and price separately</a>
   </nav>
-  <p>Namespaces: <code>.../ontology/#</code>, <code>.../ontology/decision/#</code>, and <code>.../ontology/funding/#</code></p>
+  <p>Namespaces: <code>.../ontology/#</code>, <code>.../ontology/decision/#</code>, <code>.../ontology/funding/#</code>, and <code>.../ontology/cloud/#</code></p>
   <p><a href="examples/">Published example specifications</a> · <a href="https://github.com/arturmiller/spec-compiler">Source repository</a></p>
 </body>
 </html>
@@ -486,6 +498,7 @@ def build_site(jar: Path) -> None:
     _run_widoco(jar, ONTOLOGY, REFERENCE_OUTPUT)
     _run_widoco(jar, DECISION_ONTOLOGY, DECISION_REFERENCE_OUTPUT)
     _run_widoco(jar, FUNDING_ONTOLOGY, FUNDING_REFERENCE_OUTPUT)
+    _run_widoco(jar, CLOUD_ONTOLOGY, CLOUD_REFERENCE_OUTPUT)
     _write_landing_page()
     _write_reference_index(
         REFERENCE_OUTPUT,
@@ -500,6 +513,11 @@ def build_site(jar: Path) -> None:
     _write_reference_index(
         FUNDING_REFERENCE_OUTPUT,
         title="Funding Domain Ontology",
+        landing_page="../../",
+    )
+    _write_reference_index(
+        CLOUD_REFERENCE_OUTPUT,
+        title="Cloud Compliance Domain Ontology",
         landing_page="../../",
     )
     _publish_examples()
@@ -525,12 +543,20 @@ def build_site(jar: Path) -> None:
         FUNDING_REFERENCE_OUTPUT / "ontology.ttl",
         FUNDING_REFERENCE_OUTPUT / "webvowl" / "index.html",
         FUNDING_REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
+        CLOUD_REFERENCE_OUTPUT / "index.html",
+        CLOUD_REFERENCE_OUTPUT / "index-en.html",
+        CLOUD_REFERENCE_OUTPUT / "index-de.html",
+        CLOUD_REFERENCE_OUTPUT / "ontology.ttl",
+        CLOUD_REFERENCE_OUTPUT / "webvowl" / "index.html",
+        CLOUD_REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
         OUTPUT / "resources" / "toolchain" / "index.html",
         OUTPUT / "resources" / "toolchain" / "resources.ttl",
         OUTPUT / "resources" / "sql-api" / "index.html",
         OUTPUT / "resources" / "sql-api" / "resources.ttl",
         OUTPUT / "resources" / "funding" / "kfw-458" / "index.html",
         OUTPUT / "resources" / "funding" / "kfw-458" / "resources.ttl",
+        OUTPUT / "resources" / "cloud" / "privileged-access" / "index.html",
+        OUTPUT / "resources" / "cloud" / "privileged-access" / "resources.ttl",
         SQL_API_OUTPUT / "index-en.html",
         SQL_API_OUTPUT / "index-de.html",
         SQL_API_OUTPUT / "webvowl" / "index.html",
@@ -571,6 +597,8 @@ def build_site(jar: Path) -> None:
                 SDO.QuestionFlowCase,
                 SDO.EvidenceRequirement,
                 SDO.EvidenceAssessment,
+                SDO.Obligation,
+                SDO.ObligationEvaluation,
                 SDO.SourceCitation,
             ),
         ),
@@ -583,6 +611,16 @@ def build_site(jar: Path) -> None:
                 FUNDING.Project,
                 FUNDING.LandRegisterExcerpt,
                 FUNDING.Eligible,
+            ),
+        ),
+        (
+            "Cloud Compliance Domain Ontology",
+            CLOUD_REFERENCE_OUTPUT,
+            (
+                CLOUD.CloudSystem,
+                CLOUD.PrivilegedAccessComplianceDecision,
+                CLOUD.AuthenticationMechanismTestResult,
+                CLOUD.Satisfied,
             ),
         ),
     ):

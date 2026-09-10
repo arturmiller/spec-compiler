@@ -8,7 +8,7 @@ Reproduce decisions in their declared temporal context without a current-date or
 
 ## Dependencies
 
-- `kfw-458.decision-runtime`
+- `cloud-access-compliance.decision-runtime`
 
 ## Obligations
 
@@ -16,23 +16,22 @@ Reproduce decisions in their declared temporal context without a current-date or
 - Exactly one Rule Set Version is selected from authored half-open validity intervals.
 - Every Decision Result reports the selected Rule Set Version and Decision Date.
 - Missing dates, uncovered dates, caller-selected versions, and overlapping validity intervals fail with actionable diagnostics.
-- Identical facts produce the two source-backed historical outcomes declared by the Version Selection Cases.
 
 ## Verification
 
 ```console
-uv run --extra dev pytest -q products/kfw_458_eligibility/tests/test_contract.py::test_decision_date_selects_historical_rule_set_version
+uv run --extra dev pytest -q products/cloud_access_compliance/tests/test_contract.py::test_decision_date_selects_historical_rule_set_version
 ```
 
 ## Sources
 
-- `specs/`: Rule Set Versions, validity intervals, version Source Citations, and Version Selection Cases
+- `specs/`: Rule Set Versions, validity intervals, and version Source Citations
 - Version Selection Conventions v1: date-only, exactly-one applicability
 
 ## Boundaries
 
 - Do not edit the product's `specs/`, `tests/`, or `generated/` directories.
-- Implement product behavior under `products/kfw_458_eligibility/`.
+- Implement product behavior under `products/cloud_access_compliance/`.
 - Do not add implementation requirements that are absent from the specs or the documented runtime protocol.
 - Out of scope: A silent current-date or latest-version default.
 - Out of scope: Caller control over the selected Rule Set Version.

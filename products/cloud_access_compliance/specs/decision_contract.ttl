@@ -1,0 +1,91 @@
+@prefix cloudiam: <https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#> .
+@prefix cloud: <https://arturmiller.github.io/spec-compiler/ontology/cloud/#> .
+@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix schema: <https://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cloudiam:ComplianceEvaluator a schema:SoftwareApplication ;
+    dcterms:title "Cloud privileged-access compliance evaluator"@en ;
+    dcterms:title "Cloud-Compliance-Prüfung für privilegierte Zugriffe"@de ;
+    dcterms:conformsTo sco:DecisionProtocolV1 ;
+    sco:implementsDecisionContract cloudiam:PrivilegedAccessComplianceDecision .
+
+cloudiam:PrivilegedAccessComplianceDecision
+    a sdo:DecisionContract, cloud:PrivilegedAccessComplianceDecision ;
+    sdo:usesRuleSetVersion cloudiam:PrivilegedAccessPolicyNistRev5 ;
+    sdo:requiresAllRules true ;
+    sdo:positiveOutcome cloud:Satisfied ;
+    sdo:negativeOutcome cloud:Violated ;
+    sdo:unknownOutcome cloud:Unknown ;
+    sdo:scopeNote "This result evaluates only the two authored NIST SP 800-53 Rev. 5 controls IA-2 and IA-2(1) against supplied boolean system-profile facts. It is not a complete NIST assessment, certification, provider configuration scan, remediation plan, or security guarantee." ;
+    sdo:hasConformanceCase
+        cloudiam:SatisfiedCompleteEvidenceCase,
+        cloudiam:SatisfiedMissingEvidenceCase,
+        cloudiam:SatisfiedNoPrivilegedAccountsCase,
+        cloudiam:UnknownMfaCase,
+        cloudiam:ViolatedMfaCase .
+
+cloud:Satisfied a sdo:DecisionOutcome ; sdo:outcomeCode "satisfied" .
+cloud:Violated a sdo:DecisionOutcome ; sdo:outcomeCode "violated" .
+cloud:Unknown a sdo:DecisionOutcome ; sdo:outcomeCode "unknown" .
+
+cloudiam:PrivilegedAccessPolicy a sdo:RuleSet ;
+    dcterms:title "NIST privileged-access policy slice"@en .
+
+cloudiam:PrivilegedAccessPolicyNistRev5 a sdo:RuleSetVersion ;
+    dcterms:isVersionOf cloudiam:PrivilegedAccessPolicy ;
+    owl:versionInfo "nist-sp-800-53-rev5-update-1" ;
+    sdo:validFrom "2020-12-10"^^xsd:date ;
+    sdo:versionSourceCitation cloudiam:CitationPolicyVersion ;
+    sdo:hasRule cloudiam:RuleUniqueOrganizationalUsers, cloudiam:RulePrivilegedMfa ;
+    sdo:hasEvidenceRequirement cloudiam:MfaMechanismTestRequirement .
+
+cloudiam:RuleUniqueOrganizationalUsers a sdo:Rule ;
+    sdo:condition cloudiam:ConditionUniqueOrganizationalUsers ;
+    sdo:sourceCitation cloudiam:CitationIa2 ;
+    sdo:imposesObligation cloudiam:ObligationUniqueOrganizationalUsers .
+
+cloudiam:ObligationUniqueOrganizationalUsers a sdo:Obligation ;
+    sdo:obligationText "Uniquely identify and authenticate organizational users and associate their identities with processes acting on their behalf." .
+
+cloudiam:ConditionUniqueOrganizationalUsers a sdo:Condition ;
+    sdo:factProperty cloud:organizationalUsersUniquelyIdentified ;
+    sco:inputJsonPointer "/case/system/identity/organizationalUsersUniquelyIdentified" ;
+    sdo:expectedBoolean true .
+
+cloudiam:QuestionUniqueOrganizationalUsers a sdo:FactQuestion ;
+    sdo:elicitsCondition cloudiam:ConditionUniqueOrganizationalUsers ;
+    sdo:questionText "Does the cloud system uniquely identify organizational users and associate their identities with processes acting on their behalf?" ;
+    sdo:questionPriority 10 .
+
+cloudiam:RulePrivilegedMfa a sdo:Rule ;
+    sdo:condition cloudiam:ConditionPrivilegedMfa ;
+    sdo:sourceCitation cloudiam:CitationIa2_1 ;
+    sdo:imposesObligation cloudiam:ObligationPrivilegedMfa .
+
+cloudiam:ObligationPrivilegedMfa a sdo:Obligation ;
+    sdo:obligationText "Use multi-factor authentication for access to privileged accounts." .
+
+cloudiam:ConditionPrivilegedMfa a sdo:Condition ;
+    sdo:factProperty cloud:privilegedAccessUsesMfa ;
+    sco:inputJsonPointer "/case/system/identity/privilegedAccessUsesMfa" ;
+    sdo:expectedBoolean true .
+
+cloudiam:QuestionPrivilegedMfa a sdo:FactQuestion ;
+    sdo:elicitsCondition cloudiam:ConditionPrivilegedMfa ;
+    sdo:questionText "Does access to privileged accounts use multi-factor authentication?" ;
+    sdo:questionPriority 20 .
+
+cloudiam:MfaMechanismTestRequirement a sdo:EvidenceRequirement ;
+    sdo:supportsCondition cloudiam:ConditionPrivilegedMfa ;
+    sdo:applicabilityCondition cloudiam:ConditionHasPrivilegedAccounts ;
+    sdo:requiredEvidenceType cloud:AuthenticationMechanismTestResult ;
+    sdo:evidenceSourceCitation cloudiam:CitationIa2_1Assessment .
+
+cloudiam:ConditionHasPrivilegedAccounts a sdo:Condition ;
+    sdo:factProperty cloud:hasPrivilegedAccounts ;
+    sco:inputJsonPointer "/case/system/identity/hasPrivilegedAccounts" ;
+    sdo:expectedBoolean true .

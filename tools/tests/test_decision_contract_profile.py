@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from rdflib import RDF, Graph, Literal, Namespace
+from rdflib import RDF, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS
 import pytest
 
@@ -19,6 +19,13 @@ KFW458 = Namespace(
 )
 FUNDING = Namespace(
     "https://arturmiller.github.io/spec-compiler/ontology/funding/#"
+)
+CLOUD_PRODUCT_ROOT = ROOT / "products" / "cloud_access_compliance"
+CLOUDIAM = Namespace(
+    "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#"
+)
+CLOUD = Namespace(
+    "https://arturmiller.github.io/spec-compiler/ontology/cloud/#"
 )
 
 
@@ -144,6 +151,69 @@ def test_evidence_requirement_without_its_own_source_is_rejected():
 
     with pytest.raises(ValueError, match="Expected exactly one.*evidenceSourceCitation"):
         read_decision_model(PRODUCT_ROOT, graph)
+
+
+def test_cloud_model_reuses_core_without_funding_vocabulary():
+    graph = load_contract_graph(CLOUD_PRODUCT_ROOT)
+    model = read_decision_model(CLOUD_PRODUCT_ROOT, graph)
+    version = model.rule_set_versions[0]
+    requirement = version.evidence_requirements[0]
+
+    assert model.product == str(CLOUDIAM.ComplianceEvaluator)
+    assert model.rule_set == str(CLOUDIAM.PrivilegedAccessPolicy)
+    assert {model.positive_outcome, model.negative_outcome, model.unknown_outcome} == {
+        str(CLOUD.Satisfied),
+        str(CLOUD.Violated),
+        str(CLOUD.Unknown),
+    }
+    assert all(
+        rule.condition.fact_property.startswith(str(CLOUD))
+        for rule in version.rules
+    )
+    assert {obligation.identifier for rule in version.rules for obligation in rule.obligations} == {
+        str(CLOUDIAM.ObligationUniqueOrganizationalUsers),
+        str(CLOUDIAM.ObligationPrivilegedMfa),
+    }
+    assert requirement.source.source_revision == str(CLOUDIAM.NistSp80053ARev5)
+    assert version.source.source_revision == str(CLOUDIAM.NistSp80053Rev5Update1)
+    assert requirement.source.source_revision != version.source.source_revision
+    assert not any(
+        isinstance(value, URIRef) and str(value).startswith(str(FUNDING))
+        for triple in graph
+        for value in triple
+    )
+
+
+def test_cloud_obligation_expectations_are_complete_and_derived():
+    model = read_decision_model(
+        CLOUD_PRODUCT_ROOT, load_contract_graph(CLOUD_PRODUCT_ROOT)
+    )
+
+    assert {
+        status
+        for case in model.conformance_cases
+        for _, status in case.expected_obligation_statuses
+    } == {"fulfilled", "violated", "unknown"}
+
+
+def test_cloud_case_without_an_obligation_expectation_is_rejected():
+    graph = load_contract_graph(CLOUD_PRODUCT_ROOT)
+    expectation = next(
+        graph.objects(
+            CLOUDIAM.UnknownMfaCase,
+            SDO.hasObligationExpectation,
+        )
+    )
+    graph.remove(
+        (
+            CLOUDIAM.UnknownMfaCase,
+            SDO.hasObligationExpectation,
+            expectation,
+        )
+    )
+
+    with pytest.raises(ValueError, match="lacks Obligation Expectations"):
+        read_decision_model(CLOUD_PRODUCT_ROOT, graph)
 
 
 def test_fulfilled_evidence_expectation_requires_an_accepted_assessment():

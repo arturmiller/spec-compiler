@@ -241,10 +241,14 @@ Der Prototyp verwendet folgende explizite Abbildungsregeln:
 - Ein deklarierter Bootstrap-Prozess muss genau einen als
   `schema:SoftwareApplication` typisierten Seed und die unterstützte Strategie
   `sco:ModifyExistingImplementation` sowie einen sicheren relativen Pfad über
-  `sco:generatesImplementationArtifact` nennen. Compiler Conventions v1
+  `sco:generatesImplementationArtifact` nennen. Compiler Conventions v2
   materialisiert dort den Seed-Quellstand mit um eins erhöhtem, eindeutigem
   Generationsmarker. Der generierte Beweis startet den resultierenden Compiler
   über dessen eigenes Compiler-Protocol-Manifest.
+- Compiler Conventions v2 leitet Decision-Work-Item-IDs aus dem validierten
+  Product-Bundle-Verzeichnis ab und entfernt veraltete Markdown-Ausgaben nur
+  direkt unter dessen `generated/issues/`; fachliche Begriffe werden nicht als
+  Compilerpräfix vorausgesetzt.
 - `sh:minLength`, `sh:minExclusive` und `sh:maxExclusive` werden gleichnamig
   beziehungsweise semantisch äquivalent in JSON Schema/OpenAPI abgebildet.
 

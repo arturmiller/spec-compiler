@@ -18,7 +18,10 @@ tool:SpecCompilerBootstrapV1 a sco:BootstrapProcess ;
 
 tool:SpecCompilationV1 a sco:TransformationContract ;
     sco:inputSpecPattern "specs/*.ttl" ;
-    sco:conformanceFixture tool:SqlApiFixture , tool:Kfw458Fixture ;
+    sco:conformanceFixture
+        tool:SqlApiFixture,
+        tool:Kfw458Fixture,
+        tool:CloudAccessComplianceFixture ;
     sco:rejectsMissingSpecs true ;
     sco:deterministicOutput true .
 
@@ -31,6 +34,13 @@ tool:SqlApiFixture a sco:CompilerConformanceFixture ;
 
 tool:Kfw458Fixture a sco:CompilerConformanceFixture ;
     sco:fixtureProduct "../kfw_458_eligibility" ;
+    sco:expectsArtifact "tests/test_contract.py" ,
+        "generated/decision-contract.json" ,
+        "generated/work-graph.json" ,
+        "generated/issues/*.md" .
+
+tool:CloudAccessComplianceFixture a sco:CompilerConformanceFixture ;
+    sco:fixtureProduct "../cloud_access_compliance" ;
     sco:expectsArtifact "tests/test_contract.py" ,
         "generated/decision-contract.json" ,
         "generated/work-graph.json" ,

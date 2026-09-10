@@ -2,8 +2,9 @@
 
 Dieses Projekt untersucht, wie explizite RDF-Verträge für unterschiedliche
 Softwaredomänen in reproduzierbare, implementationsneutrale Verträge und Tests
-kompiliert werden. Zwei vertikale Referenzprodukte prüfen heute einen
-SQL/OpenAPI-Vertrag und eine source-backed KfW-458-Antragstellerentscheidung.
+kompiliert werden. Drei vertikale Referenzprodukte prüfen heute einen
+SQL/OpenAPI-Vertrag, eine source-backed KfW-458-Antragstellerentscheidung und
+eine kleine Cloud-Compliance-Entscheidung auf Basis von NIST IA-2 und IA-2(1).
 
 ## Ausführen
 
@@ -33,13 +34,19 @@ Das Projekt ist nach Verantwortlichkeiten getrennt:
   Decision Contract sowie Black-box-Fällen für `eligible`, `ineligible` und
   `unknown` einschließlich eines deterministischen, quellengestützten
   Frageablaufs.
+- `products/cloud_access_compliance/`: zweites Decision-Referenzprodukt mit
+  getrenntem `cloud:`-Vokabular, expliziten Rule-imposed Obligations,
+  NIST-Source-Citations, einem interaktiven Fact-Question-Ablauf und einer
+  unabhängig ausgewerteten MFA-Nachweisanforderung.
 - `products/spec_compiler/`: Self-Description Bundle, dessen Specs
   die allgemeine Softwareanwendung, ihre Konformität zu Compiler Protocol v1
   und ihren separat austauschbaren Transformationsvertrag beschreiben. Ein
   getrennter Bootstrap-Prozess bezeichnet die vorhandene G0-Implementierung als
-  Seed für G1. SQL API und KfW 458 sind getrennte Conformance Fixtures.
+  Seed für G1. SQL API, KfW 458 und Cloud Compliance sind getrennte
+  Conformance Fixtures.
 - `ontology/`: kanonische, öffentliche Definitionen der getrennten SHACL
-  Contract, Decision and Obligation Core und Funding Domain Ontologies.
+  Contract, Decision and Obligation Core, Funding Domain und Cloud Compliance
+  Domain Ontologies.
 - `docs/generation-principles.md`: Regeln gegen erfundene
   Implementierungsanforderungen.
 
@@ -58,7 +65,7 @@ unter `products/spec_compiler/src/spec_compiler.py`. Das Produktmanifest startet
 G1 mit seinem eigenen `pyproject.toml` und Lockfile. Die generierten
 Black-box-Tests führen G1 auf einem isolierten Product Bundle zweimal aus;
 beide Läufe müssen byte-identische Vertragsartefakte erreichen. Das gilt für
-beide deklarierten Conformance Fixtures und damit für beide Compilerprofile.
+alle deklarierten Conformance Fixtures und Compilerprofile.
 
 Das Decision-Profil kompiliert einen expliziten `sdo:DecisionContract`, eine
 aus einem expliziten Decision Date ausgewählte Rule Set Version und vollständige
@@ -81,6 +88,14 @@ Grundbuchauszug für selbstnutzende Eigentümer mit Bonusanspruch unabhängig al
 Evidence nur anhand expliziter Assessments. Der Resultatpfad enthält eine eigene
 Source Citation; Dateiformat, Upload, Speicherung und automatische
 Dokumentenprüfung bleiben außerhalb des Vertrags.
+
+Obligation Evaluation Conventions v1 bilden eine Rule Condition explizit auf
+den Status ihrer authored Obligation ab: `satisfied` wird `fulfilled`,
+`violated` bleibt `violated`, und `unknown` bleibt `unknown`. Das
+Cloud-Compliance-Beispiel macht diese Semantik erstmals ausführbar und gibt für
+jede Obligation Text, Rule, Condition, Source Citation und Erklärung aus. Das
+KfW-Beispiel erfindet dagegen keine Pflichten aus Eignungskriterien und liefert
+deshalb eine leere Liste von Obligation Evaluations.
 
 Version Selection Conventions v1 wählen die Version ausschließlich aus dem
 stabilen Rule Set, dem expliziten Decision Date und den autorisierten
@@ -113,7 +128,8 @@ Beispielspezifikationen.
 
 WebVOWL wird in getrennten Sichten veröffentlicht: `/ontology/webvowl/` zeigt
 das `sco:*`-Vokabular, `/ontology/decision/webvowl/` den wiederverwendbaren
-`sdo:*`-Kern und `/ontology/funding/webvowl/` das `funding:*`-Vokabular;
+`sdo:*`-Kern, `/ontology/funding/webvowl/` das `funding:*`-Vokabular und
+`/ontology/cloud/webvowl/` das `cloud:*`-Vokabular;
 `/examples/sql-api/webvowl/` zeigt das fachliche SQL-API-Beispiel mit
 `article:Article`, `article:description` und `article:price`. Eine ausschließlich
 für WebVOWL abgeleitete OWL-Projektion verbindet außerdem `GetArticleEndpoint`
@@ -133,10 +149,12 @@ deployment → Source** einmalig **GitHub Actions** ausgewählt werden.
 Die experimentellen IRIs beginnen mit
 `https://arturmiller.github.io/spec-compiler/`; die Vokabulare verwenden die
 dereferenzierbaren Fragment-Namespaces `.../ontology/#`,
-`.../ontology/decision/#` und `.../ontology/funding/#`. Ein stabiler Redirect über
+`.../ontology/decision/#`, `.../ontology/funding/#` und
+`.../ontology/cloud/#`. Ein stabiler Redirect über
 w3id.org bleibt eine spätere Option, falls das Vokabular produktiv wird.
-Auch die getrennten Toolchain-, SQL-API- und KfW-458-Ressourcen-Namespaces
-besitzen eigene HTML- und Turtle-Ziele.
+Auch die getrennten Toolchain-, SQL-API-, KfW-458- und
+Cloud-Privileged-Access-Ressourcen-Namespaces besitzen eigene HTML- und
+Turtle-Ziele.
 
 `generated/expected-openapi.json` beschreibt den aus den Specs erwarteten
 HTTP-Vertrag. Der OpenAPI-Test ruft das Dokument der laufenden Implementierung

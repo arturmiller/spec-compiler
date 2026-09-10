@@ -1,6 +1,6 @@
 {
   "generator": "spec-compiler",
-  "compiler_conventions_version": 1,
+  "compiler_conventions_version": 2,
   "compiler_protocol_version": 1,
   "bootstrap": {
     "process": "https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerBootstrapV1",
@@ -17,6 +17,10 @@
       "depends_on": [],
       "obligations": [
         "Input specs are discovered using `specs/*.ttl`.",
+        "The `CloudAccessComplianceFixture` conformance fixture emits `generated/decision-contract.json`.",
+        "The `CloudAccessComplianceFixture` conformance fixture emits `generated/issues/*.md`.",
+        "The `CloudAccessComplianceFixture` conformance fixture emits `generated/work-graph.json`.",
+        "The `CloudAccessComplianceFixture` conformance fixture emits `tests/test_contract.py`.",
         "The `Kfw458Fixture` conformance fixture emits `generated/decision-contract.json`.",
         "The `Kfw458Fixture` conformance fixture emits `generated/issues/*.md`.",
         "The `Kfw458Fixture` conformance fixture emits `generated/work-graph.json`.",
@@ -83,7 +87,7 @@
       ],
       "sources": [
         "`specs/`: Bootstrap Process, seed, strategy, and implementation artifact",
-        "Compiler Conventions v1: deterministic generation increment"
+        "Compiler Conventions v2: deterministic generation increment"
       ],
       "test": "products/spec_compiler/tests/test_contract.py::test_bootstrapped_compiler_is_independently_executable",
       "excluded": [

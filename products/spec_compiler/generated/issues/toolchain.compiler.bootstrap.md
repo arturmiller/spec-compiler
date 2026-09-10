@@ -24,7 +24,7 @@ uv run --extra dev pytest -q products/spec_compiler/tests/test_contract.py::test
 ## Sources
 
 - `specs/`: Bootstrap Process, seed, strategy, and implementation artifact
-- Compiler Conventions v1: deterministic generation increment
+- Compiler Conventions v2: deterministic generation increment
 
 ## Boundaries
 

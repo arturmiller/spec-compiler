@@ -1,0 +1,66 @@
+@prefix cloud: <https://arturmiller.github.io/spec-compiler/ontology/cloud/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://arturmiller.github.io/spec-compiler/ontology/cloud/>
+    a owl:Ontology ;
+    dcterms:title "Cloud Compliance Domain Ontology"@en ;
+    dcterms:title "Domänenontologie für Cloud-Compliance"@de ;
+    dcterms:description "Domain vocabulary for bounded cloud-system compliance decisions."@en ;
+    dcterms:description "Domänenvokabular für abgegrenzte Compliance-Entscheidungen über Cloud-Systeme."@de ;
+    dcterms:creator <https://github.com/arturmiller> ;
+    dcterms:source <https://github.com/arturmiller/spec-compiler> ;
+    vann:preferredNamespacePrefix "cloud" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/cloud/#" ;
+    owl:versionInfo "0.1.0-experimental" .
+
+cloud:CloudSystem a owl:Class ;
+    rdfs:label "Cloud system"@en ;
+    rdfs:label "Cloud-System"@de .
+
+cloud:PrivilegedAccessComplianceDecision a owl:Class ;
+    rdfs:subClassOf sdo:DecisionContract ;
+    rdfs:label "Privileged-access compliance decision"@en ;
+    rdfs:label "Compliance-Entscheidung für privilegierte Zugriffe"@de .
+
+cloud:AuthenticationMechanismTestResult a owl:Class ;
+    rdfs:subClassOf sdo:Evidence ;
+    rdfs:label "Authentication-mechanism test result"@en ;
+    rdfs:label "Testergebnis des Authentisierungsmechanismus"@de .
+
+cloud:Satisfied a owl:NamedIndividual, sdo:DecisionOutcome ;
+    rdfs:label "satisfied"@en ;
+    rdfs:label "erfüllt"@de ;
+    sdo:outcomeCode "satisfied" .
+
+cloud:Violated a owl:NamedIndividual, sdo:DecisionOutcome ;
+    rdfs:label "violated"@en ;
+    rdfs:label "verletzt"@de ;
+    sdo:outcomeCode "violated" .
+
+cloud:Unknown a owl:NamedIndividual, sdo:DecisionOutcome ;
+    rdfs:label "unknown"@en ;
+    rdfs:label "unbestimmt"@de ;
+    sdo:outcomeCode "unknown" .
+
+cloud:organizationalUsersUniquelyIdentified a owl:DatatypeProperty ;
+    rdfs:label "organizational users are uniquely identified"@en ;
+    rdfs:label "Organisationsbenutzende werden eindeutig identifiziert"@de ;
+    rdfs:domain cloud:CloudSystem ;
+    rdfs:range xsd:boolean .
+
+cloud:privilegedAccessUsesMfa a owl:DatatypeProperty ;
+    rdfs:label "privileged access uses multi-factor authentication"@en ;
+    rdfs:label "privilegierter Zugriff nutzt Mehrfaktorauthentisierung"@de ;
+    rdfs:domain cloud:CloudSystem ;
+    rdfs:range xsd:boolean .
+
+cloud:hasPrivilegedAccounts a owl:DatatypeProperty ;
+    rdfs:label "has privileged accounts"@en ;
+    rdfs:label "hat privilegierte Konten"@de ;
+    rdfs:domain cloud:CloudSystem ;
+    rdfs:range xsd:boolean .

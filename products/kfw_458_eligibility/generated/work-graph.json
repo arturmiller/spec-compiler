@@ -1,14 +1,15 @@
 {
   "generator": "spec-compiler",
-  "compiler_conventions_version": 1,
+  "compiler_conventions_version": 2,
   "decision_conventions_version": 1,
   "decision_protocol_version": 1,
   "question_selection_conventions_version": 1,
   "evidence_evaluation_conventions_version": 1,
   "version_selection_conventions_version": 1,
+  "obligation_evaluation_conventions_version": 1,
   "work_items": [
     {
-      "id": "kfw-458.decision-runtime",
+      "id": "kfw-458-eligibility.decision-runtime",
       "title": "Provide the Decision Protocol v1 interface",
       "goal": "Make the decision product invocable as a technology-neutral black box.",
       "depends_on": [],
@@ -28,11 +29,11 @@
       ]
     },
     {
-      "id": "kfw-458.version-selection",
+      "id": "kfw-458-eligibility.version-selection",
       "title": "Select the Rule Set Version by Decision Date",
       "goal": "Reproduce decisions in their declared temporal context without a current-date or latest-version default.",
       "depends_on": [
-        "kfw-458.decision-runtime"
+        "kfw-458-eligibility.decision-runtime"
       ],
       "obligations": [
         "The Decision Request identifies the stable Rule Set and an explicit ISO Decision Date.",
@@ -42,7 +43,8 @@
         "Identical facts produce the two source-backed historical outcomes declared by the Version Selection Cases."
       ],
       "sources": [
-        "`specs/`: Rule Set Versions, validity intervals, version Source Citations, and Version Selection Cases",
+        "`specs/`: Rule Set Versions, validity intervals, and version Source Citations",
+        "`specs/`: paired Version Selection Cases",
         "Version Selection Conventions v1: date-only, exactly-one applicability"
       ],
       "test": "products/kfw_458_eligibility/tests/test_contract.py::test_decision_date_selects_historical_rule_set_version",
@@ -52,18 +54,18 @@
       ]
     },
     {
-      "id": "kfw-458.applicant-eligibility",
-      "title": "Evaluate KfW 458 applicant eligibility",
-      "goal": "Return the specified applicant-eligibility outcome for each explicit Case.",
+      "id": "kfw-458-eligibility.decision-evaluation",
+      "title": "Evaluate the declared decision contract",
+      "goal": "Return the declared outcome for each explicit Conformance Case.",
       "depends_on": [
-        "kfw-458.version-selection"
+        "kfw-458-eligibility.version-selection"
       ],
       "obligations": [
         "All declared Conditions are evaluated as satisfied, violated, or unknown.",
         "A violated required Rule yields the declared negative outcome.",
         "A Fact Gap without a violated Rule yields the declared unknown outcome.",
         "Only all satisfied Rules yield the declared positive outcome.",
-        "The eligible, ineligible, and unknown conformance Cases pass end to end."
+        "The positive, negative, and unknown Conformance Cases pass end to end."
       ],
       "sources": [
         "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision`",
@@ -72,16 +74,16 @@
       ],
       "test": "products/kfw_458_eligibility/tests/test_contract.py::test_declared_decision_outcome",
       "excluded": [
-        "Heating-system or measure eligibility",
-        "A funding amount, legal entitlement, or KfW approval"
+        "Domain requirements not stated in the authored specs",
+        "An implementation technology inferred from domain vocabulary"
       ]
     },
     {
-      "id": "kfw-458.result-provenance",
+      "id": "kfw-458-eligibility.result-provenance",
       "title": "Explain the decision with source provenance",
       "goal": "Expose decisive Rules, source statements, and Fact Gaps in every result.",
       "depends_on": [
-        "kfw-458.applicant-eligibility"
+        "kfw-458-eligibility.decision-evaluation"
       ],
       "obligations": [
         "Every decisive Rule identifies its Source Citation and Source Revision.",
@@ -101,11 +103,11 @@
       ]
     },
     {
-      "id": "kfw-458.question-flow",
+      "id": "kfw-458-eligibility.question-flow",
       "title": "Ask the next decision-relevant Fact Question",
       "goal": "Advance an unknown Case through source-backed questions to a determinate outcome.",
       "depends_on": [
-        "kfw-458.result-provenance"
+        "kfw-458-eligibility.result-provenance"
       ],
       "obligations": [
         "Only a Fact Gap that currently prevents a unique outcome can produce the next question.",
@@ -126,11 +128,11 @@
       ]
     },
     {
-      "id": "kfw-458.evidence-evaluation",
+      "id": "kfw-458-eligibility.evidence-evaluation",
       "title": "Evaluate Evidence Requirements separately from Conditions",
       "goal": "Report whether each applicable Evidence Requirement is fulfilled without changing the underlying Decision Outcome.",
       "depends_on": [
-        "kfw-458.result-provenance"
+        "kfw-458-eligibility.result-provenance"
       ],
       "obligations": [
         "Each Evidence Requirement is evaluated as fulfilled, missing, or not_applicable.",

@@ -1,0 +1,178 @@
+{
+  "generator": "spec-compiler",
+  "compiler_conventions_version": 2,
+  "decision_conventions_version": 1,
+  "decision_protocol_version": 1,
+  "question_selection_conventions_version": 1,
+  "evidence_evaluation_conventions_version": 1,
+  "version_selection_conventions_version": 1,
+  "obligation_evaluation_conventions_version": 1,
+  "work_items": [
+    {
+      "id": "cloud-access-compliance.decision-runtime",
+      "title": "Provide the Decision Protocol v1 interface",
+      "goal": "Make the decision product invocable as a technology-neutral black box.",
+      "depends_on": [],
+      "obligations": [
+        "The product can be invoked through its `product.toml` manifest.",
+        "It accepts one UTF-8 JSON Decision Request on standard input.",
+        "It returns one UTF-8 JSON Decision Result on standard output."
+      ],
+      "sources": [
+        "Decision Protocol v1: manifest-driven process and JSON transport",
+        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessComplianceDecision`"
+      ],
+      "test": "products/cloud_access_compliance/tests/test_contract.py::test_decision_product_runtime",
+      "excluded": [
+        "A particular implementation language or framework",
+        "HTTP or a conversational user interface"
+      ]
+    },
+    {
+      "id": "cloud-access-compliance.version-selection",
+      "title": "Select the Rule Set Version by Decision Date",
+      "goal": "Reproduce decisions in their declared temporal context without a current-date or latest-version default.",
+      "depends_on": [
+        "cloud-access-compliance.decision-runtime"
+      ],
+      "obligations": [
+        "The Decision Request identifies the stable Rule Set and an explicit ISO Decision Date.",
+        "Exactly one Rule Set Version is selected from authored half-open validity intervals.",
+        "Every Decision Result reports the selected Rule Set Version and Decision Date.",
+        "Missing dates, uncovered dates, caller-selected versions, and overlapping validity intervals fail with actionable diagnostics."
+      ],
+      "sources": [
+        "`specs/`: Rule Set Versions, validity intervals, and version Source Citations",
+        "Version Selection Conventions v1: date-only, exactly-one applicability"
+      ],
+      "test": "products/cloud_access_compliance/tests/test_contract.py::test_decision_date_selects_historical_rule_set_version",
+      "excluded": [
+        "A silent current-date or latest-version default",
+        "Caller control over the selected Rule Set Version"
+      ]
+    },
+    {
+      "id": "cloud-access-compliance.decision-evaluation",
+      "title": "Evaluate the declared decision contract",
+      "goal": "Return the declared outcome for each explicit Conformance Case.",
+      "depends_on": [
+        "cloud-access-compliance.version-selection"
+      ],
+      "obligations": [
+        "All declared Conditions are evaluated as satisfied, violated, or unknown.",
+        "A violated required Rule yields the declared negative outcome.",
+        "A Fact Gap without a violated Rule yields the declared unknown outcome.",
+        "Only all satisfied Rules yield the declared positive outcome.",
+        "The positive, negative, and unknown Conformance Cases pass end to end."
+      ],
+      "sources": [
+        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessComplianceDecision`",
+        "`specs/`: Rules, Conditions, expected values, outcomes, and conformance Cases",
+        "Decision Conventions v1: explicit requires-all aggregation"
+      ],
+      "test": "products/cloud_access_compliance/tests/test_contract.py::test_declared_decision_outcome",
+      "excluded": [
+        "Domain requirements not stated in the authored specs",
+        "An implementation technology inferred from domain vocabulary"
+      ]
+    },
+    {
+      "id": "cloud-access-compliance.result-provenance",
+      "title": "Explain the decision with source provenance",
+      "goal": "Expose decisive Rules, source statements, and Fact Gaps in every result.",
+      "depends_on": [
+        "cloud-access-compliance.decision-evaluation"
+      ],
+      "obligations": [
+        "Every decisive Rule identifies its Source Citation and Source Revision.",
+        "Every cited source statement and locator is present in the Decision Result.",
+        "Unknown results identify the exact missing Facts.",
+        "Every result contains a human-readable explanation and the scope note."
+      ],
+      "sources": [
+        "`specs/`: Rule-to-Source Citation relations and source statements",
+        "`specs/`: scope note",
+        "Decision Conventions v1: decisive Rule and Fact Gap projection"
+      ],
+      "test": "products/cloud_access_compliance/tests/test_contract.py::test_decision_result_provenance",
+      "excluded": [
+        "Automatic source-document ingestion",
+        "A claim that the authored Spec completely transcribes the external source"
+      ]
+    },
+    {
+      "id": "cloud-access-compliance.question-flow",
+      "title": "Ask the next decision-relevant Fact Question",
+      "goal": "Advance an unknown Case through source-backed questions to a determinate outcome.",
+      "depends_on": [
+        "cloud-access-compliance.result-provenance"
+      ],
+      "obligations": [
+        "Only a Fact Gap that currently prevents a unique outcome can produce the next question.",
+        "The lowest-priority unresolved authored Fact Question is selected deterministically.",
+        "The question identifies its Condition, input pointer, and supporting Rule and Source Citation.",
+        "Submitting each authored answer advances to the next justified question or a final outcome.",
+        "A determinate outcome never includes a next question."
+      ],
+      "sources": [
+        "`specs/`: Fact Questions, priorities, Conditions, and Question Flow Case",
+        "Question Selection Conventions v1: select the lowest-priority current Fact Gap",
+        "Decision Conventions v1: violated Conditions make the outcome determinate"
+      ],
+      "test": "products/cloud_access_compliance/tests/test_contract.py::test_question_driven_interaction_reaches_final_outcome",
+      "excluded": [
+        "Questions unrelated to a Rule Condition",
+        "Session state, a conversational user interface, or adaptive question optimization"
+      ]
+    },
+    {
+      "id": "cloud-access-compliance.evidence-evaluation",
+      "title": "Evaluate Evidence Requirements separately from Conditions",
+      "goal": "Report whether each applicable Evidence Requirement is fulfilled without changing the underlying Decision Outcome.",
+      "depends_on": [
+        "cloud-access-compliance.result-provenance"
+      ],
+      "obligations": [
+        "Each Evidence Requirement is evaluated as fulfilled, missing, or not_applicable.",
+        "A satisfied Rule Condition remains separate from fulfillment of its Evidence Requirement.",
+        "Supplied Evidence is classified as accepted, rejected, unassessed, or not_relevant for each Evidence Requirement.",
+        "Only matching Evidence with an explicit accepted Evidence Assessment fulfills a Requirement.",
+        "Each Evidence Requirement evaluation exposes its independent Source Citation and explanation.",
+        "The fulfilled, missing, and not-applicable conformance Cases pass end to end."
+      ],
+      "sources": [
+        "`specs/`: Evidence Requirements, applicability Conditions, Evidence, Assessments, expectations, and Source Citations",
+        "Evidence Evaluation Conventions v1: all-condition applicability and explicit-assessment fulfillment",
+        "Decision Conventions v1: Evidence evaluation does not affect Rule Condition truth or Decision Outcome"
+      ],
+      "test": "products/cloud_access_compliance/tests/test_contract.py::test_evidence_requirements_are_evaluated_separately",
+      "excluded": [
+        "Document file formats, upload protocols, or storage",
+        "Automatic document-content or authenticity verification"
+      ]
+    },
+    {
+      "id": "cloud-access-compliance.obligation-evaluation",
+      "title": "Evaluate rule-imposed Obligations",
+      "goal": "Report each declared Obligation independently from the aggregate Decision Outcome.",
+      "depends_on": [
+        "cloud-access-compliance.result-provenance"
+      ],
+      "obligations": [
+        "Each selected Rule-imposed Obligation is evaluated as fulfilled, violated, or unknown.",
+        "The Obligation status is derived from its Rule Condition under Obligation Evaluation Conventions v1.",
+        "Every Obligation evaluation exposes its Rule Source Citation and an explanation.",
+        "Authored Conformance Cases prove all three Obligation statuses end to end."
+      ],
+      "sources": [
+        "`specs/`: Obligations, Rule relations, expectations, and Source Citations",
+        "Obligation Evaluation Conventions v1: project Rule Condition state onto Obligation status"
+      ],
+      "test": "products/cloud_access_compliance/tests/test_contract.py::test_rule_obligations_are_evaluated",
+      "excluded": [
+        "Remediation workflows, deadlines, assignees, or enforcement",
+        "Obligations inferred from prose or unstated policy"
+      ]
+    }
+  ]
+}

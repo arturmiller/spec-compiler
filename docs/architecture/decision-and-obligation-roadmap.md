@@ -4,7 +4,8 @@ Status: Living roadmap. The architectural basis was accepted in
 [Issue #1](https://github.com/arturmiller/spec-compiler/issues/1); the first
 runtime slice is implemented by Issue #2 and ADR 0017. Issues #3 through #5
 implement question selection, evidence evaluation, and historical Rule Set
-Version selection.
+Version selection. Issue #6 and ADR 0021 add the first cross-domain reuse proof
+and activate explicit Rule-imposed Obligations.
 
 ## Purpose
 
@@ -16,8 +17,8 @@ and failure on ambiguity.
 
 This roadmap fixes vocabulary, semantic boundaries, ontology ownership, a first
 pilot, and non-goals. It distinguishes the implemented decision,
-question-selection, evidence-evaluation, and version-selection slices from
-later obligation slices.
+question-selection, evidence-evaluation, version-selection, and narrow
+obligation-evaluation slices from later Obligation lifecycle work.
 
 ## Semantic model
 
@@ -25,8 +26,8 @@ The typed, immutable **Explicit Decision and Obligation Model** now exists
 alongside the SQL-oriented Explicit Obligation Model. Issue #2 materializes the
 decision, rule, condition, case, fact-gap, and provenance subset. Issue #4 adds
 the evidence-requirement subset and Issue #5 adds source-backed historical
-Rule Set Version selection. Obligation activation
-remains an accepted target semantic for a later slice.
+Rule Set Version selection. Issue #6 activates explicitly authored,
+Rule-imposed Obligations through Obligation Evaluation Conventions v1.
 
 | Concern | Accepted semantics |
 | --- | --- |
@@ -36,7 +37,7 @@ remains an accepted target semantic for a later slice.
 | Decisions | One Decision evaluates one scoped question for one Case against exactly one Rule Set Version. |
 | Outcomes | A uniquely entailed domain outcome is returned. The serialized outcome `unknown` is returned only when Fact Gaps prevent a unique outcome. |
 | Errors | Ambiguous specs, conflicting Facts, ambiguous Rule Set Version applicability, unsupported constructs, and multiple incompatible entailed outcomes fail with diagnostics rather than becoming `unknown`. |
-| Obligations | An Obligation exists in a result only when an explicitly sourced Rule makes it applicable. |
+| Obligations | An Obligation exists in a result only when an explicitly sourced Rule imposes it. Its Condition maps `satisfied` to `fulfilled`, `violated` to `violated`, and `unknown` to `unknown`. |
 | Evidence | Evidence Requirements and supplied Evidence are distinct from the Fact or Obligation they support; presence of Evidence is not automatically conclusive. |
 | Provenance | Results link through Rules and authored Spec statements to Source Citations, or directly to a named, versioned convention where that convention is the permitted requirement origin. |
 | Time | Validity Periods are half-open (`validFrom` inclusive, `validUntil` exclusive). A Decision Date has no implicit today/latest default. |
@@ -55,18 +56,21 @@ The ontology boundary is semantic, not merely a file split.
 | **SHACL Contract Ontology** | `sco:` — `https://arturmiller.github.io/spec-compiler/ontology/#` | Existing executable product, protocol, transformation, HTTP, and storage contract terms | Funding concepts or general decision semantics |
 | **Decision and Obligation Core Ontology** | `sdo:` — `https://arturmiller.github.io/spec-compiler/ontology/decision/#` | Domain-independent Rule Set, Rule, Condition, Fact, Fact Gap, Decision, outcome, Obligation, evidence, provenance, and time concepts | KfW, funding, building, applicant, or cloud-policy concepts |
 | **Funding Domain Ontology** | `funding:` — `https://arturmiller.github.io/spec-compiler/ontology/funding/#` | Funding Program, Applicant, Project, eligibility and exclusion meanings, funding instruments, and funding-specific outcomes | Generic compiler protocols or cloud-policy concepts |
+| **Cloud Compliance Domain Ontology** | `cloud:` — `https://arturmiller.github.io/spec-compiler/ontology/cloud/#` | Cloud System, privileged-access compliance, cloud identity Facts, assessment Evidence types, and cloud-specific outcomes | Generic decision semantics or funding concepts |
 | KfW 458 resources | `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#` | The program, pinned rule-set versions, source identities, citations, and pilot cases | Reusable vocabulary definitions |
+| Cloud privileged-access resources | `https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#` | The bounded NIST policy slice, pinned source identities, citations, Obligations, and system-profile cases | Reusable vocabulary definitions |
 
-The `sdo:` and `funding:` namespaces are published as separate authored
-vocabularies with their own WIDOCO references and WebVOWL graphs. The Decision
+The `sdo:`, `funding:`, and `cloud:` namespaces are published as separate
+authored vocabularies with their own WIDOCO references and WebVOWL graphs. The Decision
 and Obligation Core Ontology does not import the SHACL Contract Ontology merely
 because both are compiled by the same system. Evidence terms are present
-because Issue #4 establishes executable semantics; Obligation terms are added
-only when their slice does the same.
+because Issue #4 establishes executable semantics; Obligation terms are present
+because Issue #6 establishes their narrow executable semantics.
 
 A domain concept may be promoted to the core only after at least two distinct
 domains use it with the same semantics and the promotion is recorded as an
-architectural decision. Issue #6 supplies the first planned cross-domain test.
+architectural decision. Issue #6 supplies the first cross-domain test without
+promoting a domain term.
 
 ## KfW 458 Applicant Eligibility Pilot
 
@@ -160,6 +164,58 @@ pin a version and no today/latest default exists.
 - legal, financial, or funding advice and any promise of approval;
 - a conversational user interface or production deployment.
 
+## Cloud Privileged-Access Compliance Slice
+
+### Decision question and sources
+
+For one supplied Cloud System profile, determine whether the two authored
+controls IA-2 and IA-2(1) from NIST SP 800-53 Rev. 5 are `satisfied`,
+`violated`, or `unknown` under the Rule Set Version selected by the explicit
+Decision Date.
+
+| Source Revision | Use | Immutable identity |
+| --- | --- | --- |
+| NIST SP 800-53 Rev. 5, updates through 2020-12-10 | Rule Set Version, IA-2 unique-user Rule, and IA-2(1) privileged-account MFA Rule | 6,073,678 bytes; SHA-256 `fc63bcd61715d0181dd8e85998b1e6201ae3515fc6626102101cab1841e11ec6` |
+| NIST SP 800-53A Rev. 5, published 2022-01-25 | Independent IA-2(1) authentication-mechanism Evidence Requirement | 7,469,808 bytes; SHA-256 `75665570048b969ad465a4f4f1db425ce505c374951c2c64e462949c6b21be47` |
+
+The authored citations point to IA-2 and IA-2(1) on PDF page 158 (printed page
+132) and to the IA-02(01) assessment objective and methods on PDF pages 255–256
+(printed pages 244–245). The compiler does not fetch or interpret these
+documents. It verifies the explicit revision identities and compiles the
+authored statements.
+
+The complete positive Question Flow Case starts without Rule Facts, asks only
+the currently decision-relevant questions, and reaches `satisfied` after the
+authored answers are submitted. Separate Cases prove `violated` and `unknown`,
+all three Evidence Requirement statuses, and all three Obligation statuses.
+The MFA Evidence Requirement remains independent: missing assessment evidence
+does not turn a satisfied policy Condition into a violation.
+
+### Reuse comparison
+
+| Concept family | Funding use | Cloud use | Ownership decision |
+| --- | --- | --- | --- |
+| Decision, Rule Set Version, Rule, Condition, Case, and Outcome | KfW applicant eligibility | Two-control privileged-access compliance | Reuse `sdo:` unchanged; domain-specific Outcome individuals remain in `funding:` or `cloud:`. |
+| Source, Source Revision, Source Citation, and Validity Period | Two pinned KfW leaflet revisions | Pinned SP 800-53 policy and separate SP 800-53A assessment revision | Reuse `sdo:` unchanged. Version, Rule, and Evidence citations may identify different revisions. |
+| Fact Gap, Fact Question, Next Question, and Question Flow Case | Applicant and project Facts | Cloud identity Facts | Reuse `sdo:` and Question Selection Conventions v1 unchanged; question wording and Fact properties stay in Product resources or the Domain Ontology. |
+| Evidence Requirement, Evidence, Assessment, and evaluation statuses | Land-register excerpt | Authentication-mechanism test result | Reuse `sdo:` and Evidence Evaluation Conventions v1 unchanged; evidence types remain domain-specific. |
+| Obligation and Obligation Evaluation | No Rule-imposed Obligation is authored; results contain an empty list | IA-2 and IA-2(1) Rules explicitly impose Obligations | Activate the already accepted `sdo:` concept under Obligation Evaluation Conventions v1; do not recast funding eligibility criteria as duties. |
+| Domain subject and predicates | Applicant, Project, ownership, building location, bonus claim | Cloud System, unique-user identification, privileged accounts, MFA | Keep in `funding:` and `cloud:` respectively; no promotion to the core. |
+
+The comparison found no funding or cloud concept with equivalent semantics that
+needed promotion. The reusable concepts already belong to `sdo:`. The only Core
+Ontology additions materialize the previously accepted, domain-independent
+Obligation semantics and are recorded in ADR 0021.
+
+### Explicitly excluded from the cloud slice
+
+- complete NIST SP 800-53 coverage, control tailoring, baselines, overlays, or
+  authorization decisions;
+- cloud-provider inventory, configuration scanning, evidence collection,
+  document validation, certification, or continuous monitoring;
+- remediation workflow, deadlines, responsible parties, or enforcement;
+- a security guarantee, legal advice, or production deployment.
+
 ## Delivery slices
 
 | Issue | Vertical result | Dependency |
@@ -168,7 +224,7 @@ pin a version and no today/latest default exists.
 | [#3](https://github.com/arturmiller/spec-compiler/issues/3) | **Implemented:** derive one source-justified Next Question from current Fact Gaps and prove repeated answer submission to a determinate result. | #2 |
 | [#4](https://github.com/arturmiller/spec-compiler/issues/4) | **Implemented:** evaluate Conditions separately from independently sourced Evidence Requirements; classify supplied Evidence and prove `fulfilled`, `missing`, and `not_applicable` through Decision Protocol v1. | #2 |
 | [#5](https://github.com/arturmiller/spec-compiler/issues/5) | **Implemented:** select exactly one source-backed Rule Set Version from an explicit Decision Date and prove historical outcome change plus ambiguity failures. | #2 |
-| [#6](https://github.com/arturmiller/spec-compiler/issues/6) | Test core-ontology reuse with a cloud-compliance decision slice. | #3, #4, #5 |
+| [#6](https://github.com/arturmiller/spec-compiler/issues/6) | **Implemented:** reuse the decision core for a source-pinned cloud-compliance slice, keep cloud vocabulary separate, and evaluate explicit Rule-imposed Obligations through the black-box Decision Product boundary. | #3, #4, #5 |
 
 Each slice must update architecture and ontology documentation with its actual
 implementation, regenerate outputs twice with byte-identical results, and pass

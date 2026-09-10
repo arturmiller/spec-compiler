@@ -16,7 +16,7 @@
     dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "sdo" ;
     vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision/#" ;
-    owl:versionInfo "0.3.0-experimental" .
+    owl:versionInfo "0.4.0-experimental" .
 
 sdo:DecisionContract a owl:Class ;
     rdfs:label "Decision contract"@en ;
@@ -73,6 +73,37 @@ sdo:DecisionOutcome a owl:Class ;
 sdo:ConditionEvaluation a owl:Class ;
     rdfs:label "Condition evaluation"@en ;
     rdfs:label "Bedingungsauswertung"@de .
+
+sdo:Obligation a owl:Class ;
+    rdfs:label "Obligation"@en ;
+    rdfs:label "Verpflichtung"@de ;
+    rdfs:comment "A normative requirement explicitly imposed by a Rule; its evaluation inherits that Rule's Condition and Source Citation."@en .
+
+sdo:ObligationEvaluation a owl:Class ;
+    rdfs:label "Obligation evaluation"@en ;
+    rdfs:label "Verpflichtungsauswertung"@de ;
+    rdfs:comment "The fulfilled, violated, or unknown status of one Obligation for one Case."@en .
+
+sdo:ObligationExpectation a owl:Class ;
+    rdfs:label "Obligation expectation"@en ;
+    rdfs:label "Verpflichtungserwartung"@de ;
+    rdfs:comment "The expected Obligation status in a Conformance Case."@en .
+
+sdo:ObligationStatus a owl:Class ;
+    rdfs:label "Obligation status"@en ;
+    rdfs:label "Verpflichtungsstatus"@de .
+
+sdo:ObligationFulfilled a owl:NamedIndividual, sdo:ObligationStatus ;
+    rdfs:label "fulfilled"@en ;
+    rdfs:label "erfüllt"@de .
+
+sdo:ObligationViolated a owl:NamedIndividual, sdo:ObligationStatus ;
+    rdfs:label "violated"@en ;
+    rdfs:label "verletzt"@de .
+
+sdo:ObligationUnknown a owl:NamedIndividual, sdo:ObligationStatus ;
+    rdfs:label "unknown"@en ;
+    rdfs:label "unbestimmt"@de .
 
 sdo:ConformanceCase a owl:Class ;
     rdfs:subClassOf sdo:Case ;
@@ -156,6 +187,12 @@ sdo:condition a owl:ObjectProperty ;
     rdfs:label "Bedingung"@de ;
     rdfs:domain sdo:Rule ;
     rdfs:range sdo:Condition .
+
+sdo:imposesObligation a owl:ObjectProperty ;
+    rdfs:label "imposes obligation"@en ;
+    rdfs:label "begründet Verpflichtung"@de ;
+    rdfs:domain sdo:Rule ;
+    rdfs:range sdo:Obligation .
 
 sdo:factProperty a owl:ObjectProperty ;
     rdfs:label "fact property"@en ;
@@ -246,6 +283,24 @@ sdo:expectedEvidenceStatus a owl:ObjectProperty ;
     rdfs:label "erwartet Nachweisstatus"@de ;
     rdfs:domain sdo:EvidenceExpectation ;
     rdfs:range sdo:EvidenceRequirementStatus .
+
+sdo:hasObligationExpectation a owl:ObjectProperty ;
+    rdfs:label "has obligation expectation"@en ;
+    rdfs:label "hat Verpflichtungserwartung"@de ;
+    rdfs:domain sdo:ConformanceCase ;
+    rdfs:range sdo:ObligationExpectation .
+
+sdo:expectsObligation a owl:ObjectProperty ;
+    rdfs:label "expects obligation"@en ;
+    rdfs:label "erwartet Verpflichtung"@de ;
+    rdfs:domain sdo:ObligationExpectation ;
+    rdfs:range sdo:Obligation .
+
+sdo:expectedObligationStatus a owl:ObjectProperty ;
+    rdfs:label "expected obligation status"@en ;
+    rdfs:label "erwartet Verpflichtungsstatus"@de ;
+    rdfs:domain sdo:ObligationExpectation ;
+    rdfs:range sdo:ObligationStatus .
 
 sdo:citesSourceRevision a owl:ObjectProperty ;
     rdfs:label "cites source revision"@en ;
@@ -342,6 +397,12 @@ sdo:questionText a owl:DatatypeProperty ;
     rdfs:label "question text"@en ;
     rdfs:label "Fragetext"@de ;
     rdfs:domain sdo:FactQuestion ;
+    rdfs:range xsd:string .
+
+sdo:obligationText a owl:DatatypeProperty ;
+    rdfs:label "obligation text"@en ;
+    rdfs:label "Verpflichtungstext"@de ;
+    rdfs:domain sdo:Obligation ;
     rdfs:range xsd:string .
 
 sdo:questionPriority a owl:DatatypeProperty ;

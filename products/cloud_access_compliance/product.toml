@@ -1,0 +1,9 @@
+decision_protocol_version = 1
+
+[decision]
+command = ["uv", "run", "--locked", "python", "app.py", "--contract", "{product_root}/generated/decision-contract.json"]
+working_directory = "."
+timeout_seconds = 30
+
+[decision.environment]
+PYTHONIOENCODING = "utf-8"

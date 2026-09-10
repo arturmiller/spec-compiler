@@ -8,7 +8,7 @@ Advance an unknown Case through source-backed questions to a determinate outcome
 
 ## Dependencies
 
-- `kfw-458.result-provenance`
+- `kfw-458-eligibility.result-provenance`
 
 ## Obligations
 

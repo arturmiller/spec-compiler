@@ -1,0 +1,339 @@
+{
+  "profile": "decision-obligation-v1",
+  "decision_protocol_version": 1,
+  "decision_conventions_version": 1,
+  "question_selection_conventions_version": 1,
+  "evidence_evaluation_conventions_version": 1,
+  "version_selection_conventions_version": 1,
+  "obligation_evaluation_conventions_version": 1,
+  "product": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ComplianceEvaluator",
+  "decision_contract": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessComplianceDecision",
+  "rule_set": {
+    "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessPolicy",
+    "versions": [
+      {
+        "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessPolicyNistRev5",
+        "version": "nist-sp-800-53-rev5-update-1",
+        "valid_from": "2020-12-10",
+        "valid_until": null,
+        "source": {
+          "citation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#CitationPolicyVersion",
+          "source_revision": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053Rev5Update1",
+          "locator": "PDF title page, publication and update metadata",
+          "statement": "The selected policy source is NIST SP 800-53 Revision 5 with updates through 10 December 2020."
+        },
+        "requires_all_rules": true,
+        "rules": [
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#RulePrivilegedMfa",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionPrivilegedMfa",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#privilegedAccessUsesMfa",
+              "input_json_pointer": "/case/system/identity/privilegedAccessUsesMfa",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#QuestionPrivilegedMfa",
+                "text": "Does access to privileged accounts use multi-factor authentication?",
+                "priority": 20
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#CitationIa2_1",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053Rev5Update1",
+              "locator": "PDF page 158 (printed page 132), control IA-2(1)",
+              "statement": "Control IA-2(1) requires multi-factor authentication for access to privileged accounts."
+            },
+            "obligations": [
+              {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationPrivilegedMfa",
+                "text": "Use multi-factor authentication for access to privileged accounts."
+              }
+            ]
+          },
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#RuleUniqueOrganizationalUsers",
+            "condition": {
+              "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionUniqueOrganizationalUsers",
+              "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#organizationalUsersUniquelyIdentified",
+              "input_json_pointer": "/case/system/identity/organizationalUsersUniquelyIdentified",
+              "expected_boolean": true,
+              "question": {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#QuestionUniqueOrganizationalUsers",
+                "text": "Does the cloud system uniquely identify organizational users and associate their identities with processes acting on their behalf?",
+                "priority": 10
+              }
+            },
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#CitationIa2",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053Rev5Update1",
+              "locator": "PDF page 158 (printed page 132), control IA-2",
+              "statement": "Control IA-2 requires organizational users to be uniquely identified and authenticated and their identities associated with processes acting on their behalf."
+            },
+            "obligations": [
+              {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationUniqueOrganizationalUsers",
+                "text": "Uniquely identify and authenticate organizational users and associate their identities with processes acting on their behalf."
+              }
+            ]
+          }
+        ],
+        "evidence_requirements": [
+          {
+            "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#MfaMechanismTestRequirement",
+            "supports_condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionPrivilegedMfa",
+            "applicability_conditions": [
+              {
+                "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionHasPrivilegedAccounts",
+                "fact_property": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#hasPrivilegedAccounts",
+                "input_json_pointer": "/case/system/identity/hasPrivilegedAccounts",
+                "expected_boolean": true
+              }
+            ],
+            "required_evidence_type": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#AuthenticationMechanismTestResult",
+            "source": {
+              "citation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#CitationIa2_1Assessment",
+              "source_revision": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053ARev5",
+              "locator": "PDF pages 255-256 (printed pages 244-245), assessment objective IA-02(01)",
+              "statement": "The IA-2(1) assessment examines relevant policy, design, configuration, audit, and account-list evidence and tests mechanisms that implement multi-factor authentication."
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "outcomes": {
+    "positive": {
+      "id": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Satisfied",
+      "code": "satisfied"
+    },
+    "negative": {
+      "id": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Violated",
+      "code": "violated"
+    },
+    "unknown": {
+      "id": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Unknown",
+      "code": "unknown"
+    }
+  },
+  "scope_note": "This result evaluates only the two authored NIST SP 800-53 Rev. 5 controls IA-2 and IA-2(1) against supplied boolean system-profile facts. It is not a complete NIST assessment, certification, provider configuration scan, remediation plan, or security guarantee.",
+  "question_flow_case": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#SatisfiedCompleteEvidenceCase",
+  "version_selection_cases": [],
+  "source_revisions": [
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053ARev5",
+      "source": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053A",
+      "title": "Assessing Security and Privacy Controls in Information Systems and Organizations",
+      "identifier": "NIST SP 800-53A Rev. 5",
+      "version": "Revision 5",
+      "valid_from": "2022-01-25",
+      "content_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53Ar5.pdf",
+      "content_sha256": "75665570048b969ad465a4f4f1db425ce505c374951c2c64e462949c6b21be47",
+      "byte_size": 7469808
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053Rev5Update1",
+      "source": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#NistSp80053",
+      "title": "Security and Privacy Controls for Information Systems and Organizations",
+      "identifier": "NIST SP 800-53 Rev. 5",
+      "version": "Revision 5, updates through 2020-12-10",
+      "valid_from": "2020-12-10",
+      "content_url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r5.pdf",
+      "content_sha256": "fc63bcd61715d0181dd8e85998b1e6201ae3515fc6626102101cab1841e11ec6",
+      "byte_size": 6073678
+    }
+  ],
+  "conformance_cases": [
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#SatisfiedCompleteEvidenceCase",
+      "decision_date": "2026-09-10",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessPolicyNistRev5",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Satisfied",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionHasPrivilegedAccounts",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionPrivilegedMfa",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionUniqueOrganizationalUsers",
+          "value": true
+        }
+      ],
+      "evidence": [
+        {
+          "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#AcceptedMfaMechanismTest",
+          "evidence_type": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#AuthenticationMechanismTestResult",
+          "assessments": [
+            {
+              "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#MfaMechanismTestRequirement",
+              "accepted": true
+            }
+          ]
+        }
+      ],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#MfaMechanismTestRequirement",
+          "status": "fulfilled"
+        }
+      ],
+      "expected_obligation_statuses": [
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationPrivilegedMfa",
+          "status": "fulfilled"
+        },
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationUniqueOrganizationalUsers",
+          "status": "fulfilled"
+        }
+      ]
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#SatisfiedMissingEvidenceCase",
+      "decision_date": "2026-09-10",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessPolicyNistRev5",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Satisfied",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionHasPrivilegedAccounts",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionPrivilegedMfa",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionUniqueOrganizationalUsers",
+          "value": true
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#MfaMechanismTestRequirement",
+          "status": "missing"
+        }
+      ],
+      "expected_obligation_statuses": [
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationPrivilegedMfa",
+          "status": "fulfilled"
+        },
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationUniqueOrganizationalUsers",
+          "status": "fulfilled"
+        }
+      ]
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#SatisfiedNoPrivilegedAccountsCase",
+      "decision_date": "2026-09-10",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessPolicyNistRev5",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Satisfied",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionHasPrivilegedAccounts",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionPrivilegedMfa",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionUniqueOrganizationalUsers",
+          "value": true
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#MfaMechanismTestRequirement",
+          "status": "not_applicable"
+        }
+      ],
+      "expected_obligation_statuses": [
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationPrivilegedMfa",
+          "status": "fulfilled"
+        },
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationUniqueOrganizationalUsers",
+          "status": "fulfilled"
+        }
+      ]
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#UnknownMfaCase",
+      "decision_date": "2026-09-10",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessPolicyNistRev5",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Unknown",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionHasPrivilegedAccounts",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionUniqueOrganizationalUsers",
+          "value": true
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#MfaMechanismTestRequirement",
+          "status": "missing"
+        }
+      ],
+      "expected_obligation_statuses": [
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationPrivilegedMfa",
+          "status": "unknown"
+        },
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationUniqueOrganizationalUsers",
+          "status": "fulfilled"
+        }
+      ]
+    },
+    {
+      "id": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ViolatedMfaCase",
+      "decision_date": "2026-09-10",
+      "expected_rule_set_version": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#PrivilegedAccessPolicyNistRev5",
+      "expected_outcome": "https://arturmiller.github.io/spec-compiler/ontology/cloud/#Violated",
+      "facts": [
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionHasPrivilegedAccounts",
+          "value": true
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionPrivilegedMfa",
+          "value": false
+        },
+        {
+          "condition": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ConditionUniqueOrganizationalUsers",
+          "value": true
+        }
+      ],
+      "evidence": [],
+      "expected_evidence_statuses": [
+        {
+          "evidence_requirement": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#MfaMechanismTestRequirement",
+          "status": "missing"
+        }
+      ],
+      "expected_obligation_statuses": [
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationPrivilegedMfa",
+          "status": "violated"
+        },
+        {
+          "obligation": "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#ObligationUniqueOrganizationalUsers",
+          "status": "fulfilled"
+        }
+      ]
+    }
+  ]
+}

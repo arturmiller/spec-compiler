@@ -8,7 +8,7 @@ Report whether each applicable Evidence Requirement is fulfilled without changin
 
 ## Dependencies
 
-- `kfw-458.result-provenance`
+- `cloud-access-compliance.result-provenance`
 
 ## Obligations
 
@@ -22,7 +22,7 @@ Report whether each applicable Evidence Requirement is fulfilled without changin
 ## Verification
 
 ```console
-uv run --extra dev pytest -q products/kfw_458_eligibility/tests/test_contract.py::test_evidence_requirements_are_evaluated_separately
+uv run --extra dev pytest -q products/cloud_access_compliance/tests/test_contract.py::test_evidence_requirements_are_evaluated_separately
 ```
 
 ## Sources
@@ -34,7 +34,7 @@ uv run --extra dev pytest -q products/kfw_458_eligibility/tests/test_contract.py
 ## Boundaries
 
 - Do not edit the product's `specs/`, `tests/`, or `generated/` directories.
-- Implement product behavior under `products/kfw_458_eligibility/`.
+- Implement product behavior under `products/cloud_access_compliance/`.
 - Do not add implementation requirements that are absent from the specs or the documented runtime protocol.
 - Out of scope: Document file formats, upload protocols, or storage.
 - Out of scope: Automatic document-content or authenticity verification.

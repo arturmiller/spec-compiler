@@ -146,6 +146,43 @@ def _evaluate_evidence_requirements(version: dict, request: dict) -> list[dict]:
     return evaluations
 
 
+def _evaluate_obligations(version: dict, condition_evaluations: list[dict]) -> list[dict]:
+    state_by_rule = {
+        evaluation["rule"]: evaluation["state"]
+        for evaluation in condition_evaluations
+    }
+    status_by_state = {
+        "satisfied": "fulfilled",
+        "violated": "violated",
+        "unknown": "unknown",
+    }
+    result = []
+    for rule in version["rules"]:
+        source = rule["source"]
+        status = status_by_state[state_by_rule[rule["id"]]]
+        for obligation in rule["obligations"]:
+            result.append(
+                {
+                    "obligation": obligation["id"],
+                    "text": obligation["text"],
+                    "rule": rule["id"],
+                    "condition": rule["condition"]["id"],
+                    "status": status,
+                    "provenance": {
+                        "source_citation": source["citation"],
+                        "source_revision": source["source_revision"],
+                        "source_locator": source["locator"],
+                        "source_statement": source["statement"],
+                    },
+                    "explanation": (
+                        f"{status}: Obligation {obligation['id']} follows "
+                        f"Rule {rule['id']}. {source['statement']}"
+                    ),
+                }
+            )
+    return result
+
+
 def evaluate(contract: dict, request: dict) -> dict:
     if request.get("decision_contract") != contract["decision_contract"]:
         raise ValueError("Decision Request selects an unsupported Decision Contract")
@@ -235,6 +272,7 @@ def evaluate(contract: dict, request: dict) -> dict:
     evidence_requirement_evaluations = _evaluate_evidence_requirements(
         version, request
     )
+    obligation_evaluations = _evaluate_obligations(version, evaluations)
 
     rule_by_id = {rule["id"]: rule for rule in version["rules"]}
     provenance = [
@@ -296,6 +334,7 @@ def evaluate(contract: dict, request: dict) -> dict:
         "fact_gaps": fact_gaps,
         "next_question": next_question,
         "evidence_requirement_evaluations": evidence_requirement_evaluations,
+        "obligation_evaluations": obligation_evaluations,
         "provenance": provenance,
         "explanation": explanation,
         "scope_note": contract["scope_note"],

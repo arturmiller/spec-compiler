@@ -16,13 +16,14 @@ from rdflib.namespace import DCTERMS, OWL, SH, XSD
 
 ROOT = Path(__file__).parents[1]
 BOOTSTRAP_GENERATION = 0
-COMPILER_CONVENTIONS_VERSION = 1
+COMPILER_CONVENTIONS_VERSION = 2
 RUNTIME_PROTOCOL_VERSION = 1
 DECISION_CONVENTIONS_VERSION = 1
 DECISION_PROTOCOL_VERSION = 1
 QUESTION_SELECTION_CONVENTIONS_VERSION = 1
 EVIDENCE_EVALUATION_CONVENTIONS_VERSION = 1
 VERSION_SELECTION_CONVENTIONS_VERSION = 1
+OBLIGATION_EVALUATION_CONVENTIONS_VERSION = 1
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
 SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
@@ -73,10 +74,17 @@ class DecisionCondition:
 
 
 @dataclass(frozen=True)
+class Obligation:
+    identifier: str
+    text: str
+
+
+@dataclass(frozen=True)
 class DecisionRule:
     identifier: str
     condition: DecisionCondition
     source: DecisionSource
+    obligations: tuple[Obligation, ...]
 
 
 @dataclass(frozen=True)
@@ -129,6 +137,7 @@ class DecisionConformanceCase:
     facts: tuple[tuple[str, bool], ...]
     evidence: tuple[SuppliedEvidence, ...]
     expected_evidence_statuses: tuple[tuple[str, str], ...]
+    expected_obligation_statuses: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True)
@@ -545,6 +554,19 @@ def _evidence_status_for_case(
     return "missing"
 
 
+def _obligation_status_for_case(
+    rule: DecisionRule,
+    facts: tuple[tuple[str, bool], ...],
+) -> str:
+    """Apply Obligation Evaluation Conventions v1 to one authored Case."""
+    actual = dict(facts).get(rule.condition.identifier)
+    if actual is None:
+        return "unknown"
+    if actual == rule.condition.expected_boolean:
+        return "fulfilled"
+    return "violated"
+
+
 def read_decision_model(
     product_root: Path, graph: Graph | None = None
 ) -> ExplicitDecisionAndObligationModel:
@@ -606,6 +628,7 @@ def read_decision_model(
     question_owners: dict[str, str] = {}
     priority_owners: dict[int, str] = {}
     rule_ids: set[str] = set()
+    obligation_ids: set[str] = set()
     requirement_ids: set[str] = set()
     parsed_versions = []
     stable_rule_set = None
@@ -759,12 +782,32 @@ def read_decision_model(
             source = _read_decision_source(
                 graph, one(graph, rule_node, SDO.sourceCitation)
             )
-            if source.source_revision != version_source.source_revision:
-                raise ValueError(
-                    f"Decision Rule {rule_node} must cite the Source Revision "
-                    f"selected by Rule Set Version {version_node}"
+            obligations = []
+            for obligation_node in sorted(
+                graph.objects(rule_node, SDO.imposesObligation), key=str
+            ):
+                if (obligation_node, RDF.type, SDO.Obligation) not in graph:
+                    raise ValueError(
+                        f"Rule obligation {obligation_node} must be an sdo:Obligation"
+                    )
+                obligation_id = str(obligation_node)
+                if obligation_id in obligation_ids:
+                    raise ValueError(
+                        f"Obligation {obligation_node} belongs to more than one Rule"
+                    )
+                obligation_ids.add(obligation_id)
+                obligations.append(
+                    Obligation(
+                        identifier=obligation_id,
+                        text=_required_text(
+                            graph,
+                            obligation_node,
+                            SDO.obligationText,
+                            f"Obligation {obligation_node} text",
+                        ),
+                    )
                 )
-            rules.append(DecisionRule(rule_id, condition, source))
+            rules.append(DecisionRule(rule_id, condition, source, tuple(obligations)))
         if not rules:
             raise ValueError(f"Rule Set Version {version_node} must contain at least one Rule")
 
@@ -803,11 +846,6 @@ def read_decision_model(
             source = _read_decision_source(
                 graph, one(graph, requirement_node, SDO.evidenceSourceCitation)
             )
-            if source.source_revision != version_source.source_revision:
-                raise ValueError(
-                    f"Evidence Requirement {requirement_node} must cite the Source "
-                    f"Revision selected by Rule Set Version {version_node}"
-                )
             requirements.append(
                 EvidenceRequirement(
                     identifier=requirement_id,
@@ -1012,6 +1050,70 @@ def read_decision_model(
                     f"status {expected_status}, but Evidence Evaluation "
                     f"Conventions v1 derive {derived_status}"
                 )
+
+        selected_obligations = {
+            obligation.identifier: (obligation, rule)
+            for rule in selected_version.rules
+            for obligation in rule.obligations
+        }
+        obligation_statuses = []
+        seen_obligation_expectations = set()
+        obligation_status_by_node = {
+            str(SDO.ObligationFulfilled): "fulfilled",
+            str(SDO.ObligationViolated): "violated",
+            str(SDO.ObligationUnknown): "unknown",
+        }
+        for expectation_node in graph.objects(
+            case_node, SDO.hasObligationExpectation
+        ):
+            if (expectation_node, RDF.type, SDO.ObligationExpectation) not in graph:
+                raise ValueError(
+                    f"Obligation expectation {expectation_node} must be an "
+                    "sdo:ObligationExpectation"
+                )
+            obligation_id = str(
+                one(graph, expectation_node, SDO.expectsObligation)
+            )
+            if obligation_id not in selected_obligations:
+                raise ValueError(
+                    f"Obligation expectation {expectation_node} references an "
+                    "Obligation outside the selected Rule Set Version"
+                )
+            if obligation_id in seen_obligation_expectations:
+                raise ValueError(
+                    f"Conformance case {case_node} has conflicting Obligation "
+                    f"Expectations for {obligation_id}"
+                )
+            seen_obligation_expectations.add(obligation_id)
+            status_node = str(
+                one(graph, expectation_node, SDO.expectedObligationStatus)
+            )
+            if status_node not in obligation_status_by_node:
+                raise ValueError(
+                    f"Obligation expectation {expectation_node} uses an "
+                    "unsupported status"
+                )
+            obligation_statuses.append(
+                (obligation_id, obligation_status_by_node[status_node])
+            )
+        if seen_obligation_expectations != set(selected_obligations):
+            missing = sorted(
+                set(selected_obligations) - seen_obligation_expectations
+            )
+            raise ValueError(
+                f"Conformance case {case_node} lacks Obligation Expectations "
+                f"for {missing}"
+            )
+        immutable_obligation_statuses = tuple(sorted(obligation_statuses))
+        for obligation_id, (_, rule) in selected_obligations.items():
+            expected_status = dict(immutable_obligation_statuses)[obligation_id]
+            derived_status = _obligation_status_for_case(rule, immutable_facts)
+            if expected_status != derived_status:
+                raise ValueError(
+                    f"Conformance case {case_node} expects Obligation "
+                    f"{obligation_id} status {expected_status}, but Obligation "
+                    f"Evaluation Conventions v1 derive {derived_status}"
+                )
         derived_outcome = _decision_outcome_for_case(
             selected_version.rules, immutable_facts,
             positive_outcome=positive_outcome,
@@ -1031,6 +1133,7 @@ def read_decision_model(
             facts=immutable_facts,
             evidence=immutable_evidence,
             expected_evidence_statuses=immutable_statuses,
+            expected_obligation_statuses=immutable_obligation_statuses,
         ))
         if (case_node, RDF.type, SDO.QuestionFlowCase) in graph:
             question_flow_case_ids.append(str(case_node))
@@ -1064,6 +1167,24 @@ def read_decision_model(
                     f"Conformance cases do not cover Evidence Requirement "
                     f"{requirement.identifier} statuses: {sorted(required_statuses - covered)}"
                 )
+    obligations = {
+        obligation.identifier
+        for version in versions
+        for rule in version.rules
+        for obligation in rule.obligations
+    }
+    if obligations:
+        covered_obligation_statuses = {
+            status
+            for case in immutable_cases
+            for _, status in case.expected_obligation_statuses
+        }
+        required_obligation_statuses = {"fulfilled", "violated", "unknown"}
+        if covered_obligation_statuses != required_obligation_statuses:
+            raise ValueError(
+                "Conformance cases do not cover all Obligation statuses: "
+                f"{sorted(required_obligation_statuses - covered_obligation_statuses)}"
+            )
     if len(question_flow_case_ids) != 1:
         raise ValueError(
             "Decision Contract must declare exactly one sdo:QuestionFlowCase, "
@@ -1233,6 +1354,10 @@ def build_decision_contract(
                 },
             },
             "source": render_source(source),
+            "obligations": [
+                {"id": obligation.identifier, "text": obligation.text}
+                for obligation in rule.obligations
+            ],
         }
 
     def render_requirement(requirement: EvidenceRequirement) -> dict:
@@ -1284,6 +1409,9 @@ def build_decision_contract(
         ),
         "version_selection_conventions_version": (
             VERSION_SELECTION_CONVENTIONS_VERSION
+        ),
+        "obligation_evaluation_conventions_version": (
+            OBLIGATION_EVALUATION_CONVENTIONS_VERSION
         ),
         "product": model.product,
         "decision_contract": model.decision_contract,
@@ -1344,21 +1472,33 @@ def build_decision_contract(
                     }
                     for requirement, status in case.expected_evidence_statuses
                 ],
+                "expected_obligation_statuses": [
+                    {"obligation": obligation, "status": status}
+                    for obligation, status in case.expected_obligation_statuses
+                ],
             }
             for case in model.conformance_cases
         ],
     }
 
 
-def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
-    runtime_id = "kfw-458.decision-runtime"
-    selection_id = "kfw-458.version-selection"
-    evaluation_id = "kfw-458.applicant-eligibility"
-    provenance_id = "kfw-458.result-provenance"
+def build_decision_work_items(
+    contract: dict, test_path: str, work_prefix: str
+) -> list[dict]:
+    runtime_id = f"{work_prefix}.decision-runtime"
+    selection_id = f"{work_prefix}.version-selection"
+    evaluation_id = f"{work_prefix}.decision-evaluation"
+    provenance_id = f"{work_prefix}.result-provenance"
     evidence_requirements = [
         requirement
         for version in contract["rule_set"]["versions"]
         for requirement in version["evidence_requirements"]
+    ]
+    obligations = [
+        obligation
+        for version in contract["rule_set"]["versions"]
+        for rule in version["rules"]
+        for obligation in rule["obligations"]
     ]
     work_items = [
         {
@@ -1394,10 +1534,19 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
                 "Exactly one Rule Set Version is selected from authored half-open validity intervals.",
                 "Every Decision Result reports the selected Rule Set Version and Decision Date.",
                 "Missing dates, uncovered dates, caller-selected versions, and overlapping validity intervals fail with actionable diagnostics.",
-                "Identical facts produce the two source-backed historical outcomes declared by the Version Selection Cases.",
+                *(
+                    ["Identical facts produce the two source-backed historical outcomes declared by the Version Selection Cases."]
+                    if contract["version_selection_cases"]
+                    else []
+                ),
             ],
             "sources": [
-                "`specs/`: Rule Set Versions, validity intervals, version Source Citations, and Version Selection Cases",
+                "`specs/`: Rule Set Versions, validity intervals, and version Source Citations",
+                *(
+                    ["`specs/`: paired Version Selection Cases"]
+                    if contract["version_selection_cases"]
+                    else []
+                ),
                 "Version Selection Conventions v1: date-only, exactly-one applicability",
             ],
             "test": f"{test_path}::test_decision_date_selects_historical_rule_set_version",
@@ -1408,15 +1557,15 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
         },
         {
             "id": evaluation_id,
-            "title": "Evaluate KfW 458 applicant eligibility",
-            "goal": "Return the specified applicant-eligibility outcome for each explicit Case.",
+            "title": "Evaluate the declared decision contract",
+            "goal": "Return the declared outcome for each explicit Conformance Case.",
             "depends_on": [selection_id],
             "obligations": [
                 "All declared Conditions are evaluated as satisfied, violated, or unknown.",
                 "A violated required Rule yields the declared negative outcome.",
                 "A Fact Gap without a violated Rule yields the declared unknown outcome.",
                 "Only all satisfied Rules yield the declared positive outcome.",
-                "The eligible, ineligible, and unknown conformance Cases pass end to end.",
+                "The positive, negative, and unknown Conformance Cases pass end to end.",
             ],
             "sources": [
                 f"Decision Contract `{contract['decision_contract']}`",
@@ -1425,8 +1574,8 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
             ],
             "test": f"{test_path}::test_declared_decision_outcome",
             "excluded": [
-                "Heating-system or measure eligibility",
-                "A funding amount, legal entitlement, or KfW approval",
+                "Domain requirements not stated in the authored specs",
+                "An implementation technology inferred from domain vocabulary",
             ],
         },
         {
@@ -1452,7 +1601,7 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
             ],
         },
         {
-            "id": "kfw-458.question-flow",
+            "id": f"{work_prefix}.question-flow",
             "title": "Ask the next decision-relevant Fact Question",
             "goal": (
                 "Advance an unknown Case through source-backed questions to a "
@@ -1481,7 +1630,7 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
             ],
         },
         {
-            "id": "kfw-458.evidence-evaluation",
+            "id": f"{work_prefix}.evidence-evaluation",
             "title": "Evaluate Evidence Requirements separately from Conditions",
             "goal": (
                 "Report whether each applicable Evidence Requirement is "
@@ -1513,6 +1662,33 @@ def build_decision_work_items(contract: dict, test_path: str) -> list[dict]:
     ]
     if not evidence_requirements:
         work_items.pop()
+    if obligations:
+        work_items.append(
+            {
+                "id": f"{work_prefix}.obligation-evaluation",
+                "title": "Evaluate rule-imposed Obligations",
+                "goal": (
+                    "Report each declared Obligation independently from the "
+                    "aggregate Decision Outcome."
+                ),
+                "depends_on": [provenance_id],
+                "obligations": [
+                    "Each selected Rule-imposed Obligation is evaluated as fulfilled, violated, or unknown.",
+                    "The Obligation status is derived from its Rule Condition under Obligation Evaluation Conventions v1.",
+                    "Every Obligation evaluation exposes its Rule Source Citation and an explanation.",
+                    "Authored Conformance Cases prove all three Obligation statuses end to end.",
+                ],
+                "sources": [
+                    "`specs/`: Obligations, Rule relations, expectations, and Source Citations",
+                    "Obligation Evaluation Conventions v1: project Rule Condition state onto Obligation status",
+                ],
+                "test": f"{test_path}::test_rule_obligations_are_evaluated",
+                "excluded": [
+                    "Remediation workflows, deadlines, assignees, or enforcement",
+                    "Obligations inferred from prose or unstated policy",
+                ],
+            }
+        )
     return work_items
 
 
@@ -2025,6 +2201,7 @@ def test_get_endpoint_satisfies_explicit_obligations(running_api):
 
 DECISION_TEST_TEMPLATE = '''# Generated by Spec Compiler. Do not edit.
 import json
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -2040,6 +2217,11 @@ CONTRACT = json.loads(
 VERSIONS = CONTRACT["rule_set"]["versions"]
 VERSIONS_BY_ID = {version["id"]: version for version in VERSIONS}
 ALL_RULES = [rule for version in VERSIONS for rule in version["rules"]]
+ALL_OBLIGATIONS = [
+    obligation
+    for rule in ALL_RULES
+    for obligation in rule["obligations"]
+]
 ALL_EVIDENCE_REQUIREMENTS = [
     requirement
     for version in VERSIONS
@@ -2252,6 +2434,43 @@ def _expected_evidence_evaluations(case):
     return result
 
 
+def _expected_obligation_evaluations(case):
+    version = _version_for_case(case)
+    facts = {fact["condition"]: fact["value"] for fact in case["facts"]}
+    result = []
+    for rule in version["rules"]:
+        condition = rule["condition"]
+        actual = facts.get(condition["id"])
+        if actual is None:
+            status = "unknown"
+        elif actual == condition["expected_boolean"]:
+            status = "fulfilled"
+        else:
+            status = "violated"
+        source = rule["source"]
+        for obligation in rule["obligations"]:
+            result.append(
+                {
+                    "obligation": obligation["id"],
+                    "text": obligation["text"],
+                    "rule": rule["id"],
+                    "condition": condition["id"],
+                    "status": status,
+                    "provenance": {
+                        "source_citation": source["citation"],
+                        "source_revision": source["source_revision"],
+                        "source_locator": source["locator"],
+                        "source_statement": source["statement"],
+                    },
+                    "explanation": (
+                        f"{status}: Obligation {obligation['id']} follows "
+                        f"Rule {rule['id']}. {source['statement']}"
+                    ),
+                }
+            )
+    return result
+
+
 def _run_case(case):
     result = run_decision(PRODUCT_ROOT, _request_for_case(case))
     assert result.returncode == 0, result.output
@@ -2262,6 +2481,7 @@ def test_generated_contract_covers_all_declared_outcomes():
     assert CONTRACT["question_selection_conventions_version"] == 1
     assert CONTRACT["evidence_evaluation_conventions_version"] == 1
     assert CONTRACT["version_selection_conventions_version"] == 1
+    assert CONTRACT["obligation_evaluation_conventions_version"] == 1
     assert {case["expected_outcome"] for case in CONTRACT["conformance_cases"]} == {
         outcome["id"] for outcome in CONTRACT["outcomes"].values()
     }
@@ -2301,6 +2521,12 @@ def test_generated_contract_covers_all_declared_outcomes():
         and requirement["source"]["citation"]
         for requirement in ALL_EVIDENCE_REQUIREMENTS
     )
+    if ALL_OBLIGATIONS:
+        assert {
+            expectation["status"]
+            for case in CONTRACT["conformance_cases"]
+            for expectation in case["expected_obligation_statuses"]
+        } == {"fulfilled", "violated", "unknown"}
 
 
 def test_decision_product_runtime():
@@ -2314,28 +2540,32 @@ def test_decision_date_selects_historical_rule_set_version():
         for case in CONTRACT["conformance_cases"]
         if case["id"] in CONTRACT["version_selection_cases"]
     ]
-    assert len(cases) == 2
-    requests = [_request_for_case(case) for case in cases]
-    comparable = []
-    for request in requests:
-        copy = json.loads(json.dumps(request))
-        copy.pop("decision_date")
-        comparable.append(copy)
-    assert comparable[0] == comparable[1]
+    if cases:
+        assert len(cases) == 2
+        requests = [_request_for_case(case) for case in cases]
+        comparable = []
+        for request in requests:
+            copy = json.loads(json.dumps(request))
+            copy.pop("decision_date")
+            comparable.append(copy)
+        assert comparable[0] == comparable[1]
+    else:
+        cases = CONTRACT["conformance_cases"]
 
     results = [_run_case(case) for case in cases]
     assert {result["rule_set_version"] for result in results} == {
         case["expected_rule_set_version"] for case in cases
     }
-    assert len({result["outcome"] for result in results}) == 2
+    if CONTRACT["version_selection_cases"]:
+        assert len({result["outcome"] for result in results}) == 2
     for case, result in zip(cases, results):
         version = _version_for_case(case)
         assert result["decision_date"] == case["decision_date"]
         assert result["rule_set_version"] == version["id"]
         assert result["rule_set_version_label"] == version["version"]
-        assert {
-            item["source_revision"] for item in result["provenance"]
-        } == {version["source"]["source_revision"]}
+        assert version["source"]["source_revision"] in {
+            source["id"] for source in CONTRACT["source_revisions"]
+        }
 
 
 def test_runtime_rejects_missing_uncovered_and_caller_selected_versions():
@@ -2347,7 +2577,8 @@ def test_runtime_rejects_missing_uncovered_and_caller_selected_versions():
     assert "must contain an ISO decision_date" in result.output
 
     uncovered = _request_for_case(case)
-    uncovered["decision_date"] = "2025-12-09"
+    earliest = min(date.fromisoformat(version["valid_from"]) for version in VERSIONS)
+    uncovered["decision_date"] = (earliest - timedelta(days=1)).isoformat()
     result = run_decision(PRODUCT_ROOT, uncovered)
     assert result.returncode != 0
     assert "matches 0 Rule Set Versions" in result.output
@@ -2382,6 +2613,9 @@ def test_declared_decision_outcome(case):
     assert payload["next_question"] == _expected_next_question(evaluations, version)
     assert payload["evidence_requirement_evaluations"] == (
         _expected_evidence_evaluations(case)
+    )
+    assert payload["obligation_evaluations"] == (
+        _expected_obligation_evaluations(case)
     )
 
 
@@ -2488,6 +2722,31 @@ def test_unaccepted_supplied_evidence_does_not_fulfill_requirement():
     assert evidence_evaluation["supplied_evidence"][0]["classification"] == "rejected"
 
 
+@pytest.mark.skipif(not ALL_OBLIGATIONS, reason="no Obligations")
+def test_rule_obligations_are_evaluated():
+    covered_statuses = set()
+    for case in CONTRACT["conformance_cases"]:
+        payload = _run_case(case)
+        actual = {
+            item["obligation"]: item
+            for item in payload["obligation_evaluations"]
+        }
+        expected = {
+            item["obligation"]: item["status"]
+            for item in case["expected_obligation_statuses"]
+        }
+        assert set(actual) == set(expected)
+        assert {
+            obligation: item["status"]
+            for obligation, item in actual.items()
+        } == expected
+        assert all(item["provenance"]["source_citation"] for item in actual.values())
+        assert all(item["provenance"]["source_statement"] for item in actual.values())
+        assert all(item["text"] and item["explanation"] for item in actual.values())
+        covered_statuses.update(expected.values())
+    assert covered_statuses == {"fulfilled", "violated", "unknown"}
+
+
 def test_question_driven_interaction_reaches_final_outcome():
     flow_case = next(
         case
@@ -2558,7 +2817,8 @@ def test_determinate_outcome_does_not_ask_an_irrelevant_question():
     removable = next(
         fact
         for fact in negative["facts"]
-        if fact["value"]
+        if fact["condition"] in negative_rules
+        and fact["value"]
         == negative_rules[fact["condition"]]["condition"]["expected_boolean"]
     )
     partial = {
@@ -2733,7 +2993,7 @@ def build_compiler_work_items(contract: dict, test_path: str) -> list[dict]:
                 ],
                 "sources": [
                     "`specs/`: Bootstrap Process, seed, strategy, and implementation artifact",
-                    "Compiler Conventions v1: deterministic generation increment",
+                    "Compiler Conventions v2: deterministic generation increment",
                 ],
                 "test": f"{test_path}::test_bootstrapped_compiler_is_independently_executable",
                 "excluded": [
@@ -2824,7 +3084,12 @@ def generate_decision_contract(
         else test_output.relative_to(product_root).as_posix()
     )
     contract = build_decision_contract(model)
-    work_items = build_decision_work_items(contract, test_path)
+    work_prefix = product_root.name.replace("_", "-")
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", work_prefix):
+        raise ValueError(
+            f"Decision Product directory does not form a safe work prefix: {work_prefix}"
+        )
+    work_items = build_decision_work_items(contract, test_path, work_prefix)
 
     test_output.parent.mkdir(parents=True, exist_ok=True)
     test_output.write_text(DECISION_TEST_TEMPLATE, encoding="utf-8")
@@ -2853,6 +3118,9 @@ def generate_decision_contract(
                 "version_selection_conventions_version": (
                     VERSION_SELECTION_CONVENTIONS_VERSION
                 ),
+                "obligation_evaluation_conventions_version": (
+                    OBLIGATION_EVALUATION_CONVENTIONS_VERSION
+                ),
                 "work_items": work_items,
             },
             indent=2,
@@ -2860,6 +3128,10 @@ def generate_decision_contract(
         + "\n",
         encoding="utf-8",
     )
+    expected_issue_names = {f"{item['id']}.md" for item in work_items}
+    for stale_issue in sorted(issues.glob("*.md")):
+        if stale_issue.name not in expected_issue_names:
+            stale_issue.unlink()
     issue_outputs = []
     for item in work_items:
         issue_output = issues / f"{item['id']}.md"
