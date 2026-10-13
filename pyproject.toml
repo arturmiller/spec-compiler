@@ -21,7 +21,7 @@ generate-kfw-458 = { cmd = "python tools/generate.py --product products/kfw_458_
 generate-cloud-compliance = { cmd = "python tools/generate.py --product products/cloud_access_compliance", help = "Generate the cloud compliance decision contract" }
 generate = { sequence = ["generate-sql-api", "generate-kfw-458", "generate-cloud-compliance", "generate-spec-compiler"], help = "Generate all contract tests and work items" }
 ontology-validate = { cmd = "python tools/build_ontology_site.py --validate-only", help = "Validate the public ontology and its use in specs" }
-ontology-site = { cmd = "python tools/build_ontology_site.py", help = "Build WIDOCO and WebVOWL documentation" }
+ontology-site = { cmd = "python tools/build_ontology_site.py", help = "Build ontology references and relationship graph" }
 test = { cmd = "pytest -q", help = "Run the test suite" }
 run = { sequence = ["generate", "ontology-validate", "test"], help = "Generate all artifacts and run validation and tests" }
 

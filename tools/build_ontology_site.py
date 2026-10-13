@@ -1,4 +1,4 @@
-"""Build unversioned WIDOCO/WebVOWL documentation for GitHub Pages."""
+"""Build ontology references and the Relationship Graph for GitHub Pages."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from urllib.request import urlopen
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, OWL, RDFS, SH
 
+from ontology_relationship_graph import build_dataset, write_graph_site
+
 
 ROOT = Path(__file__).parents[1]
 ONTOLOGY = ROOT / "ontology" / "shacl-contract.ttl"
@@ -20,6 +22,7 @@ DECISION_ONTOLOGY = ROOT / "ontology" / "decision-obligation.ttl"
 FUNDING_ONTOLOGY = ROOT / "ontology" / "funding.ttl"
 CLOUD_ONTOLOGY = ROOT / "ontology" / "cloud-compliance.ttl"
 OUTPUT = ROOT / "build" / "ontology-site"
+GRAPH_OUTPUT = OUTPUT / "graph"
 REFERENCE_OUTPUT = OUTPUT / "ontology"
 DECISION_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "decision"
 FUNDING_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "funding"
@@ -187,17 +190,17 @@ def _write_landing_page() -> None:
 </head>
 <body>
   <h1>Spec Compiler ontologies</h1>
-  <p>Separate experimental vocabularies for executable contracts, reusable decision semantics, funding concepts, and cloud-compliance concepts.</p>
+  <p>Separate experimental vocabularies for executable contracts, reusable decision semantics, funding concepts, and cloud-compliance concepts. Explore their fixed-layout relationship graphs or read the bilingual references.</p>
   <nav>
     <a class="card" href="ontology/index-en.html"><strong>SHACL Contract Ontology</strong>Executable product and protocol contracts</a>
     <a class="card" href="ontology/decision/index-en.html"><strong>Decision and Obligation Core Ontology</strong>Domain-independent decision semantics</a>
     <a class="card" href="ontology/funding/index-en.html"><strong>Funding Domain Ontology</strong>Funding programs and scoped eligibility</a>
     <a class="card" href="ontology/cloud/index-en.html"><strong>Cloud Compliance Domain Ontology</strong>Cloud systems and scoped policy decisions</a>
-    <a class="card" href="ontology/webvowl/index.html"><strong>Contract graph</strong>Explore the contract vocabulary with WebVOWL</a>
-    <a class="card" href="ontology/decision/webvowl/index.html"><strong>Decision graph</strong>Explore the core decision vocabulary</a>
-    <a class="card" href="ontology/funding/webvowl/index.html"><strong>Funding graph</strong>Explore the funding vocabulary</a>
-    <a class="card" href="ontology/cloud/webvowl/index.html"><strong>Cloud graph</strong>Explore the cloud-compliance vocabulary</a>
-    <a class="card" href="examples/sql-api/webvowl/index.html"><strong>SQL API example graph</strong>Explore Article, description and price separately</a>
+    <a class="card" href="graph/?ontology=contract"><strong>Contract graph</strong>Explore the contract vocabulary</a>
+    <a class="card" href="graph/?ontology=decision"><strong>Decision graph</strong>Explore the core decision vocabulary</a>
+    <a class="card" href="graph/?ontology=funding"><strong>Funding graph</strong>Explore the funding vocabulary</a>
+    <a class="card" href="graph/?ontology=cloud"><strong>Cloud graph</strong>Explore the cloud-compliance vocabulary</a>
+    <a class="card" href="graph/?ontology=sql-api"><strong>SQL API example graph</strong>Explore Article, Shape, endpoint, and table separately</a>
   </nav>
   <p>Namespaces: <code>.../ontology/#</code>, <code>.../ontology/decision/#</code>, <code>.../ontology/funding/#</code>, and <code>.../ontology/cloud/#</code></p>
   <p><a href="examples/">Published example specifications</a> · <a href="https://github.com/arturmiller/spec-compiler">Source repository</a></p>
@@ -209,7 +212,7 @@ def _write_landing_page() -> None:
 
 
 def _write_reference_index(
-    output: Path, *, title: str, landing_page: str
+    output: Path, *, title: str, landing_page: str, graph_key: str
 ) -> None:
     (output / "index.html").write_text(
         f'''<!doctype html>
@@ -226,7 +229,8 @@ def _write_reference_index(
   <ul>
     <li><a href="index-en.html">English reference</a></li>
     <li><a href="index-de.html">Deutsche Referenz</a></li>
-    <li><a href="webvowl/index.html">Interactive WebVOWL graph and entity search</a></li>
+    <li><a href="{landing_page}graph/?ontology={graph_key}">Ontology Relationship Graph</a></li>
+    <li><a href="webvowl/index.html">Earlier WebVOWL graph</a></li>
     <li><a href="ontology.ttl">Turtle serialization</a></li>
   </ul>
   <p><a href="{landing_page}">Project ontology landing page</a></p>
@@ -276,8 +280,8 @@ def _publish_examples() -> None:
             destination=resource_root / "resources.ttl", format="turtle"
         )
         visualization_link = (
-            f'<a href="{site_root_href}examples/sql-api/webvowl/index.html">'
-            "Interactive WebVOWL graph</a> · "
+            f'<a href="{site_root_href}graph/?ontology=sql-api">'
+            "Ontology Relationship Graph</a> · "
             if product_name == "sql_api_example"
             else ""
         )
@@ -430,7 +434,7 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
     return generated_terms
 
 
-def _build_sql_api_visualization(jar: Path) -> None:
+def _build_sql_api_visualization(jar: Path) -> Graph:
     graph = Graph()
     for spec_file in sorted(
         (ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")
@@ -485,6 +489,7 @@ def _build_sql_api_visualization(jar: Path) -> None:
             nested_output.rmdir()
     finally:
         source.unlink(missing_ok=True)
+    return graph
 
 
 def build_site(jar: Path) -> None:
@@ -504,27 +509,71 @@ def build_site(jar: Path) -> None:
         REFERENCE_OUTPUT,
         title="SHACL Contract Ontology",
         landing_page="../",
+        graph_key="contract",
     )
     _write_reference_index(
         DECISION_REFERENCE_OUTPUT,
         title="Decision and Obligation Core Ontology",
         landing_page="../../",
+        graph_key="decision",
     )
     _write_reference_index(
         FUNDING_REFERENCE_OUTPUT,
         title="Funding Domain Ontology",
         landing_page="../../",
+        graph_key="funding",
     )
     _write_reference_index(
         CLOUD_REFERENCE_OUTPUT,
         title="Cloud Compliance Domain Ontology",
         landing_page="../../",
+        graph_key="cloud",
     )
     _publish_examples()
-    _build_sql_api_visualization(jar)
+    sql_api_graph = _build_sql_api_visualization(jar)
+    datasets = [
+        build_dataset(
+            Graph().parse(path, format="turtle"),
+            key=key,
+            title=title,
+            namespace=namespace,
+            source_href=source_href,
+        )
+        for path, key, title, namespace, source_href in (
+            (ONTOLOGY, "contract", "SHACL Contract", VOCABULARY_IRI, "../ontology/ontology.ttl"),
+            (DECISION_ONTOLOGY, "decision", "Decision & Obligation", DECISION_VOCABULARY_IRI, "../ontology/decision/ontology.ttl"),
+            (FUNDING_ONTOLOGY, "funding", "Funding", FUNDING_VOCABULARY_IRI, "../ontology/funding/ontology.ttl"),
+            (CLOUD_ONTOLOGY, "cloud", "Cloud Compliance", CLOUD_VOCABULARY_IRI, "../ontology/cloud/ontology.ttl"),
+        )
+    ]
+    datasets.append(
+        build_dataset(
+            sql_api_graph,
+            key="sql-api",
+            title="SQL API example",
+            namespace=str(ARTICLE),
+            source_href="../examples/",
+            property_namespaces=(str(SQL_API_VISUALIZATION),),
+        )
+    )
+    sql_edges = {
+        (edge["source"], edge["target"])
+        for edge in datasets[-1]["edges"]
+    }
+    expected_sql_edges = {
+        (str(ARTICLE.GetArticleEndpoint), str(ARTICLE.ArticleShape)),
+        (str(ARTICLE.GetArticleEndpoint), str(ARTICLE.ArticlesTable)),
+        (str(ARTICLE.ArticlesTable), str(ARTICLE.ArticleShape)),
+        (str(ARTICLE.ArticleShape), str(ARTICLE.Article)),
+    }
+    if not expected_sql_edges <= sql_edges:
+        raise ValueError("SQL API Relationship Graph is missing its Shape chain")
+    write_graph_site(GRAPH_OUTPUT, datasets)
     (OUTPUT / ".nojekyll").write_text("", encoding="utf-8")
     required = [
         OUTPUT / "index.html",
+        GRAPH_OUTPUT / "index.html",
+        GRAPH_OUTPUT / "cytoscape.min.js",
         REFERENCE_OUTPUT / "index.html",
         REFERENCE_OUTPUT / "index-en.html",
         REFERENCE_OUTPUT / "index-de.html",

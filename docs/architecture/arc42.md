@@ -35,8 +35,8 @@ The toolchain must:
 - keep bootstrap provenance and implementation-neutral transformation
   obligations separate;
 - validate and publish the separated contract, decision-core, funding, and
-  cloud-compliance vocabularies as bilingual WIDOCO references with searchable
-  WebVOWL graphs;
+  cloud-compliance vocabularies as bilingual WIDOCO references with a fixed
+  Ontology Relationship Graph for each vocabulary and the SQL API example;
 - produce identical files for identical specs and compiler versions.
 
 The prototype is not a complete SHACL, SQL, or OpenAPI compiler, a production
@@ -103,7 +103,7 @@ Detailed quality scenarios are in section 10.
 | Orchestration | `uv run --extra dev poe run` on a local or CI host; pytest importlib mode isolates identically named generated test modules between Product Bundles |
 | Compiler product | One `schema:SoftwareApplication` conforming to `sco:CompilerProtocolV1` and linked to one `sco:TransformationContract` with declared input pattern, typed conformance fixtures and their artifact patterns, missing-spec behavior, and determinism; optional validated Bootstrap Process provenance |
 | Compiler conformance | Separate SQL API, KfW 458, and Cloud Compliance fixtures declare their profile-specific expected artifacts and are compiled twice by G1 |
-| Ontology publication | Four canonical OWL/RDFS vocabularies plus a separately generated SQL API example graph; WIDOCO 1.4.25, bundled WebVOWL, Java 17, static GitHub Pages artifact |
+| Ontology publication | Four canonical OWL/RDFS vocabularies plus a separately generated SQL API example graph; WIDOCO 1.4.25, Graphviz `dot`, self-hosted Cytoscape.js 3.34.3, Java 17, static GitHub Pages artifact |
 | Version control | Generated products are ignored except the versioned `sql_api_example`, `kfw_458_eligibility`, and `cloud_access_compliance` reference bundles |
 | Decision compilation | One `schema:SoftwareApplication` conforming to `sco:DecisionProtocolV1`, one explicit `sdo:DecisionContract`, one stable Rule Set with source-backed non-overlapping Rule Set Versions selected by an explicit Decision Date, boolean Conditions with JSON Pointers, one explicitly worded and prioritized Fact Question per Rule Condition, zero or more explicit Rule-imposed Obligations, `requiresAllRules`, three outcomes, version-local Evidence Requirements, complete Source Citations, authored Conformance Cases covering outcomes and applicable Evidence and Obligation statuses, one complete positive Question Flow Case, and optional paired Version Selection Cases |
 | Decision protocol | One UTF-8 JSON Decision Request on stdin and one JSON Decision Result on stdout; requests may carry semantic Evidence identities, types, and Assessments; results carry independent Evidence Requirement and Obligation Evaluations; repeated complete Case submissions may follow a returned Next Question; no HTTP, session, document format/storage, UI, or product-language requirement |
@@ -136,7 +136,7 @@ the Work Graph, issue Markdown, and tests are a file-based handoff.
 | Compiler Product | Compiler Protocol v1 manifest and an input Product Bundle | Exit status, combined process output, generated files |
 | Operating system | Process, loopback network, temporary files | Exit status and cleanup behavior |
 | Reviewer or CI | Poe/uv commands | Generated artifacts and pytest result |
-| Ontology reader | GitHub Pages URL | Four WIDOCO vocabulary references, separate WebVOWL searches, RDF downloads, and example specs |
+| Ontology reader | GitHub Pages URL | Four WIDOCO vocabulary references, the Ontology Relationship Graph with five separate datasets, RDF downloads, and example specs |
 | GitHub Pages | Static site artifact uploaded by GitHub Actions | Public HTTPS documentation |
 
 ### 3.3 System boundary
@@ -159,7 +159,7 @@ implementation; the directory itself is not an executable system.
 | Guided implementation | Compile a dependency-ordered Work Graph whose nodes each name one executable pytest proof. |
 | Tool/product separation | Keep tool and product dependencies in separate `pyproject.toml` and `uv.lock` files. |
 | Compiler bootstrap | Materialize G1 deterministically from G0 at the declared implementation path, then invoke the independent G1 through its own manifest and compare repeated outputs. |
-| Ontology publication | Keep four canonical vocabularies and product example graphs separate, validate public terms and bilingual labels, derive visualization-only SQL API connections, and deploy searchable WIDOCO/WebVOWL outputs. |
+| Ontology publication | Keep four canonical vocabularies and the product example graph separate, validate public terms and bilingual labels, derive visualization-only SQL API connections, and deploy bilingual WIDOCO references plus the fixed Ontology Relationship Graph. |
 | Decision and obligation evolution | Compile source-backed Decisions, Obligations, and Evidence Requirements through a separate CLI protocol and typed model; preserve three-valued incompleteness, select the next explicit Fact Question only from current Fact Gaps, evaluate Evidence independently from Condition truth, and keep reusable core terms separate from Funding and Cloud Compliance Domain Ontology terms. |
 
 See the accepted decisions in section 9 for rationale and consequences.
@@ -214,7 +214,7 @@ blocks.
 | Decision Protocol Adapter | `tools/decision_runtime.py` | Read a Decision Protocol v1 manifest, exchange one UTF-8 JSON request/result pair, enforce timeout and result shape, and clean up the process tree. |
 | Compiler Runtime Adapter | `tools/compiler_runtime.py` | Invoke a compiler manifest as a separate bounded process and capture its observable result. |
 | Process Tree Terminator | `tools/process_runtime.py` | Provide shared Windows and POSIX child-process cleanup to runtime adapters. |
-| Ontology Documentation Builder | `tools/build_ontology_site.py`, WIDOCO 1.4.25 | Validate all four vocabularies and namespace use, derive the SQL API OWL visualization projection, invoke pinned WIDOCO/WebVOWL, publish example resources, and verify the static site shape. |
+| Ontology Documentation Builder | `tools/build_ontology_site.py`, `tools/ontology_relationship_graph.py`, WIDOCO 1.4.25, Graphviz `dot`, Cytoscape.js 3.34.3 | Validate all four vocabularies and namespace use, derive the SQL API OWL visualization projection, invoke pinned WIDOCO, build fixed graph datasets and self-hosted viewer, publish example resources, and verify the static site shape. |
 | OpenAPI Verifier | Generated `_assert_openapi_*` helpers | Validate full OpenAPI 3.1 and compare the required contract subset. |
 | SQLite Contract Verifier | Generated schema and fixture helpers | Inspect the schema and insert deterministic records. |
 | HTTP Obligation Verifier | Generated behavior test | Call the live endpoint and directly assert required fields, types, bounds, closure, and stored values. |
@@ -377,6 +377,7 @@ sequenceDiagram
     participant Ontologies as Four canonical ontologies
     participant Specs as Product specs
     participant WIDOCO as WIDOCO / WebVOWL
+    participant Layout as Graphviz dot
     participant Pages as GitHub Pages
 
     Maintainer->>CI: Push main or open pull request
@@ -388,6 +389,10 @@ sequenceDiagram
         Builder->>WIDOCO: Generate bilingual reference and searchable graph
     end
     WIDOCO-->>Builder: Static site artifact
+    Builder->>Builder: Build five separate OWL/RDFS graph datasets
+    Builder->>Layout: Compute fixed positions from sorted nodes and edges
+    Layout-->>Builder: Coordinates
+    Builder->>Builder: Verify and copy Cytoscape.js; write Ontology Relationship Graph
     alt push to main
         CI->>Pages: Deploy build/ontology-site
     else pull request
@@ -416,8 +421,8 @@ flowchart TB
     end
 
     subgraph github["Deployment Node: GitHub"]
-        actions["Execution Environment: GitHub Actions runner<br/>uv, Python 3.12, Java 17, WIDOCO 1.4.25"]
-        pages["Static Web Host: GitHub Pages<br/>WIDOCO HTML, WebVOWL JavaScript, RDF serializations, examples"]
+        actions["Execution Environment: GitHub Actions runner<br/>uv, Python 3.12, Java 17, WIDOCO 1.4.25, Graphviz dot"]
+        pages["Static Web Host: GitHub Pages<br/>WIDOCO HTML, Ontology Relationship Graph / Cytoscape.js, RDF serializations, examples"]
         actions -->|"uploads Pages artifact after verification"| pages
     end
 
@@ -496,9 +501,9 @@ Decision Contract, tests, Work Graph, and issues are outputs and carry
 generated-file warnings where appropriate. Changes are made at the source and
 regenerated.
 
-The WIDOCO/WebVOWL site under `build/ontology-site/` is a disposable,
-unversioned documentation artifact. The canonical ontology and Product Bundle
-specs remain the authored sources.
+The WIDOCO references, legacy WebVOWL output, and Ontology Relationship Graph
+under `build/ontology-site/` are disposable, unversioned documentation artifacts.
+The canonical ontology and Product Bundle specs remain the authored sources.
 
 ### 8.6 Security and trust
 
@@ -576,6 +581,7 @@ traceability.
 | [0019](decisions/0019-evaluate-evidence-requirements-separately-from-conditions.md) | Evidence Evaluation Conventions v1 evaluate independently sourced Evidence Requirements and explicitly assessed Evidence without changing supported Conditions or Decision Outcomes. | Accepted; extends ADR 0017 and implements Issue #4 |
 | [0020](decisions/0020-select-rule-set-version-only-from-validity-and-decision-date.md) | Version Selection Conventions v1 derive exactly one source-backed Rule Set Version from stable Rule Set identity, authored validity, and explicit Decision Date without today/latest defaults. | Accepted; extends ADR 0017 and implements Issue #5 |
 | [0021](decisions/0021-reuse-decision-core-for-cloud-compliance-and-evaluate-obligations.md) | The cloud slice reuses the decision core without funding terms, keeps cloud vocabulary separate, permits independently sourced Rules and Evidence Requirements, and evaluates explicit Rule-imposed Obligations. | Accepted; extends ADRs 0016–0020 and implements Issue #6 |
+| [0025](decisions/0025-publish-fixed-ontology-relationship-graph.md) | GitHub Pages uses the fixed Ontology Relationship Graph as its primary visualization while retaining WIDOCO references and legacy WebVOWL URLs. | Accepted; supersedes the primary visualization choice in ADRs 0007 and 0011 |
 
 ## 10. Quality requirements
 
@@ -590,7 +596,7 @@ traceability.
 | Q-7 | Lifecycle safety | After success or failure, no Product Runtime descendant remains; a regression test verifies process-tree cleanup. |
 | Q-8 | Comprehensibility | A maintainer can distinguish executable containers, static artifacts, tool choices, and product choices from arc42 and C4 without reading every source file. |
 | Q-9 | Compiler bootstrap | Given the Spec Compiler Self-Description Bundle, generated black-box proofs invoke G1 twice on each declared conformance fixture and require all generated and test files to be byte-identical. |
-| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes four bilingual vocabulary references, RDF downloads, example resources, and separate searchable WebVOWL graphs with representative terms. |
+| Q-10 | Ontology discoverability | Given a push to `main`, CI publishes four bilingual vocabulary references, RDF downloads, example resources, and five searchable Ontology Relationship Graph datasets. Selecting or filtering a node preserves the viewport; only explicit pan, zoom, or fit changes it. |
 | Q-11 | Decision explainability | Given any reference Decision Result, a reviewer can identify the selected Rule Set Version, every decisive Rule and Condition Evaluation, any Fact Gap, and the Spec statement plus Source Citation that supports it. |
 | Q-12 | Question relevance and progress | Given an incomplete reference Case, the product returns the lowest-priority authored Fact Question from the current Fact Gaps with Rule and source justification; submitting authored answers repeatedly reaches a determinate result, while a determinate result returns no Next Question. |
 | Q-13 | Evidence separation | Given a satisfied ownership Condition, the KfW 458 Decision Result reports the independent Evidence Requirement as `fulfilled`, `missing`, or `not_applicable`; changing an Evidence Assessment changes that status and classification but never the Condition Evaluation or Decision Outcome, and the requirement exposes its own Source Citation. |
@@ -608,7 +614,8 @@ traceability.
 | Expected OpenAPI and tests come from the same compiler. | A shared interpretation bug can affect both oracle and proof; add independent conformance examples or mutation tests. |
 | G1 is mechanically derived from G0 and judged by tests generated from the same lineage. | The bootstrap proves executable continuity and determinism but not semantic independence; retain G0 as a trust anchor and add an independent compiler or oracle before claiming diverse double compilation. |
 | Experimental IRIs contain the GitHub account and repository name. | Renaming either breaks identifiers; migrate through a persistent redirect such as w3id.org before promising stable public IRIs. |
-| WIDOCO/WebVOWL are documentation-build dependencies with older bundled browser assets. | Pin and hash-check WIDOCO, build the complete site in CI, self-host assets, and keep it outside product runtime boundaries. |
+| WIDOCO/WebVOWL remain documentation-build dependencies with older bundled browser assets. | Pin and hash-check WIDOCO, retain the legacy URLs, and keep the build outside product runtime boundaries. |
+| Graphviz and Cytoscape.js versions affect the published graph. | Require `dot` in CI, sort layout input, hash-check and self-host Cytoscape.js, and test graph output and fixed viewport behavior before publishing. |
 | GitHub Pages has no RDF content negotiation or SPARQL service. | Publish explicit HTML and serialization URLs; add dynamic infrastructure only if a demonstrated use case requires it. |
 | OpenAPI comparison intentionally supports a narrow 3.1 profile. | Equivalent composed schemas may be rejected; broaden the comparator only with explicit semantics and regression tests. |
 | Integer Shape fields have a mapping but no deterministic fixture synthesizer. | Such fields fail late in fixture generation; either implement the value rule or reject them earlier. |
@@ -655,7 +662,7 @@ traceability.
 | Spec Compiler Self-Description Bundle | Product Bundle whose specs describe the Spec Compiler as a Compiler Product. |
 | Transformation Contract | Independently identified and versionable description of accepted inputs, emitted outputs, rejection behavior, and result equivalence. |
 | Canonical Ontology | One of the authored OWL/RDFS vocabulary definitions for `sco:`, `sdo:`, `funding:`, or `cloud:`; source for WIDOCO and public-term validation. |
-| Ontology Documentation Site | Unversioned static WIDOCO/WebVOWL artifact deployed to GitHub Pages. |
+| Ontology Documentation Site | Unversioned static WIDOCO references, legacy WebVOWL output, and Ontology Relationship Graph deployed to GitHub Pages. |
 | Bootstrap compiler (`G0`) | Trusted checked-in compiler used to generate the first executable proofs from the self-description. |
 | Bootstrap Process | Provenance describing the seed implementation and evolution strategy for deriving a future implementation; not a product behavior contract. |
 | Bootstrap generation (`G1`) | Independently executable compiler source materialized from G0 with its own project metadata, lockfile, and Compiler Protocol manifest. |

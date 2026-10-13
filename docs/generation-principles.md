@@ -33,15 +33,18 @@ getrennten `resources/.../#`-Namespaces. Eine Produkt-Spec darf einen
 Publikationsvalidator verlangt dafür eine Definition sowie deutsche und
 englische Labels in der zuständigen kanonischen Ontologie.
 
-WIDOCO-HTML, WebVOWL-Daten und publizierte Beispielkopien sind abgeleitete
-Dokumentationsartefakte. Sie begründen keine Produktanforderungen und werden
-nicht als deterministische Vertragsartefakte behandelt.
+WIDOCO-HTML, WebVOWL-Daten, der Ontologie-Beziehungsgraph und publizierte
+Beispielkopien sind abgeleitete Dokumentationsartefakte. Sie begründen keine
+Produktanforderungen und werden nicht als deterministische Vertragsartefakte
+behandelt.
 
-Jedes kanonische Vokabular erhält einen eigenen WIDOCO-/WebVOWL-Graphen. Ein
-weiterer, klar getrennter Visualisierungsgraph wird aus den SQL-API-Specs
-gebildet. Fachliche Klassen und Properties müssen dafür explizit als OWL/RDFS-
-Terme mit deutschen und englischen Labels deklariert sein. Die Visualisierung
-ersetzt weder die Specs noch deren ausführbare Constraints.
+Jedes kanonische Vokabular erhält eine eigene WIDOCO-Referenz. Der primäre
+Ontologie-Beziehungsgraph auf GitHub Pages hält die vier Vokabulare und das
+SQL-API-Beispiel als fünf getrennte Datensätze. Die bisherigen WebVOWL-Dateien
+bleiben als abgeleitete Dokumentationsartefakte erreichbar. Fachliche Klassen
+und Properties müssen für die Darstellung explizit als OWL/RDFS-Terme mit
+deutschen und englischen Labels deklariert sein. Die Visualisierung ersetzt
+weder die Specs noch deren ausführbare Constraints.
 
 Für diesen zweiten Graphen projiziert der Dokumentationsbuilder ausgewählte
 Instanz- und SHACL-Beziehungen in ausschließlich visuelle OWL-Klassen und

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ontologie-Beziehungsgraph · Spec Compiler</title>
+  <script src="cytoscape.min.js" defer></script>
+  <style>
+    :root { color-scheme:light; --ink:#172432; --muted:#637589; --line:#dbe3e8; --paper:#f5f7f8; --accent:#0d7365; --dark:#103d3b; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:14px/1.5 Inter,ui-sans-serif,system-ui,sans-serif; }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    .shell { max-width:1800px; margin:auto; padding:26px clamp(18px,3vw,50px) 45px; }
+    .topline { display:flex; justify-content:space-between; gap:16px; align-items:center; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; }
+    .brand { color:var(--accent); text-decoration:none; }
+    .brandmark { display:inline-grid; place-items:center; width:27px; height:27px; border:2px solid var(--accent); border-radius:8px; margin-right:8px; font-size:17px; vertical-align:middle; }
+    .intro { display:flex; align-items:end; justify-content:space-between; gap:24px; margin:25px 0 23px; }
+    h1 { margin:0; font-size:clamp(29px,3vw,43px); line-height:1.1; letter-spacing:-.045em; }
+    .intro p { margin:9px 0 0; color:var(--muted); font-size:15px; max-width:680px; }
+    .source-link { color:var(--accent); font-weight:700; white-space:nowrap; text-decoration:none; }
+    .source-link:hover { text-decoration:underline; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px; }
+    .field { display:flex; align-items:center; gap:8px; min-height:42px; padding:9px 12px; border:1px solid var(--line); border-radius:9px; background:white; }
+    .field span { color:var(--muted); }
+    .field select,.field input { border:0; outline:0; background:transparent; color:var(--ink); min-width:170px; }
+    .field.search { flex:1; min-width:220px; }
+    .field.search input { width:100%; }
+    .pill { border-radius:999px; background:#e4f2ef; color:var(--accent); padding:7px 11px; font-weight:750; white-space:nowrap; }
+    .surface { overflow:hidden; border:1px solid var(--line); border-radius:16px; background:white; box-shadow:0 12px 40px rgba(21,43,58,.045); }
+    .surface-head { display:flex; align-items:center; justify-content:space-between; gap:14px; min-height:63px; padding:12px 20px; border-bottom:1px solid var(--line); }
+    .surface-head strong { font-size:16px; }
+    .surface-head small { color:var(--muted); }
+    .graph-controls { display:flex; gap:6px; }
+    .small-button { min-width:32px; padding:5px 9px; border:1px solid var(--line); border-radius:8px; background:white; color:var(--ink); }
+    .small-button:hover { border-color:var(--accent); color:var(--accent); }
+    .filter-bar { display:flex; flex-wrap:wrap; align-items:center; gap:9px; min-height:55px; padding:9px 19px; border-bottom:1px solid var(--line); background:#fbfcfc; }
+    .filter-label { color:var(--muted); font-size:12px; font-weight:700; }
+    .filter-button { padding:5px 11px; border:1px solid var(--line); border-radius:999px; background:white; color:var(--muted); font-size:12px; font-weight:700; }
+    .filter-button:hover { border-color:var(--accent); color:var(--accent); }
+    .filter-button.active { border-color:var(--dark); background:var(--dark); color:white; }
+    .filter-spacer { flex:1; }
+    .graph-status { color:var(--muted); font-size:12px; white-space:nowrap; }
+    .graph-wrap { display:grid; grid-template-columns:minmax(0,1fr) 315px; }
+    #graph { height:max(570px,70vh); background-color:#fbfcfc; background-image:radial-gradient(#e2e9eb 1px,transparent 1px); background-size:20px 20px; }
+    .graph-side { max-height:max(570px,70vh); overflow:auto; padding:19px; border-left:1px solid var(--line); }
+    .graph-side h2 { margin:0 0 9px; font-size:19px; letter-spacing:-.025em; }
+    .eyebrow { margin:0 0 9px; color:var(--accent); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    .muted { color:var(--muted); }
+    .iri { overflow-wrap:anywhere; padding:10px; border-radius:8px; background:#f4f7f8; color:var(--muted); font-size:11px; }
+    .relation-list { margin:13px 0 19px; padding:0; list-style:none; }
+    .relation-list li { padding:9px 0; border-top:1px solid var(--line); }
+    .relation-list button { padding:0; border:0; background:none; color:var(--accent); text-align:left; font-weight:700; }
+    .tag { display:inline-block; margin-right:5px; padding:3px 7px; border-radius:5px; background:#e9f1f7; color:#426eaa; font-size:11px; font-weight:700; }
+    .legend { display:flex; flex-wrap:wrap; gap:11px; padding:11px 0; border-bottom:1px solid var(--line); color:var(--muted); font-size:11px; }
+    .legend-key { display:inline-block; width:18px; margin-right:4px; border-top:2px solid var(--accent); vertical-align:middle; }
+    .legend-key.subclass { border-color:#8da1c5; border-top-style:dashed; }
+    .property-catalog { margin-top:14px; padding:13px 18px; border:1px solid var(--line); border-radius:12px; background:white; }
+    .property-catalog summary { cursor:pointer; color:var(--dark); font-weight:750; }
+    .property-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:9px; margin-top:13px; }
+    .property-card { min-width:0; padding:10px; border:1px solid var(--line); border-radius:8px; }
+    .property-card b,.property-card small { display:block; }
+    .property-card small { overflow-wrap:anywhere; color:var(--muted); }
+    .note { margin:15px 0 0; color:var(--muted); font-size:12px; }
+    @media(max-width:960px) { .graph-wrap { grid-template-columns:1fr; } .graph-side { max-height:none; border-left:0; border-top:1px solid var(--line); } }
+    @media(max-width:620px) { .intro { display:block; } .source-link { display:inline-block; margin-top:12px; } .surface-head { align-items:start; } .filter-spacer { display:none; } }
+  </style>
+</head>
+<body>
+<script type="application/json" id="ontology-data">__ONTOLOGY_DATA__</script>
+<div class="shell">
+  <div class="topline"><a class="brand" href="../"><span class="brandmark">◇</span>Spec Compiler / Ontologien</a><span>Beziehungsgraph</span></div>
+  <div class="intro"><div><h1>Begriffe und Beziehungen verstehen.</h1><p>Ein fester Graph für jedes Vokabular. Knotenwahl markiert das direkte Umfeld, ohne den angezeigten Bereich zu verschieben.</p></div><a id="source-link" class="source-link" href="#">Autoritative Quelle ↗</a></div>
+  <div class="toolbar"><label class="field"><span>Vokabular</span><select id="ontology-select"></select></label><label class="field search"><span>⌕</span><input id="search" type="search" placeholder="Klasse oder Property suchen …" aria-label="Klasse oder Property suchen"></label><span id="counts" class="pill"></span></div>
+  <div class="surface">
+    <div class="surface-head"><div><strong>Beziehungsgraph</strong><br><small>Zoom mit +, − oder Mausrad · Ziehen verschiebt die Ansicht</small></div><div class="graph-controls"><button class="small-button" id="zoom-out" type="button" aria-label="Verkleinern">−</button><button class="small-button" id="zoom-in" type="button" aria-label="Vergrößern">+</button><button class="small-button" id="fit" type="button">Einpassen</button></div></div>
+    <div class="filter-bar"><span class="filter-label">Beziehungen</span><button class="filter-button" data-edge-kind="all" type="button">Alle</button><button class="filter-button" data-edge-kind="object" type="button">Objekt</button><button class="filter-button" data-edge-kind="subclass" type="button">Unterklassen</button><span class="filter-spacer"></span><button class="filter-button" id="neighborhood" type="button" aria-pressed="false">Direktes Umfeld</button><span id="graph-status" class="graph-status"></span></div>
+    <div class="graph-wrap"><div id="graph" role="img" aria-label="Interaktiver Ontologie-Beziehungsgraph"></div><aside id="graph-side" class="graph-side" aria-live="polite"></aside></div>
+  </div>
+  <details id="property-catalog" class="property-catalog"><summary>Alle Properties dieses Vokabulars</summary><div id="property-grid" class="property-grid"></div></details>
+  <p class="note">Die Darstellung zeigt deklarierte OWL-Klassen, Objekt- und Datentyp-Properties sowie Unterklassen. SHACL-Constraints und Produktinstanzen stehen in den verlinkten Turtle-Spezifikationen.</p>
+</div>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const datasets=JSON.parse(document.getElementById('ontology-data').textContent);
+  const params=new URLSearchParams(location.search);
+  let ontology=datasets.find(d=>d.key===params.get('ontology'))||datasets[0];
+  let selected=ontology.nodes.find(n=>n.id===params.get('term'))?.id||ontology.nodes[0]?.id;
+  let edgeKind=['all','object','subclass'].includes(params.get('relation'))?params.get('relation'):'all';
+  let neighborhood=params.get('context')==='1';
+  let cy,graphKey;
+  const $=id=>document.getElementById(id);
+  const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const node=id=>ontology.nodes.find(n=>n.id===id);
+  const short=iri=>iri.split('#').pop().split('/').pop();
+  const query=()=>$('search').value.trim().toLocaleLowerCase('de');
+  const relations=id=>ontology.edges.filter(e=>e.source===id||e.target===id);
+  const propertyRows=id=>ontology.properties.filter(p=>p.domains.includes(id));
+  const matching=n=>!query()||[n.label,n.labelEn,n.name,
+    ...ontology.properties.filter(p=>p.domains.includes(n.id)||p.ranges.includes(n.id)).flatMap(p=>[p.label,p.labelEn,p.name]),
+    ...relations(n.id).map(e=>e.label),
+  ].some(s=>s.toLocaleLowerCase('de').includes(query()));
+  function syncUrl() { const url=new URL(location.href); url.searchParams.set('ontology',ontology.key); if(selected)url.searchParams.set('term',selected); url.searchParams.set('relation',edgeKind); url.searchParams.set('context',neighborhood?'1':'0'); history.replaceState(null,'',url); }
+  function detail() {
+    const n=node(selected); if(!n)return '<p class="muted">Klasse auswählen.</p>';
+    const links=relations(selected).map(e=>`<li><span class="tag">${e.source===selected?'→':'←'}</span>${escapeHtml(e.label)}<br><button data-select="${escapeHtml(e.source===selected?e.target:e.source)}" type="button">${escapeHtml(node(e.source===selected?e.target:e.source)?.label||short(e.target))}</button></li>`).join('');
+    const props=propertyRows(selected).map(p=>`<li><span class="tag">${p.kind==='object'?'Objekt':'Wert'}</span>${escapeHtml(p.label)}<br><span class="muted">→ ${escapeHtml(p.ranges.map(short).join(', ')||'ohne Range')}</span></li>`).join('');
+    return `<div class="eyebrow">OWL-Klasse</div><h2>${escapeHtml(n.label)}</h2><p class="muted">${escapeHtml(n.labelEn)}</p>${n.comment?`<p>${escapeHtml(n.comment)}</p>`:''}<div class="iri">${escapeHtml(n.id)}</div><div class="legend"><span><i class="legend-key"></i>Objektbeziehung</span><span><i class="legend-key subclass"></i>Unterklasse</span></div><div class="eyebrow" style="margin-top:18px">Direkte Beziehungen · ${relations(selected).length}</div><ul class="relation-list">${links||'<li class="muted">Keine direkten Beziehungen im Vokabular</li>'}</ul><div class="eyebrow">Properties mit dieser Domain · ${propertyRows(selected).length}</div><ul class="relation-list">${props||'<li class="muted">Keine deklariert</li>'}</ul>`;
+  }
+  function renderProperties() {
+    const found=ontology.properties.filter(p=>!query()||[p.label,p.labelEn,p.name].some(s=>s.toLocaleLowerCase('de').includes(query())));
+    $('property-grid').innerHTML=found.map(p=>`<div class="property-card"><b>${escapeHtml(p.label)}</b><small>${escapeHtml(p.name)} · ${p.kind==='object'?'Objekt':'Datentyp'}</small><small>Domain: ${escapeHtml(p.domains.map(short).join(', ')||'nicht angegeben')}</small><small>Range: ${escapeHtml(p.ranges.map(short).join(', ')||'nicht angegeben')}</small><small title="${escapeHtml(p.iri)}">${escapeHtml(p.iri)}</small></div>`).join('')||'<p class="muted">Keine passenden Properties.</p>';
+    $('property-catalog').querySelector('summary').textContent=`Alle Properties dieses Vokabulars · ${found.length}/${ontology.properties.length}`;
+    if(query()&&found.length)$('property-catalog').open=true;
+  }
+  function renderGraph() {
+    if(!window.cytoscape){$('graph').textContent='Der Graph konnte nicht geladen werden.';return;}
+    const isNew=!cy||graphKey!==ontology.key;
+    if(isNew){
+      if(cy)cy.destroy();
+      const elements=[...ontology.nodes.map(n=>({data:{id:n.id,label:n.label},position:ontology.positions[n.id]})),...ontology.edges.map((e,i)=>({data:{id:'e'+i,source:e.source,target:e.target,label:e.label,kind:e.kind}}))];
+      cy=cytoscape({container:$('graph'),elements,layout:{name:'preset',fit:true,padding:45},autoungrabify:true,userPanningEnabled:true,userZoomingEnabled:true,style:[
+        {selector:'node',style:{'background-color':'#f5fcfa','border-width':2,'border-color':'#0d7365','width':155,'height':48,'shape':'round-rectangle','label':'data(label)','color':'#163a39','font-size':12,'font-weight':650,'text-wrap':'wrap','text-max-width':140,'text-valign':'center','text-halign':'center','overlay-opacity':0}},
+        {selector:'node.muted-node',style:{'opacity':0.20}},
+        {selector:'node.context-muted',style:{'opacity':0.12}},
+        {selector:'node:selected',style:{'background-color':'#0d7365','color':'#fff','border-color':'#0d7365'}},
+        {selector:'edge',style:{'width':1.7,'line-color':'#94b1ad','target-arrow-shape':'triangle','target-arrow-color':'#94b1ad','curve-style':'bezier','label':'data(label)','font-size':9,'color':'#536e70','text-background-color':'#fff','text-background-opacity':0.9,'text-background-padding':2,'text-rotation':'autorotate'}},
+        {selector:'edge[kind = "subclass"]',style:{'line-style':'dashed','line-color':'#8da1c5','target-arrow-color':'#8da1c5'}},
+        {selector:'edge.context-link',style:{'width':3,'line-color':'#0d7365','target-arrow-color':'#0d7365','color':'#173e3a','font-weight':750}},
+        {selector:'edge.context-muted',style:{'opacity':0.10}},
+        {selector:'edge.filtered-out',style:{'display':'none'}},
+      ]});
+      cy.on('tap','node',e=>select(e.target.id()));
+      cy.on('tap','edge',e=>select(e.target.data().source));
+      graphKey=ontology.key;
+    }
+    const visible=ontology.edges.filter(e=>edgeKind==='all'||e.kind===edgeKind);
+    const direct=visible.filter(e=>e.source===selected||e.target===selected);
+    const context=new Set([selected,...direct.flatMap(e=>[e.source,e.target])]);
+    cy.batch(()=>{
+      cy.nodes().forEach(item=>{item.toggleClass('muted-node',!matching(node(item.id())));item.toggleClass('context-muted',neighborhood&&!context.has(item.id()));});
+      cy.edges().forEach(item=>{const data=item.data();const shown=edgeKind==='all'||data.kind===edgeKind;const linked=data.source===selected||data.target===selected;item.toggleClass('filtered-out',!shown);item.toggleClass('context-link',neighborhood&&shown&&linked);item.toggleClass('context-muted',neighborhood&&shown&&!linked);});
+      cy.nodes().unselect();if(selected)cy.getElementById(selected).select();
+    });
+    document.querySelectorAll('[data-edge-kind]').forEach(button=>{const active=button.dataset.edgeKind===edgeKind;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});
+    $('neighborhood').classList.toggle('active',neighborhood);
+    $('neighborhood').setAttribute('aria-pressed',String(neighborhood));
+    $('graph-status').textContent=neighborhood?`${context.size}/${ontology.nodes.length} Klassen im Umfeld`:`${visible.length} Beziehungen`;
+    $('graph-side').innerHTML=detail();
+    if(isNew)cy.fit(undefined,45);
+  }
+  function select(id){selected=id;neighborhood=true;syncUrl();renderGraph();}
+  function render(){ $('ontology-select').value=ontology.key;$('counts').textContent=`${ontology.nodes.length} Klassen · ${ontology.properties.length} Properties`;$('source-link').href=ontology.sourceHref;renderProperties();renderGraph(); }
+  datasets.forEach(d=>{const option=document.createElement('option');option.value=d.key;option.textContent=d.title;$('ontology-select').append(option);});
+  $('ontology-select').addEventListener('change',e=>{ontology=datasets.find(d=>d.key===e.target.value);selected=ontology.nodes[0]?.id;neighborhood=false;syncUrl();render();});
+  $('search').addEventListener('input',()=>{renderProperties();renderGraph();});
+  document.querySelectorAll('[data-edge-kind]').forEach(button=>button.addEventListener('click',()=>{edgeKind=button.dataset.edgeKind;syncUrl();renderGraph();}));
+  $('neighborhood').addEventListener('click',()=>{neighborhood=!neighborhood;syncUrl();renderGraph();});
+  $('zoom-in').addEventListener('click',()=>cy?.zoom({level:cy.zoom()*1.25,renderedPosition:{x:cy.width()/2,y:cy.height()/2}}));
+  $('zoom-out').addEventListener('click',()=>cy?.zoom({level:cy.zoom()/1.25,renderedPosition:{x:cy.width()/2,y:cy.height()/2}}));
+  $('fit').addEventListener('click',()=>cy?.fit(undefined,45));
+  $('graph-side').addEventListener('click',e=>{const button=e.target.closest('[data-select]');if(button)select(button.dataset.select);});
+  syncUrl();render();
+});
+</script>
+</body>
+</html>

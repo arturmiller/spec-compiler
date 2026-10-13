@@ -113,20 +113,25 @@ inhaltliche Evolution kann auf demselben geprüften G1-Bundle aufbauen.
 
 ## Ontologie-Dokumentation
 
-Die öffentliche Dokumentationsseite wird lokal mit WIDOCO 1.4.25 und dem darin
-enthaltenen WebVOWL gebaut:
+Die öffentliche Dokumentationsseite wird lokal mit WIDOCO 1.4.25, Graphviz
+(`dot`) und Cytoscape.js 3.34.3 gebaut:
 
 ```console
 uv run --extra dev poe ontology-site
 ```
 
 Das Ergebnis liegt unversioniert unter `build/ontology-site/`. Der erste Lauf
-lädt das gepinnte WIDOCO-JAR in `.cache/widoco/` und prüft dessen SHA-256. Die
-Startseite verlinkt englische und deutsche WIDOCO-Referenzen, interaktive
-WebVOWL-Graphen mit Entitätssuche, Turtle-Serialisierungen und getrennte
-Beispielspezifikationen.
+lädt das gepinnte WIDOCO-JAR und die gepinnte Cytoscape.js-Datei in `.cache/`
+und prüft ihre SHA-256-Hashes. Die Startseite verlinkt englische und deutsche
+WIDOCO-Referenzen, den [Ontologie-Beziehungsgraphen](https://arturmiller.github.io/spec-compiler/graph/),
+Turtle-Serialisierungen und getrennte Beispielspezifikationen. Der Graph zeigt
+fünf getrennte Datensätze: `sco:*`, `sdo:*`, `funding:*`, `cloud:*` und das
+SQL-API-Beispiel. Seine Positionen werden beim Build berechnet und ändern sich
+beim Anklicken oder Filtern nicht. Plus, Minus, Mausrad und „Einpassen“ steuern
+den sichtbaren Bereich ausdrücklich.
 
-WebVOWL wird in getrennten Sichten veröffentlicht: `/ontology/webvowl/` zeigt
+Die bisherigen WebVOWL-Sichten bleiben unter ihren URLs erhalten:
+`/ontology/webvowl/` zeigt
 das `sco:*`-Vokabular, `/ontology/decision/webvowl/` den wiederverwendbaren
 `sdo:*`-Kern, `/ontology/funding/webvowl/` das `funding:*`-Vokabular und
 `/ontology/cloud/webvowl/` das `cloud:*`-Vokabular;
@@ -135,11 +140,11 @@ das `sco:*`-Vokabular, `/ontology/decision/webvowl/` den wiederverwendbaren
 für WebVOWL abgeleitete OWL-Projektion verbindet außerdem `GetArticleEndpoint`
 über `returns` mit `ArticleShape` und über `reads from` mit `ArticlesTable`.
 Die Tabelle verweist über `stores` ebenfalls auf `ArticleShape`, das über
-`target class` mit `Article` verbunden ist. Diese Projektion begründet keine
-Produktanforderungen. Die vollständigen SHACL-Constraints bleiben in den
-verlinkten Turtle-Specs, da WebVOWL primär OWL/RDFS-Strukturen visualisiert. Der
-Graph verwendet den SQL-API-Ressourcen-Namespace als WebVOWL-Basis, sodass diese
-vier Beispielknoten nicht fälschlich als `external` erscheinen.
+`target class` mit `Article` verbunden ist. Der neue Beziehungsgraph verwendet
+dieselbe abgeleitete SQL-Projektion. Sie begründet keine Produktanforderungen.
+Die vollständigen SHACL-Constraints bleiben in den verlinkten Turtle-Specs.
+Die Projektion verwendet den SQL-API-Ressourcen-Namespace als Ontologie-Basis,
+sodass die vier Beispielknoten in WebVOWL weiterhin intern bleiben.
 
 Der Workflow `.github/workflows/ontology-pages.yml` baut die Site bei Pull
 Requests und veröffentlicht sie nach erfolgreichen Tests bei Pushes auf `main`
