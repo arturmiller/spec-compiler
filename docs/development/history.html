@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototype notes · Spec Compiler</title>
+<meta name="doc-route" content="development/history.html">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<h1 id="prototype-notes">Prototype notes</h1>
+<p>Frage: Kann ein kleiner RDF/SHACL-Vertrag gleichzeitig ein Datenobjekt, den
+Rückgabewert eines GET-Endpunkts und dessen Speicherung in SQLite beschreiben
+und daraus implementationsneutrale OpenAPI- und Black-Box-Nachweise erzeugen?</p>
+<p>Status: Prototype – nach Beantwortung der Frage löschen oder die Konventionen
+(<code>ex:returns</code>, <code>ex:stores</code> und die Ableitung gleicher Feldnamen aus <code>sh:path</code>)
+in ein echtes Vertragsformat überführen. Dabei gilt die Regel: Anforderungen
+müssen aus einer Spec-Aussage oder einer benannten Compilerkonvention folgen;
+der Generator darf keine Implementierungstechnologie dazudichten.</p>
+</main>
+</body>
+</html>

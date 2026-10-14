@@ -4,14 +4,14 @@
 
 Read these documents before making an architecture-significant change:
 
-1. `docs/generation-principles.md`
-2. `docs/architecture/arc42.md`
-3. `docs/architecture/c4.md`
+1. `docs/generation-principles.html`
+2. `docs/architecture/arc42.html`
+3. `docs/architecture/c4.html`
 4. the relevant records under `docs/architecture/decisions/`
 
 ## Architecture documentation is part of the change
 
-Follow `docs/architecture/maintenance.md` for every change that affects system
+Follow `docs/architecture/maintenance.html` for every change that affects system
 boundaries, runtime interactions, the product protocol, the spec vocabulary,
 generated artifacts, component responsibilities, deployment, dependencies,
 quality properties, or architectural risks.
@@ -58,15 +58,24 @@ after the tests.
 ### Issue tracker
 
 Issues and PRDs are tracked as GitHub Issues. See
-`docs/agents/issue-tracker.md`.
+`docs/agents/issue-tracker.html`.
 
 ### Triage labels
 
 The repository uses `needs-triage`, `needs-info`, `ready-for-agent`,
-`ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+`ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.html`.
 
 ### Domain docs
 
-The repository uses a single domain context with an optional root `CONTEXT.md`
+The repository uses a single domain context documented in `docs/context.html`
 and architecture decisions under `docs/architecture/decisions/`. See
-`docs/agents/domain.md`.
+`docs/agents/domain.html`.
+
+### Documentation
+
+Human documentation sources are HTML in `docs/`; diagram sources are JSON in
+`docs/diagrams/`. Do not add parallel Markdown or Mermaid sources. Read HTML
+source directly when reviewing architecture. Canonical terminology lives in
+`docs/glossary.html`. Preview with `uv run --extra dev poe documentation-preview`;
+validate with `uv run --extra dev poe documentation-validate`. Generated product
+issues remain Markdown and are not affected by this documentation rule.

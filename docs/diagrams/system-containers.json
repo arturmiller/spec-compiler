@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Spec Compiler – Container und Datenspeicher",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Ausführbarer Container"
+        },
+        "database": {
+          "label": "Statischer Datenspeicher"
+        },
+        "external": {
+          "label": "Externes Software System"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "compiler",
+      "type": "backend",
+      "label": "Spec Compiler CLI",
+      "sublabel": "Container · Python / RDFLib · kompiliert",
+      "pos": [
+        80,
+        100
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "workspace",
+      "type": "database",
+      "label": "Product Workspace",
+      "sublabel": "Data Store · Dateisystem · Specs und Artefakte",
+      "pos": [
+        740,
+        100
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "harness",
+      "type": "backend",
+      "label": "Contract Verification Harness",
+      "sublabel": "Container · pytest / HTTPX · prüft Black Boxes",
+      "pos": [
+        80,
+        300
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "product",
+      "type": "external",
+      "label": "Generated Product",
+      "sublabel": "Externes Software System · Protokollgrenze",
+      "pos": [
+        740,
+        300
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "builder",
+      "type": "backend",
+      "label": "Documentation Site Builder",
+      "sublabel": "Container · Python / Node / Java · baut HTML",
+      "pos": [
+        80,
+        500
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "sources",
+      "type": "database",
+      "label": "Documentation Sources",
+      "sublabel": "Data Store · HTML, Archify JSON, Turtle",
+      "pos": [
+        740,
+        500
+      ],
+      "size": [
+        310,
+        80
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Software System: Spec Compiler",
+      "wraps": [
+        "compiler",
+        "harness",
+        "builder"
+      ],
+      "pad": 30
+    }
+  ],
+  "connections": [
+    {
+      "id": "compile",
+      "from": "compiler",
+      "to": "workspace",
+      "label": "liest Specs und schreibt Verträge",
+      "variant": "emphasis"
+    },
+    {
+      "id": "prove",
+      "from": "harness",
+      "to": "product",
+      "label": "startet und prüft deklarierte Protokolle",
+      "variant": "emphasis"
+    },
+    {
+      "id": "compiler-proof",
+      "from": "harness",
+      "to": "compiler",
+      "label": "Compiler Protocol v1",
+      "labelDy": -24
+    },
+    {
+      "id": "docs",
+      "from": "builder",
+      "to": "sources",
+      "label": "liest Quellen und rendert die Website"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Dateien sind keine Anwendungen",
+      "items": [
+        "Product Workspace und Self-Description Bundle sind statische Datenspeicher.",
+        "Der Harness lädt Manifeste und generierte Nachweise aus dem Workspace."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Dokumentationspipeline",
+      "items": [
+        "Archify rendert JSON, WIDOCO die vier RDF-Vokabulare.",
+        "Cytoscape.js zeigt vier Ontologien und den separaten SQL-API-Graph."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Externe Veröffentlichung",
+      "items": [
+        "GitHub Actions übergibt das Site-Artefakt an GitHub Pages.",
+        "Poe orchestriert Befehle und ist kein eigener Container."
+      ]
+    }
+  ]
+}

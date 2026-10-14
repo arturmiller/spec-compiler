@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0017: Compile source-backed decisions through a CLI protocol · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0017-compile-source-backed-decisions-through-a-cli-protocol">ADR 0017: Compile source-backed decisions through a CLI protocol</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. This decision implements and refines ADR 0016. It supersedes the
+single-reference-bundle consequence of ADR 0003; both the SQL API example and
+the KfW 458 applicant-eligibility example are now versioned reference bundles.</p>
+<h2 id="context">Context</h2>
+<p>ADR 0016 established the semantic boundaries for Decision and Obligation
+Compilation but deliberately left the concrete compiler profile and product
+protocol open. The first vertical slice must turn one manually curated,
+source-pinned funding specification into an observable result without making
+HTTP, Python, automatic document ingestion, or provider approval part of the
+product contract.</p>
+<p>The existing untyped Explicit Obligation Model and Runtime Protocol v1 are
+specialized for the SQL/OpenAPI/SQLite profile. Reusing either unchanged would
+hide decision semantics inside dictionaries or accidentally impose an HTTP
+interface on decision products.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Add a typed, immutable <strong>Explicit Decision and Obligation Model</strong> alongside
+the existing SQL-oriented Explicit Obligation Model. The model contains the
+Decision Contract, pinned Rule Set Version, Rules, Conditions, outcome
+identities, Source Revisions, Source Citations, scope, and authored
+Conformance Cases required by this slice.</li>
+<li>Select a compiler profile by explicit protocol conformance. A Decision Product
+is a <code>schema:SoftwareApplication</code> conforming to <code>sco:DecisionProtocolV1</code> and
+implementing exactly one <code>sdo:DecisionContract</code>. Profile ambiguity is a
+compilation error.</li>
+<li>Define <strong>Decision Protocol v1</strong> as a process boundary: the harness starts the
+command declared in <code>product.toml</code>, writes one UTF-8 JSON Decision Request to
+standard input, and accepts one JSON Decision Result from standard output.
+The protocol is separate from the domain Decision Contract and imposes no
+implementation language or network framework.</li>
+<li>Define <strong>Decision Conventions v1</strong> for the deliberately narrow
+<code>requiresAllRules</code> profile. Each Rule has one boolean Condition with an
+explicit JSON Pointer and expected value. Any violated Condition entails the
+negative outcome; otherwise any Fact Gap entails <code>unknown</code>; otherwise all
+Conditions entail the positive outcome. A missing Fact is never <code>false</code>.</li>
+<li>Compile the authored model into <code>generated/decision-contract.json</code>, a Work
+Graph, issue text, and generated black-box tests. Every decisive Rule in a
+Decision Result carries its Source Citation, immutable Source Revision,
+locator, and authored source statement. The generated scope note is part of
+every result.</li>
+<li>Publish the <strong>Decision and Obligation Core Ontology</strong> at <code>sdo:</code> and the
+<strong>Funding Domain Ontology</strong> at <code>funding:</code> as authored vocabularies beside the
+SHACL Contract Ontology. KfW program, revision, citation, rule, and case IRIs
+remain resources under <code>resources/funding/kfw-458/#</code>.</li>
+<li>Treat <code>products/kfw_458_eligibility/</code> as a second versioned reference Product
+Bundle. The Spec Compiler Self-Description Bundle names both reference
+products as explicit compiler conformance fixtures with profile-specific
+expected artifacts.</li>
+<li>Share process-tree termination between Runtime Protocol v1 and Decision
+Protocol v1 adapters. Timeout tests must prove that child processes do not
+remain alive.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Eligible, ineligible, and unknown behavior is observable without importing
+product implementation modules. Decision products can use any technology
+that implements the JSON process protocol.</li>
+<li>The compiled Decision Contract is a stable, inspectable artifact shared by
+product implementers and generated tests. It is derived output, not a source
+of new requirements.</li>
+<li>The first semantics are intentionally less expressive than a general rule
+engine. OR groups, numeric conditions, obligation activation, evidence
+evaluation, and version selection across multiple applicable versions need
+later, explicitly versioned profiles.</li>
+<li>The compiler verifies traceability and internal consistency, but not whether
+a human-authored source statement completely or correctly transcribes the
+external document.</li>
+<li>A positive result remains only a positive answer to the modeled applicant
+question. It is not advice, legal entitlement, an application decision, or a
+KfW commitment.</li>
+<li>Three public ontologies and the KfW resource bundle add publication and
+compatibility obligations. Their WIDOCO/WebVOWL outputs remain unversioned
+documentation artifacts and are not compiler inputs.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Extend Runtime Protocol v1 with a decision HTTP endpoint. Rejected because it
+would turn a reference implementation choice into a product requirement.</li>
+<li>Encode the new model in the existing untyped dictionary. Rejected because
+Rules, Conditions, sources, cases, and outcomes need explicit invariants and
+stable renderer inputs.</li>
+<li>Put all decision and funding terms into <code>sco:</code>. Rejected because executable
+protocol vocabulary, reusable decision semantics, and funding semantics have
+different change and reuse boundaries.</li>
+<li>Evaluate directly from Turtle at product runtime. Rejected because products
+must not be required to use RDF and because the compiler artifact is the
+explicit handoff boundary.</li>
+<li>Return only explanation text. Rejected because machine-readable evaluations,
+Fact Gaps, decisive Rules, and provenance are required for deterministic
+checking and reuse.</li>
+</ul>
+</main>
+</body>
+</html>

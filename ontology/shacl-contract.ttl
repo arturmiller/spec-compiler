@@ -2,6 +2,7 @@
 @prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix schema: <https://schema.org/> .
 @prefix vann: <http://purl.org/vocab/vann/> .
@@ -41,11 +42,24 @@ sco:ModifyExistingImplementation
     rdfs:label "Modify existing implementation"@en ;
     rdfs:label "Bestehende Implementierung verändern"@de .
 
+sco:HttpEndpoint
+    a owl:Class ;
+    rdfs:label "HTTP endpoint"@en ;
+    rdfs:label "HTTP-Endpunkt"@de .
+
 sco:GetEndpoint
     a owl:Class ;
+    rdfs:subClassOf sco:HttpEndpoint ;
     rdfs:label "GET endpoint"@en ;
     rdfs:label "GET-Endpunkt"@de ;
     rdfs:comment "HTTP GET endpoint that returns resources described by a SHACL shape."@en .
+
+sco:PostEndpoint
+    a owl:Class ;
+    rdfs:subClassOf sco:HttpEndpoint ;
+    rdfs:label "POST endpoint"@en ;
+    rdfs:label "POST-Endpunkt"@de ;
+    rdfs:comment "HTTP endpoint invoked with the POST method."@en .
 
 sco:SqlTable
     a owl:Class ;
@@ -64,6 +78,80 @@ sco:DecisionProtocolV1
     rdfs:label "Decision Protocol v1"@en ;
     rdfs:label "Entscheidungsprotokoll v1"@de ;
     rdfs:comment "Manifest-driven protocol that sends one JSON Decision Request to a product process and observes one JSON Decision Result."@en .
+
+sco:HttpMessage
+    a owl:Class ;
+    rdfs:label "HTTP message"@en ;
+    rdfs:label "HTTP-Nachricht"@de .
+
+sco:HttpRequest
+    a owl:Class ;
+    rdfs:subClassOf sco:HttpMessage ;
+    rdfs:label "HTTP request"@en ;
+    rdfs:label "HTTP-Anfrage"@de .
+
+sco:HttpResponse
+    a owl:Class ;
+    rdfs:subClassOf sco:HttpMessage ;
+    rdfs:label "HTTP response"@en ;
+    rdfs:label "HTTP-Antwort"@de .
+
+sco:request
+    a owl:ObjectProperty ;
+    rdfs:label "request"@en ;
+    rdfs:label "Anfrage"@de ;
+    rdfs:domain sco:HttpEndpoint ;
+    rdfs:range sco:HttpRequest .
+
+sco:successResponse
+    a owl:ObjectProperty ;
+    rdfs:label "successful response"@en ;
+    rdfs:label "Erfolgsantwort"@de ;
+    rdfs:domain sco:HttpEndpoint ;
+    rdfs:range sco:HttpResponse .
+
+sco:invalidRequestResponse
+    a owl:ObjectProperty ;
+    rdfs:label "response to an invalid request"@en ;
+    rdfs:label "Antwort auf eine ungültige Anfrage"@de ;
+    rdfs:domain sco:HttpEndpoint ;
+    rdfs:range sco:HttpResponse .
+
+sco:invokesContract
+    a owl:ObjectProperty ;
+    rdfs:label "invokes contract"@en ;
+    rdfs:label "ruft Vertrag auf"@de ;
+    rdfs:domain sco:HttpEndpoint .
+
+sco:bodySchema
+    a owl:DatatypeProperty ;
+    rdfs:label "body schema"@en ;
+    rdfs:label "Body-Schema"@de ;
+    rdfs:domain sco:HttpMessage ;
+    rdfs:range rdf:JSON ;
+    rdfs:comment "An authored JSON Schema describing the HTTP message body."@en .
+
+sco:bodyPointer
+    a owl:DatatypeProperty ;
+    rdfs:label "body pointer"@en ;
+    rdfs:label "Body-Pointer"@de ;
+    rdfs:domain sco:HttpMessage ;
+    rdfs:range xsd:string ;
+    rdfs:comment "JSON Pointer locating the invoked contract input, result, or error text in the corresponding HTTP message body; the empty string denotes the whole body."@en .
+
+sco:bodyRequired
+    a owl:DatatypeProperty ;
+    rdfs:label "body required"@en ;
+    rdfs:label "Body erforderlich"@de ;
+    rdfs:domain sco:HttpRequest ;
+    rdfs:range xsd:boolean .
+
+sco:statusCode
+    a owl:DatatypeProperty ;
+    rdfs:label "HTTP status code"@en ;
+    rdfs:label "HTTP-Statuscode"@de ;
+    rdfs:domain sco:HttpResponse ;
+    rdfs:range xsd:integer .
 
 sco:SQLite
     a owl:NamedIndividual ;
@@ -146,7 +234,7 @@ sco:path
     a owl:DatatypeProperty ;
     rdfs:label "HTTP path"@en ;
     rdfs:label "HTTP-Pfad"@de ;
-    rdfs:domain sco:GetEndpoint ;
+    rdfs:domain sco:HttpEndpoint ;
     rdfs:range xsd:string .
 
 sco:name
@@ -165,14 +253,13 @@ sco:successStatus
     a owl:DatatypeProperty ;
     rdfs:label "success status"@en ;
     rdfs:label "Erfolgsstatus"@de ;
-    rdfs:domain sco:GetEndpoint ;
+    rdfs:domain sco:HttpEndpoint ;
     rdfs:range xsd:integer .
 
 sco:mediaType
     a owl:DatatypeProperty ;
     rdfs:label "media type"@en ;
     rdfs:label "Medientyp"@de ;
-    rdfs:domain sco:GetEndpoint ;
     rdfs:range xsd:string .
 
 sco:tableName

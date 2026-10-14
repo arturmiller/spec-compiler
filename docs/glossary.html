@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ubiquitous Language · Spec Compiler</title>
+<meta name="doc-route" content="glossary.html">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<h1 id="ubiquitous-language">Kanonische Fachsprache</h1><p>Englische Fachbegriffe und Elementnamen bleiben in Code, Specs und Architektur stabil. Die Referenz definiert ihre Bedeutung und zu vermeidende Aliase; die deutsche Bedienoberfläche führt keine konkurrierenden Namen ein.</p>
+<h2 id="compilation-and-evaluation">Compilation and evaluation</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Aliases to avoid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Decision and Obligation Compilation</strong></td>
+<td>The Spec Compiler capability that derives source-backed Decision Contracts, Obligation and Evidence Requirement Evaluations, and proofs from explicit specifications.</td>
+<td>Eligibility engine, rules bot</td>
+</tr>
+<tr>
+<td><strong>Explicit Decision and Obligation Model</strong></td>
+<td>The typed, immutable normalized model containing only explicit decision, obligation, evidence, temporal, interaction, and provenance semantics shared by deterministic renderers.</td>
+<td>Universal domain model, knowledge base</td>
+</tr>
+<tr>
+<td><strong>Decision Contract</strong></td>
+<td>The implementation-neutral contract that fixes the scoped question, candidate Rule Set Versions, outcomes, Rules, Conditions, Obligations, Evidence Requirements, provenance, and evaluation conventions for a Decision Product.</td>
+<td>Decision result, runtime protocol</td>
+</tr>
+<tr>
+<td><strong>Decision Product</strong></td>
+<td>A separately executed software product that implements a Decision Contract behind Decision Protocol v1.</td>
+<td>Spec Compiler, KfW approval service</td>
+</tr>
+<tr>
+<td><strong>Decision Request</strong></td>
+<td>One Decision Protocol v1 JSON input naming the Decision Contract, stable Rule Set, Decision Date, supplied Case Facts, and optional supplied Evidence with Assessments; it never selects a Rule Set Version.</td>
+<td>Application, questionnaire</td>
+</tr>
+<tr>
+<td><strong>Decision Result</strong></td>
+<td>One machine-readable Decision Protocol v1 output containing the selected Rule Set Version and Decision Date, Outcome, Condition and Obligation Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Evidence Requirement Evaluations, Provenance, Explanation, and scope note.</td>
+<td>Approval, advice</td>
+</tr>
+<tr>
+<td><strong>Rule Set</strong></td>
+<td>A stable identity for a governed collection of related Rules across revisions.</td>
+<td>Policy document, latest rules</td>
+</tr>
+<tr>
+<td><strong>Rule Set Version</strong></td>
+<td>One immutable, explicitly identified revision of a Rule Set with declared applicability.</td>
+<td>Current version, latest version</td>
+</tr>
+<tr>
+<td><strong>Version Selection Case</strong></td>
+<td>A Conformance Case whose expected version is an oracle proving selection from its explicit Decision Date; paired Cases can keep all other inputs identical.</td>
+<td>Version selector, current case</td>
+</tr>
+<tr>
+<td><strong>Rule</strong></td>
+<td>A normative proposition in a Spec that relates one or more Conditions to an explicit conclusion or Obligation.</td>
+<td>Business logic, heuristic</td>
+</tr>
+<tr>
+<td><strong>Fact</strong></td>
+<td>An explicitly supplied assertion about the Case evaluated by a Decision.</td>
+<td>Assumption, answer</td>
+</tr>
+<tr>
+<td><strong>Fact Gap</strong></td>
+<td>The recorded absence of a Fact required to evaluate a Condition.</td>
+<td>Unknown Fact, false Fact</td>
+</tr>
+<tr>
+<td><strong>Fact Question</strong></td>
+<td>An authored prompt tied to exactly one Condition and its input Fact, with an explicit priority used by Question Selection Conventions v1.</td>
+<td>Generated wording, form field</td>
+</tr>
+<tr>
+<td><strong>Next Question</strong></td>
+<td>The single Fact Question selected from current Fact Gaps for an undetermined Decision Result; determinate results have none.</td>
+<td>Any missing field, questionnaire</td>
+</tr>
+<tr>
+<td><strong>Question Flow Case</strong></td>
+<td>A complete positive Conformance Case whose Facts provide authored answers for the generated multi-step question-flow proof.</td>
+<td>Session transcript, UI script</td>
+</tr>
+<tr>
+<td><strong>Condition</strong></td>
+<td>A truth-valued predicate referenced by a Rule and evaluated only from explicit Facts and named conventions.</td>
+<td>Check, requirement</td>
+</tr>
+<tr>
+<td><strong>Condition Evaluation</strong></td>
+<td>The result <code>satisfied</code>, <code>violated</code>, or <code>unknown</code> for one Condition within one Decision.</td>
+<td>Decision result</td>
+</tr>
+<tr>
+<td><strong>Decision</strong></td>
+<td>The act of evaluating one explicitly scoped question for one Case against exactly one applicable Rule Set Version; its serialized observation is a Decision Result.</td>
+<td>Recommendation, approval, result document</td>
+</tr>
+<tr>
+<td><strong>Decision Outcome</strong></td>
+<td>The uniquely entailed domain conclusion of a Decision, or <code>unknown</code> when a Fact Gap prevents a unique conclusion.</td>
+<td>Condition status, guarantee</td>
+</tr>
+<tr>
+<td><strong>Case</strong></td>
+<td>The explicitly bounded subject and supplied Facts considered by one Decision.</td>
+<td>User profile, application file</td>
+</tr>
+</tbody>
+</table>
+<h2 id="obligations-and-evidence">Obligations and evidence</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Aliases to avoid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Obligation</strong></td>
+<td>An explicitly sourced requirement that applies to a Case when its Rule applies.</td>
+<td>Evidence, task</td>
+</tr>
+<tr>
+<td><strong>Obligation Evaluation</strong></td>
+<td>The result <code>fulfilled</code>, <code>violated</code>, or <code>unknown</code> for one Rule-imposed Obligation; under Obligation Evaluation Conventions v1 it projects the Rule Condition state and inherits the Rule Source Citation.</td>
+<td>Decision Outcome, Evidence Requirement Evaluation</td>
+</tr>
+<tr>
+<td><strong>Evidence Requirement</strong></td>
+<td>An explicitly sourced requirement for information or an artifact that can support a Fact or an Obligation's fulfillment.</td>
+<td>Obligation, proof</td>
+</tr>
+<tr>
+<td><strong>Evidence</strong></td>
+<td>Supplied information or an artifact offered in support of a Fact or fulfillment claim without being treated as conclusive by mere presence.</td>
+<td>Guaranteed proof, requirement</td>
+</tr>
+<tr>
+<td><strong>Evidence Assessment</strong></td>
+<td>An explicit acceptance or rejection of one supplied Evidence item for one Evidence Requirement.</td>
+<td>Evidence presence, automatic validation</td>
+</tr>
+<tr>
+<td><strong>Evidence Requirement Evaluation</strong></td>
+<td>The result <code>fulfilled</code>, <code>missing</code>, or <code>not_applicable</code> for one Evidence Requirement, including applicability states, Evidence classifications, explanation, and independent provenance.</td>
+<td>Condition Evaluation, Decision Outcome</td>
+</tr>
+</tbody>
+</table>
+<h2 id="provenance-and-time">Provenance and time</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Aliases to avoid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Source</strong></td>
+<td>A stable identity for an external document or governed publication across revisions.</td>
+<td>Spec origin, URL</td>
+</tr>
+<tr>
+<td><strong>Source Revision</strong></td>
+<td>One immutable, identified edition of a Source whose content can be verified.</td>
+<td>Web page, current document</td>
+</tr>
+<tr>
+<td><strong>Source Citation</strong></td>
+<td>A precise locator from an authored Spec statement to a passage in one Source Revision.</td>
+<td>Source, provenance</td>
+</tr>
+<tr>
+<td><strong>Provenance</strong></td>
+<td>The navigable chain from a derived result through Rules and Spec statements to Source Citations or named, versioned conventions.</td>
+<td>Explanation text</td>
+</tr>
+<tr>
+<td><strong>Validity Period</strong></td>
+<td>A half-open interval from an inclusive <code>validFrom</code> instant to an exclusive optional <code>validUntil</code> instant.</td>
+<td>Publication date, current period</td>
+</tr>
+<tr>
+<td><strong>Decision Date</strong></td>
+<td>The explicitly supplied instant used to select an applicable Rule Set Version for a Decision.</td>
+<td>Run time, today's date</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ontology-boundaries">Ontology boundaries</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+<th>Aliases to avoid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SHACL Contract Ontology</strong></td>
+<td>The existing public <code>sco:</code> vocabulary for executable product and transformation contracts.</td>
+<td>Decision ontology</td>
+</tr>
+<tr>
+<td><strong>Decision and Obligation Core Ontology</strong></td>
+<td>The public <code>sdo:</code> vocabulary for domain-independent decision, rule, condition, case, obligation, evidence, provenance, interaction, and temporal concepts.</td>
+<td>Funding ontology, universal ontology</td>
+</tr>
+<tr>
+<td><strong>Domain Ontology</strong></td>
+<td>A vocabulary whose terms carry meaning specific to one problem domain and may use the core ontology without becoming part of it.</td>
+<td>Core extension by default</td>
+</tr>
+<tr>
+<td><strong>Funding Domain Ontology</strong></td>
+<td>The public <code>funding:</code> Domain Ontology for funding programs, applicants, projects, scoped eligibility facts, and funding-specific outcomes.</td>
+<td>KfW ontology, core ontology</td>
+</tr>
+<tr>
+<td><strong>Cloud Compliance Domain Ontology</strong></td>
+<td>The public <code>cloud:</code> Domain Ontology for cloud systems, cloud identity Facts, scoped compliance decisions, assessment Evidence types, and cloud-specific outcomes.</td>
+<td>NIST core ontology, decision core</td>
+</tr>
+<tr>
+<td><strong>KfW 458 Applicant Eligibility Pilot</strong></td>
+<td>The bounded first Case family that evaluates only natural-person applicant eligibility under the December 2025 or July 2026 KfW 458 source revision selected by Decision Date.</td>
+<td>KfW advisor, funding approval</td>
+</tr>
+<tr>
+<td><strong>Cloud Privileged-Access Compliance Slice</strong></td>
+<td>The bounded second Case family that evaluates only NIST SP 800-53 Rev. 5 controls IA-2 and IA-2(1) against supplied Cloud System profile Facts.</td>
+<td>NIST certification, security guarantee</td>
+</tr>
+</tbody>
+</table>
+<h2 id="relationships">Relationships</h2>
+<ul>
+<li>One <strong>Rule Set</strong> has one or more <strong>Rule Set Versions</strong>; a <strong>Decision</strong> uses
+exactly one version selected from authored half-open Validity Periods by its
+explicit <strong>Decision Date</strong>.</li>
+<li>A <strong>Decision Product</strong> receives a <strong>Decision Request</strong> and emits one
+<strong>Decision Result</strong> through Decision Protocol v1 while implementing the
+referenced <strong>Decision Contract</strong>.</li>
+<li>One <strong>Rule Set Version</strong> contains one or more <strong>Rules</strong> and has one
+<strong>Validity Period</strong>.</li>
+<li>A <strong>Rule</strong> references one or more <strong>Conditions</strong> and exactly identifies its
+conclusion or <strong>Obligation</strong>.</li>
+<li>Under Obligation Evaluation Conventions v1, a Rule Condition Evaluation maps
+<code>satisfied</code> to a <code>fulfilled</code> <strong>Obligation Evaluation</strong>, <code>violated</code> to
+<code>violated</code>, and <code>unknown</code> to <code>unknown</code>.</li>
+<li>A <strong>Condition</strong> has exactly one <strong>Condition Evaluation</strong> within a <strong>Decision</strong>.</li>
+<li>An unknown <strong>Condition Evaluation</strong> identifies at least one <strong>Fact Gap</strong>.</li>
+<li>One <strong>Fact Question</strong> elicits the Fact for exactly one <strong>Condition</strong>. An
+undetermined <strong>Decision Result</strong> selects at most one <strong>Next Question</strong> from
+its current <strong>Fact Gaps</strong> by the explicit priority convention.</li>
+<li>A client answers a <strong>Next Question</strong> by adding the Fact to the complete
+<strong>Case</strong> and submitting another <strong>Decision Request</strong>; the protocol retains no
+session state.</li>
+<li>A <strong>Source</strong> has one or more <strong>Source Revisions</strong>; a <strong>Source Citation</strong> points
+to exactly one revision.</li>
+<li>Every derived <strong>Decision Outcome</strong>, <strong>Obligation</strong>, and <strong>Evidence
+Requirement</strong> has <strong>Provenance</strong> to a Spec statement or named, versioned
+convention.</li>
+<li>An <strong>Evidence Requirement</strong> has its own Source Citation and applicability
+Conditions. A satisfied supported Condition does not fulfill it.</li>
+<li>Under Evidence Evaluation Conventions v1, only matching <strong>Evidence</strong> with an
+explicit accepted <strong>Evidence Assessment</strong> makes an applicable Evidence
+Requirement Evaluation <code>fulfilled</code>; otherwise it is <code>missing</code>.</li>
+<li>The <strong>Funding Domain Ontology</strong> may use the <strong>Decision and Obligation Core
+Ontology</strong>. The <strong>Cloud Compliance Domain Ontology</strong> uses the same core
+semantics; neither Domain Ontology is part of the <strong>SHACL Contract Ontology</strong>.</li>
+</ul>
+<h2 id="example-dialogue">Example dialogue</h2>
+<blockquote>
+<p><strong>Developer:</strong> &quot;The applicant did not tell us whether they own the building.
+Is the applicant therefore ineligible?&quot;</p>
+<p><strong>Domain expert:</strong> &quot;No. Ownership is a required <strong>Fact</strong>, so its absence is a
+<strong>Fact Gap</strong> and the ownership <strong>Condition Evaluation</strong> is <code>unknown</code>.&quot;</p>
+<p><strong>Developer:</strong> &quot;Then does the <strong>Decision Outcome</strong> become <code>unknown</code>?&quot;</p>
+<p><strong>Domain expert:</strong> &quot;Only if that gap prevents a unique outcome. A separate,
+satisfied exclusion Rule could already entail <code>ineligible</code>.&quot;</p>
+<p><strong>Developer:</strong> &quot;Which question should we ask next?&quot;</p>
+<p><strong>Domain expert:</strong> &quot;Only the <strong>Fact Question</strong> for a current <strong>Fact Gap</strong>.
+<strong>Question Selection Conventions v1</strong> choose the lowest authored priority,
+and a determinate result has no <strong>Next Question</strong>.&quot;</p>
+<p><strong>Developer:</strong> &quot;And <code>eligible</code> means KfW will approve the application?&quot;</p>
+<p><strong>Domain expert:</strong> &quot;No. In the <strong>KfW 458 Applicant Eligibility Pilot</strong> it
+means only that the modeled applicant-eligibility question is positive under
+the selected <strong>Rule Set Version</strong>.&quot;</p>
+</blockquote>
+<h2 id="flagged-ambiguities">Flagged ambiguities</h2>
+<ul>
+<li>&quot;Unknown Fact&quot; sounds like a third truth value stored as a Fact. Use <strong>Fact
+Gap</strong> for missing input and <code>unknown</code> only for a <strong>Condition Evaluation</strong> or
+serialized undetermined <strong>Decision Outcome</strong>.</li>
+<li>&quot;Eligible&quot; can mean applicant eligibility, measure eligibility, complete
+application readiness, or an actual funding decision. The pilot uses it only
+for the explicitly named applicant-eligibility question.</li>
+<li>&quot;Source&quot; previously meant the immediate origin of a generated requirement.
+Keep the compiler invariant precise: generated output originates in a Spec
+statement or convention; an external <strong>Source Revision</strong> is reached through a
+<strong>Source Citation</strong> in that Spec.</li>
+<li>&quot;Requirement&quot; can mean a Condition, an Obligation, or an Evidence
+Requirement. Use the specific canonical term.</li>
+<li>&quot;Decision and Obligation Compiler&quot; can sound like a second software system.
+The canonical capability is <strong>Decision and Obligation Compilation</strong> inside
+the existing <strong>Spec Compiler</strong>.</li>
+<li>A document publication date and a <strong>Validity Period</strong> are not interchangeable;
+applicability must be declared explicitly.</li>
+</ul>
+<h2 id="documentation-language">Dokumentationsbausteine</h2>
+<dl><dt>Documentation Website</dt><dd>Abgeleitetes statisches HTML-Portal mit Architektur, Abläufen, ADRs, Entwicklung und Ontologien. Es ist kein Product Runtime und begründet keine Produktanforderungen.</dd><dt>Documentation Site Builder</dt><dd>Build-Container, der HTML-Quellen, Archify-Artefakte, Ontologiereferenzen, Navigation und Suchindex komponiert. Die CLI ist <code>tools/build_documentation_site.py</code>.</dd><dt>Ontology Documentation Builder</dt><dd>Ontologiebaustein dieser Pipeline: RDFLib-/WIDOCO-Referenzen, Ressourcen und feste Cytoscape-Datensätze. Er gehört nicht zum Contract Verification Harness.</dd><dt>Documentation Preview Server</dt><dd>Lokaler Loopback-HTTP-Prozess mit Source Watch, Reload und Last-Good-Verhalten. Er benutzt denselben Site Builder, veröffentlicht aber nichts.</dd><dt>Archify Diagram Model</dt><dd>Kanonisches JSON unter <code>docs/diagrams/</code>. Archify rendert; C4 beschreibt Struktur; arc42 ordnet die Architekturansichten ein. Keine parallele Mermaid-Wahrheit.</dd><dt>Ontology Relationship Graph</dt><dd>Feste Visualisierung deklarierter RDF-Begriffe und Beziehungen. Vier Ontologien und das SQL API Example bleiben getrennte Datensätze; Auswahl verändert weder Positionen noch Viewport.</dd><dt>Verification Harness</dt><dd>Explizite Kurzform für Contract Verification Harness in schmalen Sequenzdiagrammköpfen; der volle Name bleibt im selben Knoten angegeben.</dd></dl>
+</main>
+</body>
+</html>

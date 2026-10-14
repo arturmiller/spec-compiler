@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0016: Evolve through source-backed Decision and Obligation Compilation · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0016-evolve-to-decision-and-obligation-compilation.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0016-evolve-through-source-backed-decision-and-obligation-compilation">ADR 0016: Evolve through source-backed Decision and Obligation Compilation</h1>
+<h2 id="status">Status</h2>
+<p>Accepted.</p>
+<h2 id="context">Context</h2>
+<p>The implemented Spec Compiler proves a narrow path from explicit RDF/SHACL
+product contracts to deterministic artifacts and black-box proofs. The project
+aims to support arbitrary software-development projects and to produce useful,
+reusable ontologies. Generalizing directly from the SQL API example risks
+turning accidental HTTP, SQLite, or funding-domain concepts into universal
+vocabulary.</p>
+<p>Funding eligibility is a useful next domain because it requires explicit rule
+versions, incomplete case facts, explainable decisions, evidence requirements,
+and source provenance. It also creates a high risk of overclaiming legal or
+financial authority if the pilot scope and outcome semantics are vague.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Keep <strong>Spec Compiler</strong> as the software-system name and boundary. <strong>Decision
+and Obligation Compilation</strong> is a planned capability of that system, not a
+second software system.</li>
+<li>Generalize the current Explicit Obligation Model toward an <strong>Explicit Decision
+and Obligation Model</strong> containing only explicitly sourced Rules, Facts,
+Condition Evaluations, Decisions, Fact Gaps, Obligations, Evidence
+Requirements, and Provenance.</li>
+<li>Use three-valued Condition Evaluations: <code>satisfied</code>, <code>violated</code>, and <code>unknown</code>.
+Missing Facts create Fact Gaps; absence is never inferred as false.</li>
+<li>Reserve <code>unknown</code> Decision Outcomes for incomplete Cases whose Fact Gaps
+prevent a unique conclusion. Ambiguous specs, conflicting Facts, ambiguous
+version applicability, and incompatible conclusions remain errors.</li>
+<li>Keep the existing <strong>SHACL Contract Ontology</strong> separate from a planned
+<strong>Decision and Obligation Core Ontology</strong> under the experimental <code>sdo:</code>
+namespace and a planned <strong>Funding Domain Ontology</strong> under <code>funding:</code>.
+KfW-specific programs, source revisions, citations, and cases are resources,
+not reusable vocabulary.</li>
+<li>Promote a Domain Ontology concept into the core only after two distinct
+domains demonstrate identical semantics and an ADR records the promotion.</li>
+<li>Select the <strong>KfW 458 Applicant Eligibility Pilot</strong> as the first slice. It uses
+the KfW Merkblatt 458, Stand 07/2026, Bestellnummer 600 000 5131, valid from
+2026-07-21, pinned by content hash and limited to the applicant-eligibility
+passage on PDF page 2.</li>
+<li>Treat external Source Revisions as provenance behind authored Source
+Citations. They do not replace the accepted requirement origins from ADR 0001:
+a generated requirement still originates in an explicit Spec statement or a
+named, versioned convention.</li>
+<li>Deliver the capability through Issues #2–#6 as vertical, black-box-verifiable
+slices while retaining deterministic generation and failure on ambiguity.</li>
+<li>Exclude automatic document ingestion, broad provider coverage, legal or
+financial advice, actual funding approval, subsidy calculation, UI, and
+production deployment from the initial roadmap.</li>
+</ul>
+<p>The detailed semantics, source identity, pilot boundary, and slice dependencies
+are normative for this roadmap and recorded in
+<a href="../decision-and-obligation-roadmap.html">the Decision and Obligation Compilation roadmap</a>.</p>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>The project obtains precise language and ontology boundaries before adding
+executable vocabulary or compiler branches.</li>
+<li>The implemented C4 structure does not change in this issue. Future slices
+must update it only when concrete components, stores, and relationships exist.</li>
+<li>A future compiler profile must preserve black-box verification without
+assuming HTTP, Python, or an interactive UI.</li>
+<li>Source curation remains a human-authored activity. This protects determinism
+but means the compiler does not prove that a Spec completely or correctly
+transcribes an external document.</li>
+<li><code>eligible</code> in the first pilot is deliberately narrower than complete funding
+eligibility or approval; every presentation must retain that scope.</li>
+<li>New public ontology namespaces and publication outputs will increase
+documentation and compatibility obligations once materialized.</li>
+<li>The cross-domain cloud-compliance slice can falsify proposed reuse and force
+funding concepts to remain domain-specific.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Extend every new term in the existing SHACL Contract Ontology. Rejected
+because executable interface contracts and domain-independent decision
+semantics have different reuse boundaries.</li>
+<li>Start with all rules of KfW 458 or multiple funding providers. Rejected
+because source coverage and legal ambiguity would dominate the compiler
+experiment.</li>
+<li>Infer the newest source version and use the current date. Rejected because
+historical results would not be reproducible and applicability could be
+ambiguous.</li>
+<li>Model decisions as binary. Rejected because missing case facts would be
+silently treated as false or force unjustified conclusions.</li>
+<li>Parse funding documents automatically with an LLM. Rejected for the initial
+path because extracted Rules and generated results would lack deterministic,
+reviewed requirement provenance.</li>
+<li>Build a separate Funding Advisor system first. Rejected because it would test
+one application instead of evolving the reusable Spec Compiler capability.</li>
+</ul>
+</main>
+</body>
+</html>

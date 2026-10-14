@@ -1,0 +1,556 @@
+@prefix kfw458: <https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#> .
+@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix schema: <https://schema.org/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# Authored API contract. Edit the messages below to change the HTTP interface.
+# bodyPointer "" passes the whole body; "/payload" would select an envelope field.
+kfw458:ApplicantEligibilityPostEndpoint a sco:PostEndpoint ;
+    dcterms:title "KfW 458 applicant eligibility API" ;
+    schema:version "1.0.0" ;
+    sco:path "/eligibility-decisions" ;
+    sco:invokesContract kfw458:ApplicantEligibilityDecision ;
+    sco:request kfw458:EligibilityHttpRequest ;
+    sco:successResponse kfw458:EligibilityHttpResult ;
+    sco:invalidRequestResponse kfw458:EligibilityHttpError .
+
+# The request schema owns the HTTP field names, types, and required fields.
+kfw458:EligibilityHttpRequest a sco:HttpRequest ;
+    sco:mediaType "application/json" ;
+    sco:bodyRequired true ;
+    sco:bodyPointer "" ;
+    sco:bodySchema """{
+  "type": "object",
+  "properties": {
+    "decision_contract": {
+      "type": "string",
+      "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision"
+    },
+    "rule_set": {
+      "type": "string",
+      "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules"
+    },
+    "decision_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "case": {
+      "type": "object",
+      "properties": {
+        "applicant": {
+          "type": "object",
+          "properties": {
+            "claimsClimateOrIncomeBonus": {
+              "type": "boolean"
+            },
+            "hasUsufructRight": {
+              "type": "boolean"
+            },
+            "naturalPerson": {
+              "type": "boolean"
+            },
+            "owner": {
+              "type": "boolean"
+            },
+            "ownershipViaGbR": {
+              "type": "boolean"
+            },
+            "selfUsesResidentialProperty": {
+              "type": "boolean"
+            }
+          }
+        },
+        "project": {
+          "type": "object",
+          "properties": {
+            "buildingInGermany": {
+              "type": "boolean"
+            },
+            "existingResidentialBuilding": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "assessments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "evidence_requirement": {
+                  "type": "string"
+                },
+                "accepted": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "evidence_requirement",
+                "accepted"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "evidence_type",
+          "assessments"
+        ]
+      }
+    }
+  },
+  "required": [
+    "decision_contract",
+    "rule_set",
+    "decision_date"
+  ],
+  "not": {
+    "required": [
+      "rule_set_version"
+    ]
+  }
+}"""^^rdf:JSON .
+
+# Every completed evaluation uses this response, including ineligible and unknown.
+kfw458:EligibilityHttpResult a sco:HttpResponse ;
+    dcterms:description "Decision Result" ;
+    sco:statusCode 200 ;
+    sco:mediaType "application/json" ;
+    sco:bodyPointer "" ;
+    sco:bodySchema """{
+  "type": "object",
+  "properties": {
+    "decision_contract": {
+      "type": "string",
+      "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision"
+    },
+    "rule_set": {
+      "type": "string",
+      "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules"
+    },
+    "rule_set_version": {
+      "type": "string",
+      "enum": [
+        "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2025_12",
+        "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07"
+      ]
+    },
+    "rule_set_version_label": {
+      "type": "string",
+      "enum": [
+        "2025-12",
+        "2026-07"
+      ]
+    },
+    "decision_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "eligible",
+        "ineligible",
+        "unknown"
+      ]
+    },
+    "outcome_id": {
+      "type": "string",
+      "enum": [
+        "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
+        "https://arturmiller.github.io/spec-compiler/ontology/funding/#Ineligible",
+        "https://arturmiller.github.io/spec-compiler/ontology/funding/#Unknown"
+      ]
+    },
+    "condition_evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "satisfied",
+              "violated",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "rule",
+          "condition",
+          "state"
+        ]
+      }
+    },
+    "decisive_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fact_gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "string"
+          },
+          "fact_property": {
+            "type": "string"
+          },
+          "input_json_pointer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "condition",
+          "fact_property",
+          "input_json_pointer"
+        ]
+      }
+    },
+    "next_question": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "condition": {
+          "type": "string"
+        },
+        "fact_property": {
+          "type": "string"
+        },
+        "input_json_pointer": {
+          "type": "string"
+        },
+        "answer_schema": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "boolean"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        "justification": {
+          "type": "object",
+          "properties": {
+            "rule": {
+              "type": "string"
+            },
+            "source_citation": {
+              "type": "string"
+            },
+            "source_revision": {
+              "type": "string"
+            },
+            "source_locator": {
+              "type": "string"
+            },
+            "source_statement": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "rule",
+            "source_citation",
+            "source_revision",
+            "source_locator",
+            "source_statement"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "condition",
+        "fact_property",
+        "input_json_pointer",
+        "answer_schema",
+        "justification"
+      ]
+    },
+    "evidence_requirement_evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "evidence_requirement": {
+            "type": "string"
+          },
+          "supports_condition": {
+            "type": "string"
+          },
+          "required_evidence_type": {
+            "type": "string"
+          },
+          "applicability_conditions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "condition": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "satisfied",
+                    "violated",
+                    "unknown"
+                  ]
+                }
+              },
+              "required": [
+                "condition",
+                "state"
+              ]
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "fulfilled",
+              "missing",
+              "not_applicable"
+            ]
+          },
+          "supplied_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "evidence": {
+                  "type": "string"
+                },
+                "evidence_type": {
+                  "type": "string"
+                },
+                "classification": {
+                  "type": "string",
+                  "enum": [
+                    "accepted",
+                    "rejected",
+                    "unassessed",
+                    "not_relevant"
+                  ]
+                }
+              },
+              "required": [
+                "evidence",
+                "evidence_type",
+                "classification"
+              ]
+            }
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "source_citation": {
+                "type": "string"
+              },
+              "source_revision": {
+                "type": "string"
+              },
+              "source_locator": {
+                "type": "string"
+              },
+              "source_statement": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_citation",
+              "source_revision",
+              "source_locator",
+              "source_statement"
+            ]
+          },
+          "explanation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_requirement",
+          "supports_condition",
+          "required_evidence_type",
+          "applicability_conditions",
+          "status",
+          "supplied_evidence",
+          "provenance",
+          "explanation"
+        ]
+      }
+    },
+    "obligation_evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "obligation": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "fulfilled",
+              "violated",
+              "unknown"
+            ]
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "source_citation": {
+                "type": "string"
+              },
+              "source_revision": {
+                "type": "string"
+              },
+              "source_locator": {
+                "type": "string"
+              },
+              "source_statement": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_citation",
+              "source_revision",
+              "source_locator",
+              "source_statement"
+            ]
+          },
+          "explanation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "obligation",
+          "text",
+          "rule",
+          "condition",
+          "status",
+          "provenance",
+          "explanation"
+        ]
+      }
+    },
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule": {
+            "type": "string"
+          },
+          "source_citation": {
+            "type": "string"
+          },
+          "source_revision": {
+            "type": "string"
+          },
+          "source_locator": {
+            "type": "string"
+          },
+          "source_statement": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule",
+          "source_citation",
+          "source_revision",
+          "source_locator",
+          "source_statement"
+        ]
+      }
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "scope_note": {
+      "type": "string",
+      "const": "This result covers only the modeled natural-person applicant-eligibility question for KfW product 458 at the supplied decision date. It does not assess the measure, calculate funding, provide advice, or represent a KfW commitment or approval."
+    }
+  },
+  "required": [
+    "decision_contract",
+    "rule_set",
+    "rule_set_version",
+    "rule_set_version_label",
+    "decision_date",
+    "outcome",
+    "outcome_id",
+    "condition_evaluations",
+    "decisive_rules",
+    "fact_gaps",
+    "next_question",
+    "evidence_requirement_evaluations",
+    "obligation_evaluations",
+    "provenance",
+    "explanation",
+    "scope_note"
+  ]
+}"""^^rdf:JSON .
+
+# Schema violations and invalid contract input use this error response.
+kfw458:EligibilityHttpError a sco:HttpResponse ;
+    dcterms:description "Invalid Decision Request" ;
+    sco:statusCode 400 ;
+    sco:mediaType "application/json" ;
+    sco:bodyPointer "/error" ;
+    sco:bodySchema """{
+  "type": "object",
+  "properties": {
+    "error": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "error"
+  ]
+}"""^^rdf:JSON .

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0006: Separate product identity, invocation protocol, and transformation contract · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0006-separate-product-protocol-and-transformation-contract.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0006-separate-product-identity-invocation-protocol-and-transformation-contract">ADR 0006: Separate product identity, invocation protocol, and transformation contract</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Supersedes the product-typing part of
+<a href="0005-bootstrap-toolchain-self-description.html">ADR 0005</a>; its bootstrap trust
+boundary and fixpoint decision remain valid.</p>
+<h2 id="context">Context</h2>
+<p>ADR 0005 selected compiler-product generation with the RDF class
+<code>ex:ContractCompiler</code>. That class coupled the identity and domain category of a
+product to the protocol used by the harness. It also placed transformation
+properties directly on the product. A replacement implementation, another
+compiler kind, or one product implementing multiple contracts would make those
+concerns difficult to vary independently.</p>
+<h2 id="decision">Decision</h2>
+<p>Model the three concerns separately:</p>
+<ul>
+<li>the product is a general <code>schema:SoftwareApplication</code>;</li>
+<li><code>dcterms:conformsTo ex:CompilerProtocolV1</code> selects its observable invocation
+protocol;</li>
+<li><code>ex:implementsContract</code> links the product to an independently identified,
+versionable <code>ex:TransformationContract</code> containing input, output, rejection,
+and equivalence requirements.</li>
+</ul>
+<p>The Contract Compiler CLI dispatches on the protocol relation, not on a product
+class. Generated proofs derive their obligations from the linked transformation
+contract. Different implementations can conform to the same protocol and
+implement the same contract; one implementation may later implement multiple
+contracts.</p>
+<p><code>ex:ContractCompiler</code> is removed from executable dispatch. A domain category
+may be added separately for discovery, but it cannot select proof semantics.</p>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>The Python toolchain, a future Rust implementation, or an external compatible
+compiler can be tested against the same transformation contract.</li>
+<li>Compiler Protocol v1 can also invoke other compilers, including a C++
+compiler, provided their domain-specific transformation contract and outcome
+equivalence are expressible.</li>
+<li>Protocol evolution and transformation-contract evolution can be versioned
+independently.</li>
+<li>The current contract still has toolchain-specific properties such as
+<code>ex:inputSpecPattern</code>; generalizing individual transformation dimensions is
+deferred until a second compiler domain demonstrates the required vocabulary.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Retain <code>ex:ContractCompiler</code> and add subclasses. Rejected because dispatch
+would remain coupled to a taxonomy rather than an observable protocol.</li>
+<li>Use only <code>schema:SoftwareApplication</code>. Rejected because the harness would not
+know how to invoke or verify the product.</li>
+<li>Put all protocol and transformation properties on the product. Rejected
+because implementations and versioned behavioral contracts would not be
+independently reusable.</li>
+</ul>
+</main>
+</body>
+</html>

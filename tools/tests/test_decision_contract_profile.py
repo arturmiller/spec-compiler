@@ -5,8 +5,10 @@ from rdflib.namespace import DCTERMS
 import pytest
 
 from tools.generate import (
+    SCO,
     SDO,
     build_decision_contract,
+    build_http_openapi,
     load_contract_graph,
     read_decision_model,
 )
@@ -92,6 +94,66 @@ def test_decision_model_preserves_applicant_project_and_source_semantics():
     assert len({case.expected_rule_set_version for case in selection_cases}) == 2
     assert len({case.expected_outcome for case in selection_cases}) == 2
     assert all(version.source.statement for version in model.rule_set_versions)
+    assert model.http_endpoint is not None
+    assert model.http_endpoint.path == "/eligibility-decisions"
+    assert model.http_endpoint.success_response.status_code == 200
+    assert model.http_endpoint.invalid_request_response.status_code == 400
+
+
+def test_http_openapi_preserves_authored_message_schemas():
+    model = read_decision_model(PRODUCT_ROOT, _graph())
+    openapi = build_http_openapi(model.http_endpoint)
+    operation = openapi["paths"]["/eligibility-decisions"]["post"]
+    request = operation["requestBody"]["content"]["application/json"]["schema"]
+    applicant = request["properties"]["case"]["properties"]["applicant"]
+    assert applicant["properties"]["naturalPerson"] == {"type": "boolean"}
+    assert applicant["properties"]["hasUsufructRight"] == {"type": "boolean"}
+    assert "naturalPerson" not in applicant.get("required", [])
+    assert set(operation["responses"]) == {"200", "400"}
+    result = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert result["properties"]["outcome"]["enum"] == [
+        "eligible", "ineligible", "unknown"
+    ]
+    assert result["properties"]["next_question"]["type"] == ["object", "null"]
+
+
+def test_decision_http_endpoint_must_expose_the_selected_contract():
+    graph = _graph()
+    graph.set(
+        (
+            KFW458.ApplicantEligibilityPostEndpoint,
+            SCO.invokesContract,
+            KFW458.OtherDecision,
+        )
+    )
+    with pytest.raises(ValueError, match="must invoke the product's Decision Contract"):
+        read_decision_model(PRODUCT_ROOT, graph)
+
+
+def test_decision_http_mapping_requires_a_post_endpoint():
+    graph = _graph()
+    endpoint = KFW458.ApplicantEligibilityPostEndpoint
+    graph.remove((endpoint, RDF.type, SCO.PostEndpoint))
+    graph.add((endpoint, RDF.type, SCO.GetEndpoint))
+
+    with pytest.raises(ValueError, match="must be a sco:PostEndpoint"):
+        read_decision_model(PRODUCT_ROOT, graph)
+
+
+@pytest.mark.parametrize("predicate", [SCO.request, SCO.successResponse, SCO.invalidRequestResponse])
+def test_post_endpoint_requires_explicit_http_messages(predicate):
+    graph = _graph()
+    graph.remove((KFW458.ApplicantEligibilityPostEndpoint, predicate, None))
+
+    with pytest.raises(ValueError, match="Expected exactly one"):
+        read_decision_model(PRODUCT_ROOT, graph)
+
+
+def test_decision_http_endpoint_rejects_unsupported_paths():
+    graph = _graph()
+    graph.set((KFW458.ApplicantEligibilityPostEndpoint, SCO.path, Literal("/cases/{id}")))
+    with pytest.raises(ValueError, match="fixed, safe path"):
+        read_decision_model(PRODUCT_ROOT, graph)
 
 
 def test_missing_case_fact_is_preserved_as_unknown_instead_of_false():

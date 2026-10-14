@@ -1,17 +1,12 @@
-# Spec Compiler self-description
+# spec_compiler
 
-This bundle describes the externally observable compiler behavior of the
-repository's Spec Compiler. `product.toml` adapts the implementation
-to Compiler Protocol v1. The generated tests invoke the compiler as a separate
-process and do not import `tools.generate`. The contract names the SQL API and
-KfW 458 eligibility bundles as separate conformance fixtures, including the
-artifacts expected from each compiler profile.
+Referenzprodukt des Spec Compiler. Die kanonische Beschreibung, Ausführung und
+Vertragsgrenzen stehen in [der HTML-Dokumentation](../../docs/development/products/spec_compiler.html).
 
-The checked-in `tools/generate.py` is the trusted bootstrap compiler (`G0`). It
-materializes `src/spec_compiler.py` as generation `G1` and generates this
-bundle's tests. `product.toml` executes G1 through this bundle's own frozen
-Python project; it no longer points back to G0. The proofs verify G1's declared
-outputs for every conformance fixture, rejection behavior, deterministic
-fixpoint, and independent execution.
-This establishes executable bootstrap continuity, not an independent proof that
-G0 interpreted its own specification correctly.
+Gemeinsame Vorschau vom Repository-Root:
+
+```console
+uv run --extra dev poe documentation-preview
+```
+
+Specs sind Quellen; `generated/` und `tests/` werden vom Generator erzeugt.

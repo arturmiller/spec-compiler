@@ -11,7 +11,8 @@ from pathlib import Path
 from pprint import pformat
 import re
 
-from rdflib import Graph, Namespace, RDF, URIRef
+from jsonschema import Draft202012Validator, SchemaError
+from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from rdflib.namespace import DCTERMS, OWL, SH, XSD
 
 ROOT = Path(__file__).parents[1]
@@ -24,6 +25,7 @@ QUESTION_SELECTION_CONVENTIONS_VERSION = 1
 EVIDENCE_EVALUATION_CONVENTIONS_VERSION = 1
 VERSION_SELECTION_CONVENTIONS_VERSION = 1
 OBLIGATION_EVALUATION_CONVENTIONS_VERSION = 1
+HTTP_CONTRACT_CONVENTIONS_VERSION = 1
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
 SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
@@ -141,6 +143,37 @@ class DecisionConformanceCase:
 
 
 @dataclass(frozen=True)
+class HttpMessage:
+    identifier: str
+    media_type: str
+    body_schema_json: str
+    body_pointer: str
+
+
+@dataclass(frozen=True)
+class HttpRequest(HttpMessage):
+    body_required: bool
+
+
+@dataclass(frozen=True)
+class HttpResponse(HttpMessage):
+    status_code: int
+    description: str
+
+
+@dataclass(frozen=True)
+class HttpEndpoint:
+    identifier: str
+    path: str
+    title: str
+    version: str
+    invokes_contract: str
+    request: HttpRequest
+    success_response: HttpResponse
+    invalid_request_response: HttpResponse
+
+
+@dataclass(frozen=True)
 class ExplicitDecisionAndObligationModel:
     product: str
     decision_contract: str
@@ -156,6 +189,7 @@ class ExplicitDecisionAndObligationModel:
     conformance_cases: tuple[DecisionConformanceCase, ...]
     question_flow_case: str
     version_selection_cases: tuple[str, ...]
+    http_endpoint: HttpEndpoint | None
 
 
 def one(graph: Graph, subject, predicate):
@@ -567,6 +601,139 @@ def _obligation_status_for_case(
     return "violated"
 
 
+HTTP_SCHEMA_KEYWORDS = {
+    "$schema", "title", "description", "type", "properties", "required",
+    "additionalProperties", "items", "enum", "const", "minLength", "maxLength",
+    "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minItems",
+    "maxItems", "uniqueItems", "minProperties", "maxProperties", "pattern",
+    "format", "not", "allOf", "anyOf", "oneOf",
+}
+
+
+def _unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(value):
+    raise ValueError(f"Invalid JSON constant: {value}")
+
+
+def _check_http_schema_keywords(schema) -> None:
+    if isinstance(schema, bool):
+        return
+    unsupported = set(schema) - HTTP_SCHEMA_KEYWORDS
+    if unsupported:
+        raise ValueError(f"Unsupported HTTP JSON Schema keywords: {sorted(unsupported)}")
+    if "$schema" in schema and schema["$schema"] != "https://json-schema.org/draft/2020-12/schema":
+        raise ValueError("HTTP body schemas use JSON Schema draft 2020-12")
+    if "format" in schema and schema["format"] != "date":
+        raise ValueError("HTTP JSON Schema format support is limited to date")
+    for child in schema.get("properties", {}).values():
+        _check_http_schema_keywords(child)
+    for keyword in ("items", "additionalProperties", "not"):
+        if keyword in schema:
+            _check_http_schema_keywords(schema[keyword])
+    for keyword in ("allOf", "anyOf", "oneOf"):
+        for child in schema.get(keyword, []):
+            _check_http_schema_keywords(child)
+
+
+def _read_http_message(graph: Graph, node, response: bool) -> HttpMessage:
+    if not isinstance(node, URIRef):
+        raise ValueError("HTTP messages must be named resources for deterministic provenance")
+    expected_type = SCO.HttpResponse if response else SCO.HttpRequest
+    if (node, RDF.type, expected_type) not in graph:
+        raise ValueError(f"HTTP message {node} must be a {expected_type}")
+    media_type = _required_text(graph, node, SCO.mediaType, "HTTP media type")
+    if not re.fullmatch(r"application/(?:[a-z0-9!#$&^_.+-]+\+)?json", media_type):
+        raise ValueError(f"HTTP body requires a JSON media type: {media_type}")
+    value = one(graph, node, SCO.bodySchema)
+    if not isinstance(value, Literal) or value.datatype != RDF.JSON:
+        raise ValueError(f"HTTP body schema on {node} must be an rdf:JSON literal")
+    try:
+        body_schema = json.loads(
+            str(value), object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
+        Draft202012Validator.check_schema(body_schema)
+    except (ValueError, SchemaError) as error:
+        raise ValueError(f"Invalid HTTP body schema on {node}: {error}") from error
+    _check_http_schema_keywords(body_schema)
+    pointer = one(graph, node, SCO.bodyPointer)
+    if not isinstance(pointer, Literal) or not isinstance(pointer.toPython(), str):
+        raise ValueError("HTTP body pointer must be an explicit string")
+    pointer = str(pointer)
+    if (pointer and not pointer.startswith("/")) or re.search(r"~(?![01])", pointer):
+        raise ValueError(f"Invalid HTTP body JSON Pointer: {pointer}")
+    target = body_schema
+    for part in pointer.split("/")[1:]:
+        name = part.replace("~1", "/").replace("~0", "~")
+        if not isinstance(target, dict) or target.get("type") != "object":
+            raise ValueError(f"HTTP body pointer must traverse explicit object schemas: {pointer}")
+        if name not in target.get("properties", {}):
+            raise ValueError(f"HTTP body pointer is absent from its schema: {pointer}")
+        if response and set(target.get("required", [])) - {name}:
+            raise ValueError(f"HTTP response wrapper requires unbound sibling fields: {pointer}")
+        target = target["properties"][name]
+    fields = {
+        "identifier": str(node),
+        "media_type": media_type,
+        "body_schema_json": json.dumps(body_schema, sort_keys=True, ensure_ascii=False),
+        "body_pointer": pointer,
+    }
+    if response:
+        return HttpResponse(
+            **fields,
+            status_code=_positive_integer_value(one(graph, node, SCO.statusCode), "HTTP status"),
+            description=_required_text(graph, node, DCTERMS.description, "HTTP response description"),
+        )
+    body_required = _boolean_value(one(graph, node, SCO.bodyRequired), "HTTP body required")
+    if not body_required:
+        raise ValueError("The supported HTTP contract profile requires a request body")
+    return HttpRequest(**fields, body_required=body_required)
+
+
+def read_http_endpoint(graph: Graph) -> HttpEndpoint | None:
+    """Read explicit HTTP messages and bindings without product-specific mapping IRIs."""
+    endpoints = set(graph.subjects(RDF.type, SCO.PostEndpoint)) | set(
+        graph.subjects(SCO.invokesContract, None)
+    )
+    if not endpoints:
+        return None
+    if len(endpoints) != 1:
+        raise ValueError("The HTTP contract profile requires exactly one POST endpoint")
+    endpoint = next(iter(endpoints))
+    if not isinstance(endpoint, URIRef):
+        raise ValueError("HTTP endpoints must be named resources for deterministic provenance")
+    if (endpoint, RDF.type, SCO.PostEndpoint) not in graph:
+        raise ValueError(f"HTTP endpoint {endpoint} must be a sco:PostEndpoint")
+    path = _required_text(graph, endpoint, SCO.path, "HTTP POST path")
+    if not re.fullmatch(r"/[A-Za-z0-9/_.~-]*", path) or "//" in path:
+        raise ValueError(f"HTTP POST path must be a fixed, safe path: {path}")
+    contract = one(graph, endpoint, SCO.invokesContract)
+    if not isinstance(contract, URIRef):
+        raise ValueError("HTTP endpoint must invoke an explicit contract IRI")
+    request = _read_http_message(graph, one(graph, endpoint, SCO.request), response=False)
+    success = _read_http_message(graph, one(graph, endpoint, SCO.successResponse), response=True)
+    invalid = _read_http_message(graph, one(graph, endpoint, SCO.invalidRequestResponse), response=True)
+    if not 200 <= success.status_code < 300 or success.status_code in (204, 205):
+        raise ValueError("HTTP success response must have a body-bearing 2xx status")
+    if not 400 <= invalid.status_code < 500:
+        raise ValueError("HTTP invalid-request response must have a 4xx status")
+    return HttpEndpoint(
+        identifier=str(endpoint), path=path,
+        title=_required_text(graph, endpoint, DCTERMS.title, "HTTP API title"),
+        version=_required_text(graph, endpoint, SCHEMA.version, "HTTP API version"),
+        invokes_contract=str(contract), request=request,
+        success_response=success, invalid_request_response=invalid,
+    )
+
+
 def read_decision_model(
     product_root: Path, graph: Graph | None = None
 ) -> ExplicitDecisionAndObligationModel:
@@ -584,6 +751,9 @@ def read_decision_model(
     contract = one(graph, product, SCO.implementsDecisionContract)
     if (contract, RDF.type, SDO.DecisionContract) not in graph:
         raise ValueError("Decision product contract must be an sdo:DecisionContract")
+    http_endpoint = read_http_endpoint(graph)
+    if http_endpoint is not None and http_endpoint.invokes_contract != str(contract):
+        raise ValueError("HTTP endpoint must invoke the product's Decision Contract")
     if not _boolean_value(
         one(graph, contract, SDO.requiresAllRules),
         f"Decision Contract {contract} requiresAllRules",
@@ -1242,6 +1412,7 @@ def read_decision_model(
         conformance_cases=immutable_cases,
         question_flow_case=question_flow_case.identifier,
         version_selection_cases=tuple(version_selection_case_ids),
+        http_endpoint=http_endpoint,
     )
 
 
@@ -1303,6 +1474,49 @@ def build_openapi(contract: dict) -> dict:
                                 contract["media_type"]: {"schema": response_schema}
                             },
                         }
+                    },
+                }
+            }
+        },
+    }
+
+
+def build_http_openapi(endpoint: HttpEndpoint) -> dict:
+    """Render authored HTTP schemas and bindings without inventing body fields."""
+    return {
+        "openapi": "3.1.0",
+        "info": {"title": endpoint.title, "version": endpoint.version},
+        "paths": {
+            endpoint.path: {
+                "post": {
+                    "x-spec-compiler-binding": {
+                        "invokes_contract": endpoint.invokes_contract,
+                        "request_pointer": endpoint.request.body_pointer,
+                        "success_status": endpoint.success_response.status_code,
+                        "result_pointer": endpoint.success_response.body_pointer,
+                        "invalid_status": endpoint.invalid_request_response.status_code,
+                        "error_pointer": endpoint.invalid_request_response.body_pointer,
+                    },
+                    "requestBody": {
+                        "required": endpoint.request.body_required,
+                        "content": {
+                            endpoint.request.media_type: {
+                                "schema": json.loads(endpoint.request.body_schema_json)
+                            }
+                        },
+                    },
+                    "responses": {
+                        str(response.status_code): {
+                            "description": response.description,
+                            "content": {
+                                response.media_type: {
+                                    "schema": json.loads(response.body_schema_json)
+                                }
+                            },
+                        }
+                        for response in (
+                            endpoint.success_response, endpoint.invalid_request_response
+                        )
                     },
                 }
             }
@@ -1483,7 +1697,10 @@ def build_decision_contract(
 
 
 def build_decision_work_items(
-    contract: dict, test_path: str, work_prefix: str
+    contract: dict,
+    test_path: str,
+    work_prefix: str,
+    http_endpoint: HttpEndpoint | None = None,
 ) -> list[dict]:
     runtime_id = f"{work_prefix}.decision-runtime"
     selection_id = f"{work_prefix}.version-selection"
@@ -1686,6 +1903,36 @@ def build_decision_work_items(
                 "excluded": [
                     "Remediation workflows, deadlines, assignees, or enforcement",
                     "Obligations inferred from prose or unstated policy",
+                ],
+            }
+        )
+    if http_endpoint is not None:
+        http_test_path = test_path.replace("test_contract.py", "test_http_contract.py")
+        work_items.append(
+            {
+                "id": f"{work_prefix}.http-api",
+                "title": "Expose the Decision Contract over HTTP",
+                "goal": "Accept Decision Requests from an HTTP client and return the same sourced Decision Results.",
+                "depends_on": [runtime_id, evaluation_id],
+                "obligations": [
+                    f"POST `{http_endpoint.path}` accepts `{http_endpoint.request.media_type}` according to the authored request schema.",
+                    f"The request body at JSON Pointer `{http_endpoint.request.body_pointer}` is the invoked contract input.",
+                    f"HTTP {http_endpoint.success_response.status_code} returns `{http_endpoint.success_response.media_type}` with the Decision Result at JSON Pointer `{http_endpoint.success_response.body_pointer}` according to the authored response schema.",
+                    f"Invalid requests return HTTP {http_endpoint.invalid_request_response.status_code} with `{http_endpoint.invalid_request_response.media_type}` and error text at JSON Pointer `{http_endpoint.invalid_request_response.body_pointer}` according to the authored error schema.",
+                    "The product publishes an OpenAPI 3.1 document compatible with the generated HTTP contract.",
+                ],
+                "sources": [
+                    f"POST endpoint `{http_endpoint.identifier}` and sco:invokesContract in the product specs",
+                    f"Request `{http_endpoint.request.identifier}`: body schema, media type, requirement, and input pointer",
+                    f"Success response `{http_endpoint.success_response.identifier}`: body schema, media type, status, and result pointer",
+                    f"Invalid-request response `{http_endpoint.invalid_request_response.identifier}`: body schema, media type, status, and error pointer",
+                    f"Decision Contract `{contract['decision_contract']}`",
+                    "HTTP Contract Conventions v1: explicit JSON message schemas and body-pointer bindings",
+                ],
+                "test": f"{http_test_path}::test_decision_http_cases",
+                "excluded": [
+                    "A particular web framework or implementation language",
+                    "A user interface, session store, or funding calculation",
                 ],
             }
         )
@@ -2834,6 +3081,164 @@ def test_determinate_outcome_does_not_ask_an_irrelevant_question():
 '''
 
 
+DECISION_HTTP_TEST_TEMPLATE = '''# Generated by Spec Compiler. Do not edit.
+import json
+from pathlib import Path
+import socket
+from urllib.parse import urlsplit
+
+import httpx
+from openapi_spec_validator import OpenAPIV31SpecValidator, validate as validate_openapi
+import pytest
+
+from tools.contract_runtime import running_product
+from tools.decision_runtime import run_decision
+from tools.http_contract_verification import (
+    assert_schema_matches, invalid_bodies, read_pointer, resolve_reference,
+    validate_body, wrap_body,
+)
+
+
+PRODUCT_ROOT = Path(__file__).parents[1]
+CONTRACT = json.loads(
+    (PRODUCT_ROOT / "generated" / "decision-contract.json").read_text(encoding="utf-8")
+)
+EXPECTED_OPENAPI = json.loads(
+    (PRODUCT_ROOT / "generated" / "expected-openapi.json").read_text(encoding="utf-8")
+)
+API_PATH = next(iter(EXPECTED_OPENAPI["paths"]))
+OPERATION = EXPECTED_OPENAPI["paths"][API_PATH]["post"]
+BINDING = OPERATION["x-spec-compiler-binding"]
+REQUEST_MEDIA, REQUEST_CONTENT = next(iter(OPERATION["requestBody"]["content"].items()))
+
+
+def _response_contract(status):
+    return next(iter(OPERATION["responses"][str(status)]["content"].items()))
+
+
+def _set_pointer(document, pointer, value):
+    parts = [part.replace("~1", "/").replace("~0", "~") for part in pointer[1:].split("/")]
+    target = document
+    for part in parts[:-1]:
+        target = target.setdefault(part, {})
+    target[parts[-1]] = value
+
+
+def _request_for_case(case):
+    conditions = {
+        **{
+            rule["condition"]["id"]: rule["condition"]
+            for version in CONTRACT["rule_set"]["versions"]
+            for rule in version["rules"]
+        },
+        **{
+            condition["id"]: condition
+            for version in CONTRACT["rule_set"]["versions"]
+            for requirement in version["evidence_requirements"]
+            for condition in requirement["applicability_conditions"]
+        },
+    }
+    request = {
+        "decision_contract": CONTRACT["decision_contract"],
+        "rule_set": CONTRACT["rule_set"]["id"],
+        "decision_date": case["decision_date"],
+        "case": {},
+        "evidence": json.loads(json.dumps(case["evidence"])),
+    }
+    for fact in case["facts"]:
+        _set_pointer(
+            request,
+            conditions[fact["condition"]]["input_json_pointer"],
+            fact["value"],
+        )
+    return request
+
+
+@pytest.fixture(scope="module")
+def running_http_api():
+    with running_product(PRODUCT_ROOT) as product:
+        yield product
+
+
+def test_decision_http_openapi_matches_contract(running_http_api):
+    response = httpx.get(running_http_api.openapi_url)
+    assert response.status_code == 200
+    assert response.headers["content-type"].split(";", 1)[0] == "application/json"
+    actual = response.json()
+    validate_openapi(actual, cls=OpenAPIV31SpecValidator)
+    validate_openapi(EXPECTED_OPENAPI, cls=OpenAPIV31SpecValidator)
+    actual_operation = actual["paths"][API_PATH]["post"]
+    actual_request = resolve_reference(actual, actual_operation["requestBody"])
+    assert actual_request["required"] == OPERATION["requestBody"]["required"]
+    assert_schema_matches(
+        actual, actual_request["content"][REQUEST_MEDIA]["schema"], REQUEST_CONTENT["schema"]
+    )
+    for status, expected_response in OPERATION["responses"].items():
+        assert status in actual_operation["responses"]
+        actual_response = resolve_reference(actual, actual_operation["responses"][status])
+        for media_type, expected_content in expected_response["content"].items():
+            assert_schema_matches(
+                actual, actual_response["content"][media_type]["schema"],
+                expected_content["schema"],
+            )
+
+
+@pytest.mark.parametrize(
+    "case", CONTRACT["conformance_cases"],
+    ids=lambda case: case["id"].rsplit("#", 1)[-1],
+)
+def test_decision_http_cases(running_http_api, case):
+    request = _request_for_case(case)
+    body = wrap_body(request, BINDING["request_pointer"])
+    validate_body(REQUEST_CONTENT["schema"], body)
+    response = httpx.post(
+        running_http_api.base_url + API_PATH, content=json.dumps(body),
+        headers={"content-type": REQUEST_MEDIA},
+    )
+    assert response.status_code == BINDING["success_status"], response.text
+    media_type, content = _response_contract(BINDING["success_status"])
+    assert response.headers["content-type"].split(";", 1)[0] == media_type
+    validate_body(content["schema"], response.json())
+    result = read_pointer(response.json(), BINDING["result_pointer"])
+    assert result["decision_date"] == case["decision_date"]
+    assert result["rule_set_version"] == case["expected_rule_set_version"]
+    assert result["outcome_id"] == case["expected_outcome"]
+    cli_result = run_decision(PRODUCT_ROOT, request)
+    assert cli_result.returncode == 0, cli_result.output
+    assert result == cli_result.json_output()
+
+
+def test_decision_http_rejects_invalid_request(running_http_api):
+    request = _request_for_case(CONTRACT["conformance_cases"][0])
+    body = wrap_body(request, BINDING["request_pointer"])
+    validate_body(REQUEST_CONTENT["schema"], body)
+    media_type, content = _response_contract(BINDING["invalid_status"])
+    payloads = ["{", *[
+        json.dumps(candidate)
+        for candidate in invalid_bodies(REQUEST_CONTENT["schema"], body)
+    ]]
+    with httpx.Client() as client:
+        for payload in payloads:
+            response = client.post(
+                running_http_api.base_url + API_PATH, content=payload,
+                headers={"content-type": REQUEST_MEDIA},
+            )
+            assert response.status_code == BINDING["invalid_status"], response.text
+            assert response.headers["content-type"].split(";", 1)[0] == media_type
+            validate_body(content["schema"], response.json())
+            assert isinstance(read_pointer(response.json(), BINDING["error_pointer"]), str)
+
+
+def test_decision_http_process_cleanup():
+    with running_product(PRODUCT_ROOT) as product:
+        address = urlsplit(product.base_url)
+        host, port = address.hostname, address.port
+    with socket.socket() as connection:
+        connection.settimeout(0.5)
+        assert connection.connect_ex((host, port)) != 0
+'''
+
+
 COMPILER_TEST_TEMPLATE = '''# Generated by Spec Compiler. Do not edit.
 from pathlib import Path
 import shutil
@@ -3089,7 +3494,9 @@ def generate_decision_contract(
         raise ValueError(
             f"Decision Product directory does not form a safe work prefix: {work_prefix}"
         )
-    work_items = build_decision_work_items(contract, test_path, work_prefix)
+    work_items = build_decision_work_items(
+        contract, test_path, work_prefix, model.http_endpoint
+    )
 
     test_output.parent.mkdir(parents=True, exist_ok=True)
     test_output.write_text(DECISION_TEST_TEMPLATE, encoding="utf-8")
@@ -3101,6 +3508,25 @@ def generate_decision_contract(
         json.dumps(contract, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+    http_test_output = tests_root / "test_http_contract.py"
+    openapi_output = generated / "expected-openapi.json"
+    http_outputs = []
+    if model.http_endpoint is not None:
+        http_test_output.write_text(DECISION_HTTP_TEST_TEMPLATE, encoding="utf-8")
+        openapi_output.write_text(
+            json.dumps(
+                build_http_openapi(model.http_endpoint),
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        http_outputs = [http_test_output, openapi_output]
+    else:
+        for stale_http_output in (http_test_output, openapi_output):
+            if stale_http_output.exists():
+                stale_http_output.unlink()
     graph_output = generated / "work-graph.json"
     graph_output.write_text(
         json.dumps(
@@ -3121,6 +3547,11 @@ def generate_decision_contract(
                 "obligation_evaluation_conventions_version": (
                     OBLIGATION_EVALUATION_CONVENTIONS_VERSION
                 ),
+                **(
+                    {"http_contract_conventions_version": HTTP_CONTRACT_CONVENTIONS_VERSION}
+                    if model.http_endpoint is not None
+                    else {}
+                ),
                 "work_items": work_items,
             },
             indent=2,
@@ -3137,7 +3568,9 @@ def generate_decision_contract(
         issue_output = issues / f"{item['id']}.md"
         issue_output.write_text(render_issue(item, product_path), encoding="utf-8")
         issue_outputs.append(issue_output)
-    return [test_output, contract_output, graph_output, *issue_outputs]
+    return [
+        test_output, contract_output, *http_outputs, graph_output, *issue_outputs
+    ]
 
 
 def parse_args() -> argparse.Namespace:
@@ -3168,6 +3601,14 @@ def main() -> None:
     decision_products = list(
         graph.subjects(DCTERMS.conformsTo, SCO.DecisionProtocolV1)
     )
+    post_endpoint_candidates = set(graph.subjects(RDF.type, SCO.PostEndpoint)) | set(
+        graph.subjects(SCO.invokesContract, None)
+    )
+    if post_endpoint_candidates and not decision_products:
+        raise ValueError(
+            "POST endpoints currently require a Decision Protocol v1 product "
+            "with explicit HTTP messages and a matching sco:invokesContract"
+        )
     http_contract = bool(
         list(graph.subjects(RDF.type, SCO.GetEndpoint))
         or list(graph.subjects(RDF.type, SCO.SqlTable))
@@ -3176,7 +3617,10 @@ def main() -> None:
         name
         for name, present in (
             ("compiler", bool(compiler_products)),
-            ("decision", bool(decision_products)),
+            (
+                "decision-http" if post_endpoint_candidates else "decision",
+                bool(decision_products),
+            ),
             ("http-sql", http_contract),
         )
         if present

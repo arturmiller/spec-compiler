@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Contract Verification Harness – Prozessadapter",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Component"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "suite",
+      "type": "backend",
+      "label": "Generated Contract Test Suite",
+      "sublabel": "Component · pytest · koordiniert Nachweise",
+      "pos": [
+        440,
+        60
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "Product Runtime Adapter",
+      "sublabel": "Component · subprocess / HTTPX · HTTP-Prozess",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "decision",
+      "type": "backend",
+      "label": "Decision Protocol Adapter",
+      "sublabel": "Component · subprocess / JSON · ein Austausch",
+      "pos": [
+        440,
+        300
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "compiler",
+      "type": "backend",
+      "label": "Compiler Runtime Adapter",
+      "sublabel": "Component · subprocess · Compileraufruf",
+      "pos": [
+        840,
+        300
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "terminator",
+      "type": "backend",
+      "label": "Process Tree Terminator",
+      "sublabel": "Component · taskkill / POSIX · beendet Kinder",
+      "pos": [
+        440,
+        550
+      ],
+      "size": [
+        330,
+        80
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "http-proof",
+      "from": "suite",
+      "to": "runtime",
+      "label": "Runtime Protocol v1",
+      "fromSide": "left",
+      "toSide": "top",
+      "via": [
+        [
+          205,
+          100
+        ]
+      ]
+    },
+    {
+      "id": "decision-proof",
+      "from": "suite",
+      "to": "decision",
+      "label": "Decision Protocol v1",
+      "labelDy": 24
+    },
+    {
+      "id": "compiler-proof",
+      "from": "suite",
+      "to": "compiler",
+      "label": "Compiler Protocol v1",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [
+        [
+          1005,
+          100
+        ]
+      ]
+    },
+    {
+      "id": "cleanup",
+      "from": "decision",
+      "to": "terminator",
+      "label": "vollständiges Cleanup",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Beobachtbare Grenzen",
+      "items": [
+        "HTTP-, SQLite-, OpenAPI-, Decision- und Compiler-Nachweise beobachten das Produkt.",
+        "Sie laden nie seine Implementierung als Testmodul."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Geteiltes Cleanup",
+      "items": [
+        "Auch Runtime Adapter und Compiler Runtime Adapter nutzen den Process Tree Terminator.",
+        "Die Adapter bleiben Komponenten im pytest-Prozess, keine separaten Container."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0022: Expose an authored Decision Contract through an HTTP endpoint · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0022-expose-decision-contract-through-an-authored-http-endpoint.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0022-expose-an-authored-decision-contract-through-an-http-endpoint">ADR 0022: Expose an authored Decision Contract through an HTTP endpoint</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. This extends ADR 0017 without changing Decision Protocol v1.</p>
+<h2 id="context">Context</h2>
+<p>The KfW 458 Applicant Eligibility Pilot already compiles one source-backed
+Decision Contract and verifies a JSON standard-stream process. A browser client
+needs an HTTP boundary, but the SQL API profile describes one GET endpoint and
+one SQLite table. Treating that profile as a general decision API would invent
+storage and GET semantics. An HTTP adapter also needs an explicit, testable
+request and response contract rather than a path chosen only in product code.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Add <code>sco:HttpEndpoint</code> as the shared superclass of the existing
+<code>sco:GetEndpoint</code> and new <code>sco:DecisionPostEndpoint</code>. A Decision POST endpoint
+explicitly names its path, JSON media type, success and invalid-request
+statuses, and the <code>sdo:DecisionContract</code> it exposes.</li>
+<li>Define <strong>Decision HTTP Mapping v1</strong>, selected by
+<code>dcterms:conformsTo sco:DecisionHttpMappingV1</code>. It supports exactly one fixed
+POST path per Decision Product, <code>application/json</code>, HTTP <code>200</code> for every valid
+Decision Result (<code>eligible</code>, <code>ineligible</code>, or <code>unknown</code>), and HTTP <code>400</code> with a
+nonempty JSON <code>error</code> string for an invalid Decision Request.</li>
+<li>The POST body is the existing Decision Request JSON: contract identity,
+stable Rule Set identity, and ISO Decision Date are required; <code>case</code> and
+<code>evidence</code> are optional. Fact fields compiled from Rule and Evidence
+applicability JSON Pointers are optional booleans, preserving Fact Gaps.
+Caller-selected Rule Set Versions are forbidden. The <code>200</code> body is the full
+Decision Result, including selected version, evaluations, Next Question,
+provenance, and scope note. The mapping does not change decision semantics.</li>
+<li>Compile the authored endpoint and typed Decision Contract into a self-contained
+OpenAPI 3.1 document, generated HTTP black-box tests, and a Work Item. The
+document is published at <code>/openapi.json</code> through Runtime Protocol v1. The
+tests compare its supported schema subset and send every authored Conformance
+Case through HTTP, checking parity with the separately verified Decision
+Protocol v1 result and invalid-request handling.</li>
+<li>Keep the existing CLI adapter and generated Decision Contract unchanged. The
+KfW reference Product Bundle supplies an additional HTTP adapter through a
+<code>[runtime]</code> section of <code>product.toml</code>; both adapters use the same evaluator.
+The compiler generates contracts and proofs, not executable server code.</li>
+<li>Keep UI layout, sessions, funding amount calculation, document upload, and
+implementation technology outside this endpoint and the pilot scope.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>A client can call the KfW applicant decision over HTTP without changing the
+meaning of <code>eligible</code> or the source-backed rule versions.</li>
+<li>The Decision Product can still be verified through its original process
+protocol, while its optional HTTP surface has a separate explicit contract.</li>
+<li>The compiler's decision profile gains an optional HTTP projection. A Decision
+POST endpoint without a Decision Product, multiple endpoints, an unmatched
+Decision Contract, or unsupported path/media/status values fail compilation.</li>
+<li>The generated OpenAPI schema is intentionally limited to direct schemas and
+local references, with a root <code>not</code> constraint rejecting caller-selected
+versions. Richer HTTP operations or schema composition require a later mapping.</li>
+</ul>
+<h2 id="alternatives">Alternatives</h2>
+<ul>
+<li>Reuse <code>sco:GetEndpoint</code> and its SQL reader. Rejected because it requires a
+table and cannot express a JSON POST decision request.</li>
+<li>Handwrite OpenAPI independently of the Decision Contract. Rejected for this
+reference slice because its request pointers, outcomes, and result fields
+would duplicate the compiled source of truth.</li>
+<li>Replace Decision Protocol v1 with HTTP. Rejected because the existing
+technology-neutral decision boundary and its black-box proofs remain useful.</li>
+</ul>
+</main>
+</body>
+</html>

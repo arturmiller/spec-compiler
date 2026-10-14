@@ -1,9 +1,12 @@
-# SQL API example
+# sql_api_example
 
-Dieses Referenzprodukt erfüllt den Vertrag in `specs/` mit Python, FastAPI und
-Uvicorn. Diese Technologien sind Entscheidungen des Beispiels und keine
-Anforderungen des Vertrags oder des Generators.
+Referenzprodukt des Spec Compiler. Die kanonische Beschreibung, Ausführung und
+Vertragsgrenzen stehen in [der HTML-Dokumentation](../../docs/development/products/sql_api_example.html).
 
-`product.toml` beschreibt ausschließlich, wie das Werkzeug diese konkrete
-Implementierung als separaten Prozess startet. Die generierten Tests importieren
-`app.py` nicht.
+Gemeinsame Vorschau vom Repository-Root:
+
+```console
+uv run --extra dev poe documentation-preview
+```
+
+Specs sind Quellen; `generated/` und `tests/` werden vom Generator erzeugt.

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0002: Verify products as black boxes · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0002-black-box-product-verification.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0002-verify-products-as-black-boxes">ADR 0002: Verify products as black boxes</h1>
+<h2 id="status">Status</h2>
+<p>Accepted.</p>
+<h2 id="context">Context</h2>
+<p>In-process tests coupled the first reference product to Python, FastAPI,
+<code>TestClient</code>, and a <code>create_app</code> function. Such a test rejects otherwise correct
+implementations in other languages and confuses the test-harness technology with
+the product contract. OpenAPI alone is insufficient because it proves only what
+the product declares, not what it actually does.</p>
+<h2 id="decision">Decision</h2>
+<p>The Contract Verification Harness never imports product implementation modules.
+It starts a separate Product Runtime through the explicit, versioned
+<code>product.toml</code> adapter and observes only contracted boundaries.</p>
+<p>Verification is split into four focused proofs:</p>
+<ol>
+<li>Runtime Protocol readiness and published OpenAPI availability,</li>
+<li>complete OpenAPI 3.1 validity plus required-subset compatibility,</li>
+<li>explicitly contracted SQLite schema and identifier behavior,</li>
+<li>real HTTP behavior plus SHACL conformance.</li>
+</ol>
+<p>Runtime Protocol v1 deliberately uses a narrow, documented OpenAPI profile:
+self-contained JSON, local references, and direct schemas.</p>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>A product may use any implementation language or framework.</li>
+<li>The test harness needs subprocess, port, readiness, and process-tree lifecycle
+management.</li>
+<li>Tool and product dependencies can be isolated.</li>
+<li>OpenAPI declarations and runtime behavior can fail independently and produce
+focused diagnostics.</li>
+<li>Direct SQLite access remains an intentional limitation of this explicit
+storage contract, not a universal product assumption.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Continue using framework-native in-process test clients. Rejected because they
+encode implementation technology.</li>
+<li>Verify only OpenAPI. Rejected because a correct document does not prove correct
+behavior or persistence.</li>
+<li>Require containers for every product. Deferred because it adds deployment
+weight not needed to test the current architectural question.</li>
+</ul>
+</main>
+</body>
+</html>

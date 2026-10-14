@@ -1,0 +1,24 @@
+{
+  "schema_version": 1, "diagram_type": "sequence",
+  "meta": {"title": "Compiler-Bootstrap und Fixpunktnachweis", "locale": "de", "quality_profile": "showcase", "column_fit": "spread", "viewBox": [1080, 700]},
+  "participants": [
+    {"id": "seed", "type": "backend", "label": "Bootstrap Compiler G0", "sublabel": "deklarierter Seed"},
+    {"id": "self", "type": "database", "label": "Self-Description Bundle", "sublabel": "Compiler Protocol v1"},
+    {"id": "harness", "type": "backend", "label": "Verification Harness", "sublabel": "Contract Verification Harness"},
+    {"id": "compiler", "type": "external", "label": "Compiler Product G1", "sublabel": "unabhängig gestarteter Prozess"}
+  ],
+  "messages": [
+    {"id": "self-specs", "from": "seed", "to": "self", "y": 170, "label": "Self-Description-Specs kompilieren", "variant": "emphasis"},
+    {"id": "generate-g1", "from": "seed", "to": "self", "y": 240, "label": "G1-Quelle, Tests und Work Graph schreiben"},
+    {"id": "load-proof", "from": "harness", "to": "self", "y": 310, "label": "Manifest und Nachweise lesen"},
+    {"id": "first-run", "from": "harness", "to": "compiler", "y": 390, "label": "Fixture kompilieren: A1", "variant": "emphasis"},
+    {"id": "first-result", "from": "compiler", "to": "harness", "y": 450, "label": "Exitstatus und Artefakte A1", "variant": "return"},
+    {"id": "second-run", "from": "harness", "to": "compiler", "y": 520, "label": "dieselbe Fixture kompilieren: A2", "variant": "emphasis"},
+    {"id": "second-result", "from": "compiler", "to": "harness", "y": 590, "label": "Exitstatus und Artefakte A2", "variant": "return"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Drei Conformance Fixtures", "items": ["SQL API, KfW 458 und Cloud Compliance sind getrennte Product Bundles.", "Ihre erwarteten Artefaktmuster stammen aus den Specs."]},
+    {"dot": "emerald", "title": "Byteweiser Vergleich", "items": ["Der Harness verlangt A1 = A2 für dieselbe Fixture.", "Das Compilerprodukt wird ausschließlich über sein Manifest gestartet."]},
+    {"dot": "violet", "title": "Grenze des Nachweises", "items": ["G1 übernimmt den Seed mit erhöhtem Generationsmarker.", "Determinismus beweist noch keine unabhängige fachliche Interpretation."]}
+  ]
+}

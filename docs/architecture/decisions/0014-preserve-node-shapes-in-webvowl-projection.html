@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0014: Preserve Node Shapes in the WebVOWL projection · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0014-preserve-node-shapes-in-webvowl-projection.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0014-preserve-node-shapes-in-the-webvowl-projection">ADR 0014: Preserve Node Shapes in the WebVOWL projection</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Refines <a href="0013-project-example-relations-for-webvowl.html">ADR 0013</a>.</p>
+<h2 id="context">Context</h2>
+<p>The first OWL projection resolved <code>sco:returns</code> and <code>sco:stores</code> through
+<code>sh:targetClass</code> directly to <code>Article</code>. Although the resulting endpoints,
+tables, and domain classes were connected, WebVOWL still omitted
+<code>ArticleShape</code>. Readers therefore could not see where the SHACL validation
+boundary sits in the authored model.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Preserve a referenced Node Shape as an OWL class in the derived visualization
+graph.</li>
+<li>Project <code>returns</code> and <code>stores</code> to that Shape rather than directly to its
+target class.</li>
+<li>Add a visualization-only <code>target class</code> Object Property from the Shape to its
+single <code>sh:targetClass</code>.</li>
+<li>Continue treating the authored RDF/SHACL specs as the only authoritative
+source.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>WebVOWL displays the chain from endpoint and table through <code>ArticleShape</code> to
+<code>Article</code>.</li>
+<li>The graph distinguishes the validation description from the domain class it
+targets.</li>
+<li>The derived graph uses OWL punning for the Shape solely to accommodate
+WebVOWL; this does not change the Shape's authored SHACL meaning.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Keep the direct edges and add a disconnected Shape. Rejected because it does
+not explain the Shape's role.</li>
+<li>Keep both direct and Shape-mediated edges. Rejected because the redundant
+paths make the small example unnecessarily ambiguous.</li>
+</ul>
+</main>
+</body>
+</html>

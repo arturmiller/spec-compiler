@@ -90,6 +90,7 @@ def build_dataset(
     title: str,
     namespace: str,
     source_href: str,
+    reference_href: str,
     property_namespaces: tuple[str, ...] = (),
 ) -> dict:
     classes = sorted(
@@ -168,6 +169,7 @@ def build_dataset(
         "key": key,
         "title": title,
         "sourceHref": source_href,
+        "referenceHref": reference_href,
         "nodes": nodes,
         "edges": edges,
         "properties": properties,

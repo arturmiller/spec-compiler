@@ -15,15 +15,20 @@
     .topline { display:flex; justify-content:space-between; gap:16px; align-items:center; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; }
     .brand { color:var(--accent); text-decoration:none; }
     .brandmark { display:inline-grid; place-items:center; width:27px; height:27px; border:2px solid var(--accent); border-radius:8px; margin-right:8px; font-size:17px; vertical-align:middle; }
+    .site-nav { display:flex; flex-wrap:wrap; gap:16px; }
+    .site-nav a { color:var(--muted); text-decoration:none; }
+    .site-nav a:hover { color:var(--accent); }
     .intro { display:flex; align-items:end; justify-content:space-between; gap:24px; margin:25px 0 23px; }
     h1 { margin:0; font-size:clamp(29px,3vw,43px); line-height:1.1; letter-spacing:-.045em; }
     .intro p { margin:9px 0 0; color:var(--muted); font-size:15px; max-width:680px; }
     .source-link { color:var(--accent); font-weight:700; white-space:nowrap; text-decoration:none; }
     .source-link:hover { text-decoration:underline; }
+    .reference-links { display:flex; flex-wrap:wrap; gap:8px 18px; }
     .toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px; }
     .field { display:flex; align-items:center; gap:8px; min-height:42px; padding:9px 12px; border:1px solid var(--line); border-radius:9px; background:white; }
     .field span { color:var(--muted); }
     .field select,.field input { border:0; outline:0; background:transparent; color:var(--ink); min-width:170px; }
+    .field select { max-width:100%; }
     .field.search { flex:1; min-width:220px; }
     .field.search input { width:100%; }
     .pill { border-radius:999px; background:#e4f2ef; color:var(--accent); padding:7px 11px; font-weight:750; white-space:nowrap; }
@@ -63,15 +68,14 @@
     .property-card small { overflow-wrap:anywhere; color:var(--muted); }
     .note { margin:15px 0 0; color:var(--muted); font-size:12px; }
     @media(max-width:960px) { .graph-wrap { grid-template-columns:1fr; } .graph-side { max-height:none; border-left:0; border-top:1px solid var(--line); } }
-    @media(max-width:620px) { .intro { display:block; } .source-link { display:inline-block; margin-top:12px; } .surface-head { align-items:start; } .filter-spacer { display:none; } }
+    @media(max-width:620px) { .topline { flex-wrap:wrap; } .intro { display:block; } .reference-links { margin-top:16px; } .field { max-width:100%; } .field select { min-width:0; width:100%; } .surface-head { align-items:start; } .filter-spacer { display:none; } }
   </style>
 </head>
 <body>
 <script type="application/json" id="ontology-data">__ONTOLOGY_DATA__</script>
-<div class="shell">
-  <div class="topline"><a class="brand" href="../"><span class="brandmark">◇</span>Spec Compiler / Ontologien</a><span>Beziehungsgraph</span></div>
-  <div class="intro"><div><h1>Begriffe und Beziehungen verstehen.</h1><p>Ein fester Graph für jedes Vokabular. Knotenwahl markiert das direkte Umfeld, ohne den angezeigten Bereich zu verschieben.</p></div><a id="source-link" class="source-link" href="#">Autoritative Quelle ↗</a></div>
-  <div class="toolbar"><label class="field"><span>Vokabular</span><select id="ontology-select"></select></label><label class="field search"><span>⌕</span><input id="search" type="search" placeholder="Klasse oder Property suchen …" aria-label="Klasse oder Property suchen"></label><span id="counts" class="pill"></span></div>
+<main id="content" class="shell">
+  <div class="intro"><div><h1>Begriffe und Beziehungen verstehen.</h1><p>Alle Ontologien an einem Ort. Wähle einen Graphen und erkunde seine Begriffe. Ein Klick markiert das direkte Umfeld, ohne die Ansicht zu verschieben.</p></div><nav class="reference-links" aria-label="Referenzen zum ausgewählten Graphen"><a id="reference-de" class="source-link" href="#">Referenz (DE)</a><a id="reference-en" class="source-link" href="#">Referenz (EN)</a><a id="source-link" class="source-link" href="#">Turtle-Quelle ↗</a></nav></div>
+  <div class="toolbar"><label class="field"><span>Graph</span><select id="ontology-select" aria-label="Graph auswählen"></select></label><label class="field search"><span>⌕</span><input id="search" type="search" placeholder="Klasse oder Property suchen …" aria-label="Klasse oder Property suchen"></label><span id="counts" class="pill"></span></div>
   <div class="surface">
     <div class="surface-head"><div><strong>Beziehungsgraph</strong><br><small>Zoom mit +, − oder Mausrad · Ziehen verschiebt die Ansicht</small></div><div class="graph-controls"><button class="small-button" id="zoom-out" type="button" aria-label="Verkleinern">−</button><button class="small-button" id="zoom-in" type="button" aria-label="Vergrößern">+</button><button class="small-button" id="fit" type="button">Einpassen</button></div></div>
     <div class="filter-bar"><span class="filter-label">Beziehungen</span><button class="filter-button" data-edge-kind="all" type="button">Alle</button><button class="filter-button" data-edge-kind="object" type="button">Objekt</button><button class="filter-button" data-edge-kind="subclass" type="button">Unterklassen</button><span class="filter-spacer"></span><button class="filter-button" id="neighborhood" type="button" aria-pressed="false">Direktes Umfeld</button><span id="graph-status" class="graph-status"></span></div>
@@ -79,7 +83,7 @@
   </div>
   <details id="property-catalog" class="property-catalog"><summary>Alle Properties dieses Vokabulars</summary><div id="property-grid" class="property-grid"></div></details>
   <p class="note">Die Darstellung zeigt deklarierte OWL-Klassen, Objekt- und Datentyp-Properties sowie Unterklassen. SHACL-Constraints und Produktinstanzen stehen in den verlinkten Turtle-Spezifikationen.</p>
-</div>
+</main>
 <script>
 window.addEventListener('DOMContentLoaded', () => {
   const datasets=JSON.parse(document.getElementById('ontology-data').textContent);
@@ -90,6 +94,7 @@ window.addEventListener('DOMContentLoaded', () => {
   let neighborhood=params.get('context')==='1';
   let cy,graphKey;
   const $=id=>document.getElementById(id);
+  $('search').value=params.get('q')||'';
   const escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const node=id=>ontology.nodes.find(n=>n.id===id);
   const short=iri=>iri.split('#').pop().split('/').pop();
@@ -150,17 +155,27 @@ window.addEventListener('DOMContentLoaded', () => {
     if(isNew)cy.fit(undefined,45);
   }
   function select(id){selected=id;neighborhood=true;syncUrl();renderGraph();}
-  function render(){ $('ontology-select').value=ontology.key;$('counts').textContent=`${ontology.nodes.length} Klassen · ${ontology.properties.length} Properties`;$('source-link').href=ontology.sourceHref;renderProperties();renderGraph(); }
+  function render(){ $('ontology-select').value=ontology.key;$('counts').textContent=`${ontology.nodes.length} Klassen · ${ontology.properties.length} Properties`;$('source-link').href=ontology.sourceHref;$('reference-de').href=ontology.referenceHref+'index-de.html';$('reference-en').href=ontology.referenceHref+'index-en.html';renderProperties();renderGraph(); }
   datasets.forEach(d=>{const option=document.createElement('option');option.value=d.key;option.textContent=d.title;$('ontology-select').append(option);});
   $('ontology-select').addEventListener('change',e=>{ontology=datasets.find(d=>d.key===e.target.value);selected=ontology.nodes[0]?.id;neighborhood=false;syncUrl();render();});
-  $('search').addEventListener('input',()=>{renderProperties();renderGraph();});
+  $('search').addEventListener('input',()=>{const url=new URL(location.href);if(query())url.searchParams.set('q',$('search').value);else url.searchParams.delete('q');history.replaceState(null,'',url);renderProperties();renderGraph();});
   document.querySelectorAll('[data-edge-kind]').forEach(button=>button.addEventListener('click',()=>{edgeKind=button.dataset.edgeKind;syncUrl();renderGraph();}));
   $('neighborhood').addEventListener('click',()=>{neighborhood=!neighborhood;syncUrl();renderGraph();});
   $('zoom-in').addEventListener('click',()=>cy?.zoom({level:cy.zoom()*1.25,renderedPosition:{x:cy.width()/2,y:cy.height()/2}}));
   $('zoom-out').addEventListener('click',()=>cy?.zoom({level:cy.zoom()/1.25,renderedPosition:{x:cy.width()/2,y:cy.height()/2}}));
   $('fit').addEventListener('click',()=>cy?.fit(undefined,45));
   $('graph-side').addEventListener('click',e=>{const button=e.target.closest('[data-select]');if(button)select(button.dataset.select);});
-  syncUrl();render();
+  function graphTheme(){
+    if(!cy)return;
+    const dark=document.documentElement.dataset.theme==='dark';
+    cy.style().selector('node').style({'background-color':dark?'#19352f':'#f5fcfa','color':dark?'#dcece7':'#163a39','border-color':dark?'#55c6ac':'#0d7365'})
+      .selector('node:selected').style({'background-color':dark?'#55c6ac':'#0d7365','color':dark?'#102a23':'#fff'})
+      .selector('edge').style({'color':dark?'#b9cecd':'#536e70','text-background-color':dark?'#132724':'#fff'})
+      .selector('edge.context-link').style({'color':dark?'#84dec9':'#173e3a'}).update();
+  }
+  window.addEventListener('site-theme',graphTheme);
+  $('ontology-select').addEventListener('change',graphTheme);
+  syncUrl();render();graphTheme();
 });
 </script>
 </body>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0004: Derive all outputs from one Contract Model · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0004-common-contract-model-and-work-graph.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0004-derive-all-outputs-from-one-contract-model">ADR 0004: Derive all outputs from one Contract Model</h1>
+<h2 id="status">Status</h2>
+<p>Accepted.</p>
+<h2 id="context">Context</h2>
+<p>Generating tests, OpenAPI, and issue prose through separate interpretations of
+the RDF specs would allow the outputs to disagree. Passing one monolithic test
+suite to a stochastic coding agent also provides little guidance about ordering,
+scope, and completion.</p>
+<h2 id="decision">Decision</h2>
+<p>The Contract Compiler CLI parses and validates the RDF graph once into a common
+Contract Model. Deterministic renderers derive from that model:</p>
+<ul>
+<li>valid fixture values,</li>
+<li>expected OpenAPI,</li>
+<li>black-box contract tests,</li>
+<li>a versioned Work Graph,</li>
+<li>natural-language issue Markdown.</li>
+</ul>
+<p>The Work Graph decomposes implementation into dependency-ordered Work Items.
+Every node contains a goal, obligations, sources, exclusions, dependencies, and
+one exact pytest node as its completion proof.</p>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Tests and work guidance share normalized contract facts.</li>
+<li>Identical input and compiler version can produce byte-identical artifacts.</li>
+<li>Issue prose needs no stochastic generation.</li>
+<li>A defect in the common interpretation can affect all outputs, so independent
+examples, mutation tests, and architecture review remain important.</li>
+<li>The current dictionary-based Contract Model will need a typed representation
+before the supported language grows substantially.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Generate Issues from completed test source. Rejected because an agent or
+renderer would need to reinterpret executable code.</li>
+<li>Let an LLM write Issues directly from specs. Rejected because wording and
+decomposition would be stochastic and could add or omit requirements.</li>
+<li>Give the coding agent the full suite as one task. Rejected because it provides
+no deterministic work ordering or focused completion proof.</li>
+</ul>
+</main>
+</body>
+</html>

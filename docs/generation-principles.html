@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generierungsprinzipien · Spec Compiler</title>
+<meta name="doc-route" content="development/generation-principles.html">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<h1 id="generierungsprinzipien">Generierungsprinzipien</h1>
+<h2 id="keine-erfundenen-anforderungen">Keine erfundenen Anforderungen</h2>
+<p>Eine generierte Verpflichtung oder Assertion muss auf genau eine der folgenden
+Quellen zurückführbar sein:</p>
+<ol>
+<li>eine explizite Aussage in den Produktspecs oder</li>
+<li>eine dokumentierte, versionierte Compiler- beziehungsweise
+Laufzeitkonvention.</li>
+</ol>
+<p>Fehlt die notwendige Information oder ist sie mehrdeutig, muss der Generator
+mit einer verständlichen Fehlermeldung abbrechen. Er darf keine scheinbar
+naheliegende Entscheidung ergänzen. Insbesondere dürfen Sprache, Framework,
+Modulnamen, Funktionsnamen und interne Architektur nicht aus der Beispiel-
+implementierung in generierte Anforderungen gelangen.</p>
+<p>Python ist momentan die Sprache des Generators und des Test-Harness. Das
+verlangt nicht, dass ein Produkt in Python implementiert wird. Vertragstests
+starten das Produkt als separaten Prozess und beobachten ausschließlich das
+gewählte, explizite Protokoll: HTTP, OpenAPI und SQLite im SQL-Profil oder
+UTF-8-JSON über Standard-Ein-/Ausgabe im Decision-Profil. Ein Decision Product
+kann zusätzlich einen ausdrücklich spezifizierten HTTP-Adapter anbieten. Die Tests importieren
+keinen Produktcode.</p>
+<h2 id="quellen-der-aktuellen-anforderungen">Quellen der aktuellen Anforderungen</h2>
+<p>Die öffentlichen Vokabulare liegen autoritativ in
+<code>ontology/shacl-contract.ttl</code>, <code>ontology/decision-obligation.ttl</code> und
+<code>ontology/funding.ttl</code> sowie <code>ontology/cloud-compliance.ttl</code>. Sie verwenden die getrennten Namespaces <code>sco:</code>, <code>sdo:</code>
+und <code>funding:</code> sowie <code>cloud:</code>. Konkrete Toolchain-, SQL-API- und KfW-Ressourcen liegen in
+getrennten <code>resources/.../#</code>-Namespaces. Eine Produkt-Spec darf einen
+öffentlichen Vokabularbegriff verwenden, ohne ihn neu zu definieren; der
+Publikationsvalidator verlangt dafür eine Definition sowie deutsche und
+englische Labels in der zuständigen kanonischen Ontologie.</p>
+<p>WIDOCO-HTML, WebVOWL-Daten, der Ontologie-Beziehungsgraph und publizierte
+Beispielkopien sind abgeleitete Dokumentationsartefakte. Sie begründen keine
+Produktanforderungen und werden nicht als deterministische Vertragsartefakte
+behandelt.</p>
+<p>Jedes kanonische Vokabular erhält eine eigene WIDOCO-Referenz. Der primäre
+Ontologie-Beziehungsgraph unter <code>/ontologies/</code> hält die vier Vokabulare
+und das SQL-API-Beispiel als fünf getrennte, auswählbare Datensätze mit Links zu
+den jeweiligen zweisprachigen Referenzen und Turtle-Quellen. Die bisherigen WebVOWL-Dateien
+bleiben als abgeleitete Dokumentationsartefakte erreichbar. Fachliche Klassen
+und Properties müssen für die Darstellung explizit als OWL/RDFS-Terme mit
+deutschen und englischen Labels deklariert sein. Die Visualisierung ersetzt
+weder die Specs noch deren ausführbare Constraints.</p>
+<p>Für diesen zweiten Graphen projiziert der Dokumentationsbuilder ausgewählte
+Instanz- und SHACL-Beziehungen in ausschließlich visuelle OWL-Klassen und
+Object Properties. Dabei bleibt das Node Shape als eigener Knoten zwischen
+Endpunkt beziehungsweise Tabelle und fachlicher Zielklasse sichtbar. Die
+Projektion ist abgeleitet, nicht autoritativ und darf weder vom Compiler gelesen
+werden noch neue Testverpflichtungen begründen.</p>
+<p>Die Ontologie-IRI des abgeleiteten Graphen entspricht seinem
+<code>resources/sql-api/</code>-Basisnamespace. WebVOWL erkennt dadurch die projizierten
+Beispielknoten als interne Elemente. Eigene Visualisierungskanten behalten ihren
+getrennten <code>resources/sql-api/visualization/#</code>-Namespace.</p>
+<p>Die RDF-/SHACL-Specs legen ausdrücklich fest:</p>
+<ul>
+<li>GET-Endpunkt, Pfad, Pfadparameter und dessen Datentyp,</li>
+<li>erfolgreicher Statuscode und Medientyp,</li>
+<li>die vom Endpunkt gelesene Tabelle,</li>
+<li>SQLite als Datenbank-Engine,</li>
+<li>Tabellenname, ID-Spalte, ID-Datentyp, Primärschlüssel und ID-Erzeugung,</li>
+<li>Response- und Speicher-Shape einschließlich ihrer Constraints,</li>
+<li>über <code>sh:closed</code>, ob zusätzliche Response-Felder erlaubt sind.</li>
+</ul>
+<p>Der Generator lädt alle <code>*.ttl</code>-Dateien unter <code>specs/</code> in einen gemeinsamen
+Vertragsgraphen. Dateinamen wie <code>article_shape.ttl</code> tragen keine Semantik und
+sind keine Anforderung an andere Produkte.</p>
+<p>Der RDF-Graph wird in ein <strong>Explicit Obligation Model</strong> normalisiert. Dieses
+interne Modell enthält ausschließlich Aussagen, die eine beobachtbare
+Verpflichtung begründen. Fehlende Aussagen erzeugen weder Defaults noch Tests.</p>
+<h3 id="decision-and-obligation-compilation">Decision and Obligation Compilation</h3>
+<p><a href="architecture/decisions/0016-evolve-to-decision-and-obligation-compilation.html">ADR 0016</a>
+definiert die Grenzen; <a href="architecture/decisions/0017-compile-source-backed-decisions-through-a-cli-protocol.html">ADR 0017</a>
+materialisiert den ersten vertikalen Schnitt und
+<a href="architecture/decisions/0018-select-next-fact-question-from-current-fact-gaps.html">ADR 0018</a>
+ergänzt die deterministische Auswahl der nächsten Frage,
+<a href="architecture/decisions/0019-evaluate-evidence-requirements-separately-from-conditions.html">ADR 0019</a>
+die getrennte Nachweisauswertung und
+<a href="architecture/decisions/0020-select-rule-set-version-only-from-validity-and-decision-date.html">ADR 0020</a>
+die historische Versionsauswahl. <a href="architecture/decisions/0022-expose-decision-contract-through-an-authored-http-endpoint.html">ADR 0022</a>
+ergänzt die optionale HTTP-Abbildung; <a href="architecture/decisions/0023-separate-post-method-from-decision-http-mapping.html">ADR 0023</a>
+trennt den generischen POST-Endpunkt von ihrer Decision-Semantik.
+<a href="architecture/decisions/0024-author-http-messages-and-bindings-in-product-specs.html">ADR 0024</a>
+ersetzt die feste HTTP-Abbildung durch explizite Produktnachrichten und Body-Pointer. Das Decision-Profil normalisiert
+die autorisierten Aussagen in ein typisiertes, unveränderliches <strong>Explicit
+Decision and Obligation Model</strong>. Für diese und weitere Schnitte gelten folgende
+Regeln:</p>
+<ul>
+<li>Ein externes Dokument ist nicht unmittelbar die Quelle einer generierten
+Anforderung. Eine autorisierte Spec-Aussage verweist über eine präzise Source
+Citation auf eine unveränderlich identifizierte Source Revision. Die
+generierte Anforderung stammt weiterhin aus der Spec-Aussage oder aus einer
+benannten, versionierten Konvention.</li>
+<li>Entscheidungen, Condition Evaluations, Fact Gaps, Fragen, Obligations und
+Evidence Requirements sind generierte Ergebnisse und benötigen dieselbe
+nachvollziehbare Provenienz wie Assertions und Work Items.</li>
+<li>Das Fehlen eines für eine Condition benötigten Fallsachverhalts wird als Fact
+Gap ausgewiesen und darf zu <code>unknown</code> führen. Ein fehlender Sachverhalt wird
+nicht als <code>false</code> interpretiert.</li>
+<li>Mehrdeutige Specs, widersprüchliche Facts, eine nicht eindeutig anwendbare
+Rule Set Version oder mehrere unvereinbare Schlussfolgerungen sind Fehler.
+Sie dürfen nicht als <code>unknown</code> kaschiert werden.</li>
+<li>Decision Date und stabile Rule-Set-Identität werden explizit angegeben. Die
+Rule Set Version wird ausschließlich aus deklarierten Validity Periods
+ausgewählt. Es gibt keinen impliziten Standard für „heute“, „aktuell“ oder
+„neueste Version“.</li>
+<li>Die Transformation externer Dokumente in autorisierte Specs ist zunächst ein
+menschlich kuratierter Schritt außerhalb der deterministischen Kompilierung.
+Weder Scraping noch ein Sprachmodell darf dabei stillschweigend Teil des
+Compilers werden.</li>
+</ul>
+<p>Die kanonischen Begriffe und Pilotgrenzen stehen in der
+<a href="architecture/decision-and-obligation-roadmap.html">Decision and Obligation Compilation roadmap</a>.</p>
+<p><code>product.toml</code> ist kein fachlicher Vertrag. Es ist der kleine Laufzeitadapter,
+über den das Werkzeug ein Produkt unabhängig von seiner Technologie startet.
+Das Manifest deklariert Argumentliste, Arbeitsverzeichnis, Umgebungsvariablen
+und den Pfad des vom laufenden Produkt veröffentlichten OpenAPI-Dokuments.</p>
+<h3 id="laufzeitprotokoll-v1">Laufzeitprotokoll v1</h3>
+<p>Das Manifest deklariert zunächst <code>protocol_version = 1</code> und besitzt eine
+Tabelle <code>[runtime]</code> mit diesen Feldern:</p>
+<ul>
+<li><code>command</code>: Argumentliste des zu startenden Prozesses,</li>
+<li><code>working_directory</code>: relativ zum Produktverzeichnis,</li>
+<li><code>openapi_path</code>: HTTP-Pfad des OpenAPI-Dokuments,</li>
+<li><code>ready_timeout_seconds</code>: optionale Startfrist,</li>
+<li><code>environment</code>: Zuordnung von Umgebungsvariablen zu Werten.</li>
+</ul>
+<p>In Argumenten und Umgebungswerten ersetzt der Runner <code>{product_root}</code>, <code>{host}</code>
+und <code>{port}</code>. Vertragstests können weitere explizit benötigte Werte bereitstellen;
+der SQLite-Test stellt beispielsweise <code>{database_path}</code> bereit. Das Manifest der
+Referenzimplementierung entscheidet selbst, wie diese Werte an ihre Technologie
+weitergegeben werden. Sein <code>uv</code>-/Python-Befehl ist keine Produktanforderung.</p>
+<p>Das Produkt muss auf der übergebenen Adresse lauschen. Ein nicht authentifizierter
+GET auf <code>openapi_path</code> signalisiert mit Status <code>200</code> die Bereitschaft und liefert
+ein gebündeltes OpenAPI-3.1-Dokument als JSON. Referenzen innerhalb dieses
+Dokuments sind lokal; der Vergleich versteht direkte Schemas und lokale <code>$ref</code>.
+Externe Referenzen werden nicht aufgelöst. Der SQL-Vergleich unterstützt keine
+allgemeine Schema-Komposition; HTTP Contract Conventions v1 beschreiben unten
+den unterstützten JSON-Schema-Ausschnitt für explizite HTTP-Nachrichten.
+Wenn die Spec eine SQLite-Tabelle verlangt, bezeichnet
+<code>{database_path}</code> die tatsächlich verwendete dateibasierte Datenbank und ihr
+Schema ist beim Bereitschaftssignal initialisiert.</p>
+<h3 id="decision-protocol-v1">Decision Protocol v1</h3>
+<p>Ein Decision Product wird weder als HTTP-Service noch als RDF-System
+vorausgesetzt. Sein <code>product.toml</code> deklariert
+<code>decision_protocol_version = 1</code> und eine Tabelle <code>[decision]</code> mit:</p>
+<ul>
+<li><code>command</code>: Argumentliste des zu startenden Decision-Product-Prozesses,</li>
+<li><code>working_directory</code>: relativ zum Product Bundle,</li>
+<li><code>timeout_seconds</code>: optionale Ausführungsfrist,</li>
+<li><code>environment</code>: optionale Umgebungsvariablen.</li>
+</ul>
+<p>Der Harness ersetzt <code>{product_root}</code>, schreibt genau einen UTF-8-kodierten JSON
+<strong>Decision Request</strong> auf die Standardeingabe und erwartet genau ein JSON-Objekt
+als <strong>Decision Result</strong> auf der Standardausgabe. Exitstatus, Standardfehler,
+Timeout und Prozessbaum-Cleanup sind beobachtbare Protokolleigenschaften.
+Python, ein bestimmtes CLI-Framework, RDF, HTTP und die interne Auswertung des
+kompilierten Vertrags sind keine Produktanforderungen.</p>
+<p>Der Request benennt den Decision Contract, das stabile Rule Set und das
+Decision Date explizit und trägt die Case Facts an den kompilierten JSON
+Pointers. Eine Rule Set Version im Request ist unzulässig; sie wird nach
+Version Selection Conventions v1 aus dem Datum abgeleitet. Das Result benennt
+die gewählte Version und das Datum sowie Outcome, Condition Evaluations, decisive Rules,
+Fact Gaps, höchstens eine Next Question, Provenance, menschliche Explanation
+und den unveränderten Scope Note. Ein Client ergänzt eine Antwort am
+ausgegebenen JSON Pointer und sendet den vollständigen akkumulierten Case in
+einem neuen Protokollaufruf. Protokoll und fachlicher Decision Contract bleiben
+getrennt versionierbar; Decision Protocol v1 schreibt weder Session State noch
+eine Benutzeroberfläche vor.</p>
+<h3 id="http-contract-conventions-v1">HTTP Contract Conventions v1</h3>
+<p>Die allgemeine Ontologie beschreibt <code>sco:PostEndpoint</code>, <code>sco:HttpRequest</code> und
+<code>sco:HttpResponse</code>. Die konkreten Nachrichten gehören in die Produkt-Spec.
+Endpunkt und Nachrichten sind benannte Ressourcen, damit ihre Quellenangaben
+in generierten Work Items deterministisch bleiben.
+Es gibt keinen ausgezeichneten Mapping-Namen, aus dem der Compiler Request-
+oder Response-Felder ergänzt. Der HTTP Contract Reader und der OpenAPI Contract
+Renderer arbeiten mit diesen allgemeinen Angaben:</p>
+<ul>
+<li>Der Endpunkt nennt Pfad, <code>dcterms:title</code>, <code>schema:version</code> und den über
+<code>sco:invokesContract</code> aufgerufenen Vertrag.</li>
+<li><code>sco:request</code>, <code>sco:successResponse</code> und <code>sco:invalidRequestResponse</code> verweisen
+auf jeweils genau eine ausdrücklich typisierte Nachricht.</li>
+<li>Jede Nachricht nennt <code>sco:mediaType</code>, <code>sco:bodyPointer</code> und ihr vollständiges
+<code>sco:bodySchema</code> als <code>rdf:JSON</code>-Literal. Das Literal beschreibt JSON Schema
+Draft 2020-12. Die Anfrage deklariert zusätzlich <code>sco:bodyRequired true</code>;
+jede Antwort nennt <code>sco:statusCode</code> und <code>dcterms:description</code>.</li>
+</ul>
+<p>Der aktuelle Ausschnitt unterstützt einen festen POST-Pfad, erforderliche
+Request-Bodies, <code>application/json</code> und JSON-Medientypen mit <code>+json</code>, eine
+Erfolgsantwort mit einem Body erlaubenden 2xx-Status (außer 204/205) und eine
+Antwort auf ungültige Anfragen mit 4xx-Status. Die konkreten Statuscodes und
+Medientypen kommen aus der Spec. Fehlende oder mehrdeutige Angaben sind Fehler.
+Die Integration mit ausführbaren Produkten unterstützt derzeit Decision
+Protocol v1; <code>sco:invokesContract</code> muss dort denselben Decision Contract nennen.</p>
+<p>Der JSON Pointer der Anfrage wählt den Vertragseingang aus dem HTTP-Body aus.
+Der Pointer der Erfolgsantwort bestimmt, wo das vollständige Vertragsergebnis
+im Antwort-Body steht; der Pointer der Fehlerantwort bestimmt den Ort des
+Fehlertexts. <code>&quot;&quot;</code> bezeichnet den ganzen Body, <code>&quot;/result&quot;</code> eine Objekthülle.
+Pointer durchlaufen ausdrücklich beschriebene Objektfelder. Antwort-Hüllen
+dürfen keine zusätzlichen erforderlichen, ungebundenen Geschwisterfelder
+verlangen. Ungültiges JSON, Verletzungen des Request-Schemas und ungültige
+Vertragseingaben verwenden die deklarierte Fehlerantwort. Jeder erfolgreich
+ausgewertete Decision Request verwendet die deklarierte Erfolgsantwort,
+auch wenn sein fachliches Ergebnis <code>ineligible</code> oder <code>unknown</code> ist.</p>
+<p>Unterstützte Schema-Keywords sind <code>type</code>, <code>properties</code>, <code>required</code>,
+<code>additionalProperties</code>, <code>items</code>, <code>enum</code>, <code>const</code>, <code>minLength</code>, <code>maxLength</code>,
+<code>minimum</code>, <code>maximum</code>, <code>exclusiveMinimum</code>, <code>exclusiveMaximum</code>, <code>minItems</code>,
+<code>maxItems</code>, <code>uniqueItems</code>, <code>minProperties</code>, <code>maxProperties</code>, <code>pattern</code>,
+<code>format</code> (nur <code>date</code>), <code>not</code>, <code>allOf</code>, <code>anyOf</code> und <code>oneOf</code>; außerdem die
+Annotationen <code>title</code>, <code>description</code> und die Draft-2020-12-Angabe <code>$schema</code>.
+Boolesche Schemas sind zulässig. Andere Keywords, Schema-Referenzen und andere
+Formate werden in den Eingabespecs abgelehnt. Doppelte JSON-Schlüssel, ungültige
+Schemas und nicht auflösbare Body-Pointer sind Fehler. Es findet kein
+Netzwerkzugriff zur Schema-Auflösung statt.</p>
+<p><code>generated/expected-openapi.json</code> übernimmt die expliziten Body-Schemas und
+Status-/Medienangaben. Die Erweiterung <code>x-spec-compiler-binding</code> materialisiert
+Vertragsidentität, Request-/Result-/Error-Pointer und die beiden Antwortrollen
+für den Referenzadapter. Andere Implementierungen müssen die deklarierte
+Abbildung erfüllen, aber die Erweiterung nicht veröffentlichen. Generierte
+Tests vergleichen den unterstützten Schema-Ausschnitt strukturell; lokale
+OpenAPI-Referenzen und bedeutungslose Reihenfolgen werden normalisiert.
+Allgemeine logische Äquivalenz beliebiger JSON-Schemas wird nicht behauptet.</p>
+<p>Die HTTP-Tests validieren die tatsächlich gesendeten und empfangenen JSON-Bodies
+gegen diese Schemas. Die explizite Vertragsbindung begründet zusätzlich den
+Vergleich aller autorisierten Decision Conformance Cases mit Decision Protocol
+v1. Fehlerfälle entstehen aus deklarierten Constraints und ungültigem JSON,
+nicht aus fest eingebauten KfW-Feldnamen oder Fehlermeldungen. Work Items nennen
+die Endpunkt- und Nachrichtenressourcen als Quellen.</p>
+<p>Die KfW-Spec wählt weiterhin <code>200</code>, <code>400</code>, <code>application/json</code>, ganze Request-
+und Result-Bodies sowie <code>&quot;/error&quot;</code> für Fehlertext. Ihre Body-Schemas beschreiben
+Case-Facts, Pflichtfelder, Outcomes und Evidence ausdrücklich. Änderungen am
+Decision Contract müssen deshalb auch auf Konsistenz mit der HTTP-Spec geprüft
+werden; der Compiler ergänzt diese Felder nicht automatisch. Das Produkt
+veröffentlicht OpenAPI über Runtime Protocol v1 und darf <code>[runtime]</code> neben
+<code>[decision]</code> deklarieren. Die HTTP-Abbildung schreibt keine Implementierungssprache,
+kein Server-Framework, keine UI und keine Session-Verwaltung vor.</p>
+<h3 id="compiler-protocol-v1">Compiler Protocol v1</h3>
+<p>Ein Compilerprodukt wird nicht künstlich als HTTP-Laufzeit modelliert. Sein
+<code>product.toml</code> deklariert stattdessen <code>compiler_protocol_version = 1</code> und eine
+Tabelle <code>[compiler]</code> mit:</p>
+<ul>
+<li><code>command</code>: Argumentliste des Compilerprozesses,</li>
+<li><code>working_directory</code>: relativ zum Self-Description Bundle,</li>
+<li><code>timeout_seconds</code>: optionale Ausführungsfrist,</li>
+<li><code>environment</code>: optionale Umgebungsvariablen.</li>
+</ul>
+<p>In diesen Werten ersetzt der Harness <code>{compiler_root}</code>, <code>{repository_root}</code> und
+<code>{input_product_root}</code>. Er importiert keine Implementierungsmodule, sondern
+beobachtet ausschließlich Exitstatus, zusammengeführte Standardausgabe und die
+im Input Product Bundle erzeugten Dateien.</p>
+<p>Das Produkt ist allgemein als <code>schema:SoftwareApplication</code> klassifiziert.
+<code>dcterms:conformsTo sco:CompilerProtocolV1</code> wählt das ausführbare Protokoll;
+<code>sco:implementsContract</code> verweist auf einen separat versionierbaren
+<code>sco:TransformationContract</code>. Dieser benennt ein oder mehrere
+<code>sco:CompilerConformanceFixture</code>-Ressourcen mit Product Bundle und jeweils
+erwarteten Ausgabepfaden oder Glob-Mustern sowie die Suche nach Eingabespecs,
+Fehlerfälle und die Ergebnisgleichheit. Beim
+Determinismusnachweis werden zwei Läufe derselben Compilerimplementierung mit
+demselben Input verglichen. Das ist ein Fixpunkt- und Reproduzierbarkeitsnachweis,
+aber kein unabhängiger Beweis für die korrekte Interpretation der Spec.</p>
+<p>Ein optionaler <code>sco:BootstrapProcess</code> beschreibt getrennt davon, wie eine
+zukünftige Compilerimplementierung abgeleitet werden soll. Er verweist über
+<code>sco:seedImplementation</code> auf eine explizite Ausgangsimplementierung und über
+<code>sco:evolutionStrategy</code> auf die Ableitungsstrategie. Für den Spec Compiler ist
+G0 der Seed und <code>sco:ModifyExistingImplementation</code> die Strategie. Diese
+Provenienz wird validiert und in den Work Graph übernommen. Für
+<code>sco:ModifyExistingImplementation</code> materialisiert G0 seinen Quellstand am durch
+<code>sco:generatesImplementationArtifact</code> deklarierten Ziel und erhöht den
+eindeutigen Generationsmarker. Sprache und Bibliotheken von G0 werden dadurch
+in G1 weiterverwendet, sind jedoch nicht Teil des Transformationsvertrags. G1
+besitzt ein eigenes Manifest, Projektmetadaten und Lockfile und wird anschließend
+als Black box ausgeführt.</p>
+<h2 id="compilerkonventionen-v1">Compilerkonventionen v1</h2>
+<p>Der Prototyp verwendet folgende explizite Abbildungsregeln:</p>
+<ul>
+<li><code>sco:GetEndpoint</code> wird als HTTP <code>GET</code> interpretiert.</li>
+<li>Der lokale Name eines <code>sh:path</code> wird als JSON-Feld und SQL-Spalte verwendet.
+Er muss deshalb ein sicherer SQL-Bezeichner sein.</li>
+<li><code>xsd:string</code> wird zu OpenAPI <code>string</code> und SQL <code>TEXT</code>.</li>
+<li><code>xsd:decimal</code> wird zu OpenAPI <code>number</code> und SQL <code>DECIMAL</code>.</li>
+<li><code>xsd:integer</code> wird zu OpenAPI <code>integer</code> und SQL <code>INTEGER</code>.</li>
+<li><code>sh:minCount 1</code> wird zu einem erforderlichen JSON-Feld und <code>NOT NULL</code>.</li>
+<li><code>sh:minCount 0</code> wird zu einem optionalen JSON-Feld und einer nullable Spalte.</li>
+<li>Nur skalare Properties mit <code>sh:maxCount 1</code> und <code>sh:minCount 0</code> oder <code>1</code>
+werden unterstützt.</li>
+<li><code>dcterms:conformsTo sco:CompilerProtocolV1</code> wählt das Compilerprodukt-Profil
+statt des HTTP-/SQLite-Profils; eine fachliche Produktklasse steuert niemals
+die ausführbare Testsemantik.</li>
+<li><code>sco:implementsContract</code> muss auf genau einen <code>sco:TransformationContract</code>
+zeigen, aus dem die generierten Verpflichtungen stammen.</li>
+<li>Die Aussagen <code>sco:conformanceFixture</code>, <code>sco:fixtureProduct</code>,
+<code>sco:expectsArtifact</code>, <code>sco:rejectsMissingSpecs</code> und
+<code>sco:deterministicOutput</code> werden direkt in fokussierte Black-box-Proofs für
+jedes deklarierte Compilerprofil übersetzt.</li>
+<li>Ein deklarierter Bootstrap-Prozess muss genau einen als
+<code>schema:SoftwareApplication</code> typisierten Seed und die unterstützte Strategie
+<code>sco:ModifyExistingImplementation</code> sowie einen sicheren relativen Pfad über
+<code>sco:generatesImplementationArtifact</code> nennen. Compiler Conventions v2
+materialisiert dort den Seed-Quellstand mit um eins erhöhtem, eindeutigem
+Generationsmarker. Der generierte Beweis startet den resultierenden Compiler
+über dessen eigenes Compiler-Protocol-Manifest.</li>
+<li>Compiler Conventions v2 leitet Decision-Work-Item-IDs aus dem validierten
+Product-Bundle-Verzeichnis ab und entfernt veraltete Markdown-Ausgaben nur
+direkt unter dessen <code>generated/issues/</code>; fachliche Begriffe werden nicht als
+Compilerpräfix vorausgesetzt.</li>
+<li><code>sh:minLength</code>, <code>sh:minExclusive</code> und <code>sh:maxExclusive</code> werden gleichnamig
+beziehungsweise semantisch äquivalent in JSON Schema/OpenAPI abgebildet.</li>
+</ul>
+<p>Andere Datentypen, Kardinalitäten, Engines oder unsichere Bezeichner werden
+nicht geraten, sondern als nicht unterstützte Eingabe abgelehnt.</p>
+<h2 id="decision-conventions-v1">Decision Conventions v1</h2>
+<p>Der erste Decision-Schnitt unterstützt ausschließlich einen expliziten
+<code>sdo:DecisionContract</code> mit mindestens einer vollständig beschriebenen
+<code>sdo:RuleSetVersion</code> desselben stabilen Rule Sets und
+<code>sdo:requiresAllRules true</code>:</p>
+<ul>
+<li>Jede Rule verweist auf genau eine Condition, ein eindeutiges
+<code>sco:inputJsonPointer</code>, einen booleschen Sollwert und genau eine Source
+Citation.</li>
+<li>Eine Condition ist <code>satisfied</code>, wenn ein boolescher Case Fact ihrem Sollwert
+entspricht, <code>violated</code>, wenn er ihm widerspricht, und <code>unknown</code>, wenn der Fact
+fehlt. Nicht-boolesche oder widersprüchliche Facts sind Fehler.</li>
+<li>Mindestens eine verletzte Condition ergibt <code>ineligible</code>. Gibt es keine
+verletzte, aber mindestens eine unbekannte Condition, ergibt sich <code>unknown</code>.
+Nur wenn alle Conditions erfüllt sind, ergibt sich <code>eligible</code>.</li>
+<li>Bei <code>ineligible</code> sind alle verletzten Rules entscheidend, bei <code>unknown</code> alle
+Rules mit Fact Gap und bei <code>eligible</code> alle Rules.</li>
+<li>Jede entscheidende Rule wird zusammen mit Source Citation, Source Revision,
+Locator und autorisierter Source Statement ausgegeben.</li>
+<li>Source Revision, Rule Set Version, <code>validFrom</code>, Outcome-IRIs und sichere,
+eindeutige Outcome Codes müssen in der Spec stehen. Der Compiler ergänzt
+weder eine neueste Version noch ein heutiges Datum.</li>
+<li>Autorisierte Conformance Cases müssen <code>eligible</code>, <code>ineligible</code> und <code>unknown</code>
+abdecken. Ihr erwartetes Resultat muss aus denselben Regeln folgen; andernfalls
+ist die Spec widersprüchlich und wird abgelehnt.</li>
+</ul>
+<p>Der Compiler erzeugt aus diesem Modell <code>generated/decision-contract.json</code>,
+Black-box-Tests, Work Graph und Issue-Texte. Die erste Konvention umfasst keine
+automatische Quellenaufnahme, Disjunktionen, numerische Regeln oder
+Obligationsaktivierung. Mehrere deklarierte Versionen sind erlaubt; mehr als
+eine anwendbare Version ist ein Fehler.</p>
+<h2 id="version-selection-conventions-v1">Version Selection Conventions v1</h2>
+<p>Jede Rule Set Version nennt explizit ihre stabile Rule-Set-Identität, ein
+Versionslabel, <code>validFrom</code>, optional <code>validUntil</code> und eine eigene Source
+Citation, deren Source Revision denselben Gültigkeitsbeginn ausweist. Rules und
+Evidence Requirements gehören zu genau einer Version und zitieren deren Source
+Revision. Validity Periods sind halboffen: <code>validFrom</code> ist einschließlich,
+<code>validUntil</code> ausschließlich; ein fehlendes <code>validUntil</code> bezeichnet aufgrund
+dieser benannten Konvention ein offenes Ende.</p>
+<p>Der Compiler lehnt überlappende Perioden ab. Für jeden Conformance Case muss
+genau ein Decision Date angegeben sein und genau eine Version treffen.
+<code>expectsRuleSetVersion</code> ist nur die Test-Oracle für die abgeleitete Auswahl.
+Fehlende Daten, Lücken, Überlappungen, verschiedene stabile Rule Sets oder
+widersprüchliche Oracles brechen die Kompilierung mit Diagnose ab.</p>
+<p>Ein Decision Request enthält die stabile Rule-Set-Identität und das Decision
+Date, nicht die Version. Das Decision Result enthält Versionsidentität,
+Versionslabel und das unveränderte Decision Date. Weder Compiler noch Decision
+Product verwenden Laufzeitdatum, Versionsreihenfolge oder „latest“ als
+Fallback. Version Selection Cases und Compiler-Black-box-Tests beweisen die
+historische Auswahl sowie die unterstützten Fehlerfälle.</p>
+<h2 id="question-selection-conventions-v1">Question Selection Conventions v1</h2>
+<p>Für jeden im Decision Contract verwendeten Rule-Condition-Pfad muss die Spec
+genau eine <strong>Fact Question</strong> mit explizitem Fragetext und einer innerhalb des
+Contracts eindeutigen positiven Priorität enthalten. Der Compiler leitet weder
+Fragetext aus Labels ab noch verwendet er RDF-, Datei- oder Rule-Reihenfolge als
+verdeckte Priorität.</p>
+<p>Eine <strong>Next Question</strong> wird nur für ein nach Decision Conventions v1 noch
+<code>unknown</code>es Decision Result erzeugt. Kandidaten sind ausschließlich Fact
+Questions, deren Conditions im aktuellen Result als Fact Gaps ausgewiesen sind.
+Unter ihnen wird deterministisch die kleinste numerische Priorität gewählt.
+Sobald mindestens eine Condition verletzt und das Result damit <code>ineligible</code>
+ist oder alle Conditions erfüllt und es <code>eligible</code> ist, enthält das Result
+keine Next Question. Damit ist jede ausgegebene Antwort geeignet, den aktuellen
+Entscheidungszustand entweder unmittelbar zu bestimmen oder zur nächsten
+verbleibenden Lücke fortzuschreiben.</p>
+<p>Die Next Question enthält ihre Identität, den autorisierten Fragetext,
+Condition, Fact Property, Input JSON Pointer und das im aktuellen Profil
+boolesche Antwortschema. Ihre Begründung nennt Rule, Source Citation, Source
+Revision, Locator und autorisierte Source Statement. Diese Provenienz folgt aus
+der expliziten Rule-Condition-Citation-Kette; Auswahl und Rangfolge folgen aus
+Question Selection Conventions v1.</p>
+<p>Genau ein <strong>Question Flow Case</strong> pro Decision Contract liefert einen
+vollständigen positiven Satz autorisierter Antworten. Der generierte
+Black-box-Test beginnt ohne Facts, ruft dasselbe Decision Product wiederholt
+über Decision Protocol v1 auf, trägt jede Antwort am ausgegebenen JSON Pointer
+ein und verlangt nach jedem Schritt entweder die nächste begründete Frage oder
+ein determiniertes Result. Die Konvention umfasst keinen Session State, keine
+UI, keine Kosten- oder Informationsgewinnoptimierung und keine nicht-booleschen
+Antwortschemas.</p>
+<h2 id="evidence-evaluation-conventions-v1">Evidence Evaluation Conventions v1</h2>
+<p>Eine <strong>Evidence Requirement</strong> ist von der durch sie gestützten Condition
+getrennt. Sie nennt ausdrücklich die gestützte Rule Condition, mindestens eine
+eigene Applicability Condition, den erforderlichen Evidence Type und eine
+eigene Source Citation. Provenienz wird nicht von der Rule geerbt.</p>
+<p>Alle Applicability Conditions müssen <code>satisfied</code> sein, damit die Evidence
+Requirement auf den gelieferten Case anwendbar ist. Andernfalls lautet ihr
+Status <code>not_applicable</code>; die einzelnen Zustände <code>violated</code> beziehungsweise
+<code>unknown</code> bleiben im Result sichtbar, sodass ein fehlender Fact weiterhin
+nicht als <code>false</code> gilt. Ist die Requirement anwendbar, lautet ihr Status nur
+dann <code>fulfilled</code>, wenn mindestens eine gelieferte Evidence den erforderlichen
+Typ besitzt und eine explizite akzeptierte Evidence Assessment für genau diese
+Requirement trägt. Andernfalls lautet er <code>missing</code>.</p>
+<p>Für jede Evidence Requirement klassifiziert das Result jede gelieferte
+Evidence als <code>accepted</code>, <code>rejected</code>, <code>unassessed</code> oder <code>not_relevant</code>. Diese
+Auswertung ändert weder Rule Condition Evaluations noch den Decision Outcome.
+Jede Requirement Evaluation enthält ihre eigene Source Citation, Source
+Revision, Locator, Source Statement und Explanation.</p>
+<p>Sobald ein Decision Contract Evidence Requirements enthält, müssen autorisierte
+Conformance Cases für jede von ihnen einen erwarteten Status angeben und
+zusammen <code>fulfilled</code>, <code>missing</code> sowie <code>not_applicable</code> abdecken. Die Konvention beschreibt ausschließlich semantische
+Evidence-Identität, -Typen und -Assessments im vorhandenen JSON-Austausch. Sie
+schreibt kein Dateiformat, keinen Dokumentinhalt, Upload, Speicherort, UI oder
+Verfahren zur Echtheitsprüfung vor.</p>
+<h2 id="openapi-und-verhalten">OpenAPI und Verhalten</h2>
+<p>Der Generator erzeugt aus derselben Zwischenrepräsentation eine erwartete
+OpenAPI-Spezifikation und die Verhaltenstests. Innerhalb des oben beschriebenen
+OpenAPI-3.1-Profils ist der Vergleich semantisch: Geforderte Pfade, Parameter,
+Responses, Medientypen und Schemas müssen vorhanden und kompatibel sein. Titel,
+Beschreibungen, Komponenten-Namen und zusätzliche Fehlerantworten dürfen
+implementationsabhängig bleiben. <code>info.title</code>, <code>info.version</code> und Response-
+Beschreibungen im erwarteten Dokument sind nur notwendige OpenAPI-Trägerdaten;
+der Vergleich behandelt sie nicht als Produktanforderungen.</p>
+<p>Vor diesem Vergleich validiert <code>openapi-spec-validator</code> das vollständige
+Dokument gegen OpenAPI 3.1. Die Validierung ist Teil des Test-Harness und stellt
+keine Abhängigkeit der Produktimplementierung dar.</p>
+<p>OpenAPI ersetzt keine Verhaltenstests. Ein echtes HTTP-Szenario prüft weiterhin,
+dass ein gespeicherter Datensatz korrekt ausgeliefert wird und alle expliziten
+Shape-Verpflichtungen erfüllt. Der generierte Test validiert die JSON-Antwort
+direkt aus dem Explicit Obligation Model. Er konvertiert JSON nicht in einen
+künstlichen RDF-Graphen und benötigt deshalb kein pySHACL. SHACL bleibt das
+aktuelle RDF-Eingabeprofil; Produkte müssen SHACL oder RDF nicht verwenden.</p>
+<p>Bei offenen Shapes werden nur Felder mit <code>sh:minCount 1</code> verlangt und
+zusätzliche Felder akzeptiert. Erst ein explizites <code>sh:closed true</code> verbietet
+nicht spezifizierte Felder.</p>
+<h2 id="pruffrage-fur-neue-generatorregeln">Prüffrage für neue Generatorregeln</h2>
+<p>Vor jeder neuen Assertion ist zu beantworten:</p>
+<blockquote>
+<p>Aus welchem Spec-Element oder welcher benannten Konvention folgt diese
+Anforderung?</p>
+</blockquote>
+<p>Gibt es darauf keine eindeutige Antwort, gehört die Assertion nicht in den
+Generator.</p>
+<h2 id="dokumentationsquellen">Dokumentationsquellen</h2><p>Redaktionelles HTML in <code>docs/</code> und Archify-JSON in <code>docs/diagrams/</code> sind die kanonischen Quellen. Generierte Website-Artefakte und Suchindex begründen keine Produktanforderungen. Archify rendert die Architekturansichten; C4 und arc42 definieren ihre Rolle. Redaktionelle Markdown-/Mermaid-Doppelquellen sind nicht zulässig. Generierte Issue-Texte bleiben unverändert Markdown-Vertragsausgaben.</p></main>
+</body>
+</html>

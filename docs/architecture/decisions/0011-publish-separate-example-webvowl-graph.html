@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0011: Publish a separate WebVOWL graph for the SQL API example · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0011-publish-separate-example-webvowl-graph.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0011-publish-a-separate-webvowl-graph-for-the-sql-api-example">ADR 0011: Publish a separate WebVOWL graph for the SQL API example</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Refines the example-publication decision in
+<a href="0007-publish-experimental-ontology-with-github-pages.html">ADR 0007</a>.</p>
+<h2 id="context">Context</h2>
+<p>The canonical WebVOWL input contains only the public SHACL Contract Ontology.
+Consequently, readers cannot find the domain class <code>article:Article</code>, because
+it belongs to the SQL API Product Bundle rather than the reusable vocabulary.</p>
+<p>Merging all product specs into the canonical ontology graph would blur the
+boundary between vocabulary definitions and example resources. WebVOWL also
+focuses on OWL/RDFS structure and does not faithfully visualize complete SHACL
+constraints.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Keep <code>ontology/shacl-contract.ttl</code> as the sole input to the canonical
+<code>/ontology/webvowl/</code> graph.</li>
+<li>Explicitly declare <code>article:Article</code> as <code>owl:Class</code> and
+<code>article:description</code> and <code>article:price</code> as <code>owl:DatatypeProperty</code>, with
+domains, ranges, and German and English labels.</li>
+<li>Build a second visualization ontology from the merged SQL API example specs
+and publish it under <code>/examples/sql-api/webvowl/</code>.</li>
+<li>Link the example graph from the site landing page and SQL API resource page.</li>
+<li>Validate the presence of entity search and the three core article terms in
+the generated WebVOWL JSON.</li>
+<li>Continue publishing the original Turtle specs as the authoritative source for
+SHACL constraints.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Readers can search for and explore Article, description, and price without
+polluting the canonical vocabulary graph with product-specific resources.</li>
+<li>The example obtains its own bilingual WIDOCO reference and RDF
+serializations in addition to WebVOWL.</li>
+<li>The generated visualization graph contains the complete merged example RDF,
+but WebVOWL exposes primarily its OWL/RDFS subset; SHACL cardinalities and
+numeric bounds remain best inspected in Turtle.</li>
+<li>Each additional product visualization will require an explicit publication
+configuration and core-term validation.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Merge the SQL API specs into the canonical ontology. Rejected because it
+conflates reusable vocabulary and one product model.</li>
+<li>Visualize only the SHACL graph with WebVOWL. Rejected because WebVOWL does not
+provide a complete SHACL constraint view.</li>
+<li>Leave Article available only in downloadable Turtle. Rejected because it
+does not satisfy interactive discovery and search.</li>
+</ul>
+</main>
+</body>
+</html>

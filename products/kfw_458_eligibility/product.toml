@@ -1,4 +1,5 @@
 decision_protocol_version = 1
+protocol_version = 1
 
 [decision]
 command = ["uv", "run", "--locked", "python", "app.py", "--contract", "{product_root}/generated/decision-contract.json"]
@@ -6,4 +7,15 @@ working_directory = "."
 timeout_seconds = 30
 
 [decision.environment]
+PYTHONIOENCODING = "utf-8"
+
+[runtime]
+command = ["uv", "run", "--locked", "python", "http_api.py", "--contract", "{product_root}/generated/decision-contract.json", "--openapi", "{product_root}/generated/expected-openapi.json"]
+working_directory = "."
+openapi_path = "/openapi.json"
+ready_timeout_seconds = 30
+
+[runtime.environment]
+HOST = "{host}"
+PORT = "{port}"
 PYTHONIOENCODING = "utf-8"

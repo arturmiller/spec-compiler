@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SQL API Example – Produktcontainer",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Produktcontainer"
+        },
+        "database": {
+          "label": "Data Store"
+        },
+        "external": {
+          "label": "Externer Container"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "harness",
+      "type": "external",
+      "label": "Contract Verification Harness",
+      "sublabel": "Externer Container · pytest / HTTPX · prüft",
+      "pos": [
+        40,
+        100
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "Product Runtime",
+      "sublabel": "Container · Python / FastAPI · HTTP API",
+      "pos": [
+        740,
+        100
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "storage",
+      "type": "database",
+      "label": "Contracted Data Store",
+      "sublabel": "Data Store · SQLite · deklarierte Tabelle",
+      "pos": [
+        740,
+        420
+      ],
+      "size": [
+        310,
+        80
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Software System: SQL API Example",
+      "wraps": [
+        "runtime",
+        "storage"
+      ],
+      "pad": 30
+    }
+  ],
+  "connections": [
+    {
+      "id": "http",
+      "from": "harness",
+      "to": "runtime",
+      "label": "Runtime Protocol v1 und HTTP",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sql",
+      "from": "runtime",
+      "to": "storage",
+      "label": "initialisiert und liest SQLite",
+      "labelDy": 24
+    },
+    {
+      "id": "fixture",
+      "from": "harness",
+      "to": "storage",
+      "label": "prüft Schema und schreibt Fixture",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          195,
+          460
+        ]
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Nur das Referenzprodukt",
+      "items": [
+        "FastAPI und Python sind Implementierungsentscheidungen dieses Produkts.",
+        "SQLite ist dagegen eine explizite Anforderung seiner Specs."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Black-Box-Nachweise",
+      "items": [
+        "Keine Imports der Produktimplementierung.",
+        "Der Harness beendet den gesamten gestarteten Prozessbaum."
+      ]
+    }
+  ]
+}

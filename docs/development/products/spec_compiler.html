@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec Compiler self-description · Spec Compiler</title>
+<meta name="doc-route" content="development/products/spec_compiler.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<h1 id="spec-compiler-self-description">Spec Compiler self-description</h1>
+<p>This bundle describes the externally observable compiler behavior of the
+repository's Spec Compiler. <code>product.toml</code> adapts the implementation
+to Compiler Protocol v1. The generated tests invoke the compiler as a separate
+process and do not import <code>tools.generate</code>. The contract names the SQL API and
+KfW 458 eligibility bundles as separate conformance fixtures, including the
+artifacts expected from each compiler profile.</p>
+<p>The checked-in <code>tools/generate.py</code> is the trusted bootstrap compiler (<code>G0</code>). It
+materializes <code>src/spec_compiler.py</code> as generation <code>G1</code> and generates this
+bundle's tests. <code>product.toml</code> executes G1 through this bundle's own frozen
+Python project; it no longer points back to G0. The proofs verify G1's declared
+outputs for every conformance fixture, rejection behavior, deterministic
+fixpoint, and independent execution.
+This establishes executable bootstrap continuity, not an independent proof that
+G0 interpreted its own specification correctly.</p>
+</main>
+</body>
+</html>

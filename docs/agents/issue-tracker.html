@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Issue tracker: GitHub · Spec Compiler</title>
+<meta name="doc-route" content="development/agents/issue-tracker.html">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<h1 id="issue-tracker-github">Issue tracker: GitHub</h1>
+<p>Issues and PRDs for this repository live as GitHub Issues. Use the <code>gh</code> CLI for
+all operations and infer the repository from the configured Git remote.</p>
+<h2 id="conventions">Conventions</h2>
+<ul>
+<li>Create an issue with <code>gh issue create</code>.</li>
+<li>Read an issue and its discussion with <code>gh issue view &lt;number&gt; --comments</code>.</li>
+<li>List and filter issues with <code>gh issue list</code>.</li>
+<li>Comment with <code>gh issue comment &lt;number&gt;</code>.</li>
+<li>Apply or remove labels with <code>gh issue edit &lt;number&gt;</code>.</li>
+<li>Close issues with <code>gh issue close &lt;number&gt;</code>.</li>
+</ul>
+<p>When a skill says to publish an issue, create a GitHub Issue in this repository.
+When it says to fetch a ticket, read the complete issue body, labels, and
+comments.</p>
+</main>
+</body>
+</html>

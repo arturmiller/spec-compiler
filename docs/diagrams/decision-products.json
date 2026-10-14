@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Decision Products – getrennte CLI- und HTTP-Prozesse",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Produktcontainer"
+        },
+        "database": {
+          "label": "Vertragsartefakt"
+        },
+        "external": {
+          "label": "Externer Container"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "harness",
+      "type": "external",
+      "label": "Contract Verification Harness",
+      "sublabel": "Externer Container · pytest · prüft Results",
+      "pos": [
+        40,
+        80
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "cli",
+      "type": "backend",
+      "label": "Decision Product CLI",
+      "sublabel": "Container · Python · wertet Requests aus",
+      "pos": [
+        740,
+        80
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "http",
+      "type": "backend",
+      "label": "Decision HTTP Adapter",
+      "sublabel": "Container · FastAPI · nur KfW-Referenzprodukt",
+      "pos": [
+        40,
+        440
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "contract",
+      "type": "database",
+      "label": "Compiled Decision Contract",
+      "sublabel": "Artefakt · JSON · außerhalb der Runtime",
+      "pos": [
+        740,
+        440
+      ],
+      "size": [
+        310,
+        80
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "json",
+      "from": "harness",
+      "to": "cli",
+      "label": "Decision Protocol v1 · stdin / stdout",
+      "variant": "emphasis"
+    },
+    {
+      "id": "post",
+      "from": "harness",
+      "to": "http",
+      "label": "authored HTTP + OpenAPI",
+      "labelDy": 24
+    },
+    {
+      "id": "read-cli",
+      "from": "cli",
+      "to": "contract",
+      "label": "liest Vertrag",
+      "labelDy": 24
+    },
+    {
+      "id": "read-http",
+      "from": "http",
+      "to": "contract",
+      "label": "liest Vertrag und erwartetes OpenAPI"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Zwei Referenzprodukte",
+      "items": [
+        "KfW 458 Applicant Eligibility Pilot besitzt CLI und optionalen HTTP Adapter.",
+        "Cloud Privileged-Access Compliance Slice besitzt nur die CLI."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Keine Service-to-Service-Abhängigkeit",
+      "items": [
+        "KfW-CLI und HTTP Adapter verwenden denselben Evaluator in getrennten Prozessen.",
+        "Der Client hält und resubmittiert vollständige Cases."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Keine neuen Infrastrukturgrenzen",
+      "items": [
+        "Keine Source-Revisions-Abfrage, Uploads oder Cloud-Provider-Anbindung zur Laufzeit.",
+        "Python und das Lesen einer Vertragsdatei sind nicht vom Decision Protocol vorgeschrieben."
+      ]
+    }
+  ]
+}

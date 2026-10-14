@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0025: Publish a fixed Ontology Relationship Graph on GitHub Pages · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0025-publish-fixed-ontology-relationship-graph.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0025-publish-a-fixed-ontology-relationship-graph-on-github-pages">ADR 0025: Publish a fixed Ontology Relationship Graph on GitHub Pages</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Supersedes the primary WebVOWL visualization choice in
+<a href="0007-publish-experimental-ontology-with-github-pages.html">ADR 0007</a> and
+<a href="0011-publish-separate-example-webvowl-graph.html">ADR 0011</a>. The SQL example
+projection and its Shape chain from ADRs 0013–0015 remain documentation inputs.</p>
+<h2 id="context">Context</h2>
+<p>WebVOWL moves nodes through a force layout and gives readers limited control
+over dense relationships. A comparison prototype showed that a fixed
+relationship graph with named, directed edges, search, a direct-neighborhood
+highlight, and manual zoom makes the four vocabularies easier to explore. The
+viewer must not pan or zoom when a node is selected. Published HTML references,
+RDF serializations, and example specs remain useful independently of the graph.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Publish an <strong>Ontology Relationship Graph</strong> at <code>/graph/</code> as the primary graph
+entry from the site landing page, each vocabulary reference index, and the
+SQL API resource page.</li>
+<li>Build five separate datasets from the four canonical authored ontologies and
+the existing derived SQL API visualization graph. Keep authored IRIs and the
+SQL API endpoint–Shape–class chain. The viewer does not feed the compiler.</li>
+<li>Include declared OWL classes, named Object Properties whose domain and range
+are displayed classes, internal subclass relations, and a searchable catalogue
+of declared Object and Datatype Properties. A source link leads to the Turtle
+vocabulary or example specs for constraints and other RDF statements.</li>
+<li>Sort nodes and edges before Graphviz <code>dot</code> computes coordinates during the
+documentation build. Give Cytoscape.js only those preset coordinates and
+disallow node dragging. Selection and filtering change emphasis without
+moving the viewport; plus, minus, mouse wheel, and an explicit fit button
+control zoom and framing.</li>
+<li>Self-host Cytoscape.js 3.34.3 in the Pages artifact after verifying its
+SHA-256. Graphviz is a documentation-build dependency in CI. Keep WIDOCO's
+bilingual references and generated WebVOWL files available at their existing
+URLs as legacy documentation.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>GitHub Pages has one stable, shareable graph route with vocabulary, selected
+term, relation filter, and neighborhood state in its URL. The site can render
+without a runtime service or a browser CDN request.</li>
+<li>Graphviz and Cytoscape.js are documentation dependencies only. Coordinates
+are fixed within each built artifact; Graphviz version changes may change
+them across builds, while product contract determinism is unaffected.</li>
+<li>Only explicitly selected OWL/RDFS relations appear as graph edges. Complete
+SHACL constraints and example instance statements remain in linked sources.</li>
+<li>Existing WebVOWL URLs and WIDOCO output validation continue to work, but the
+new graph is the primary navigation path.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Keep WebVOWL as the primary graph. Its moving layout does not provide the
+fixed spatial reference selected in the comparison.</li>
+<li>Move the site to a React graph SDK. The publication is static HTML and needs
+neither a React application build nor a commercial graph dependency for this
+graph size and interaction set.</li>
+<li>Replace WIDOCO entirely. Its bilingual reference and RDF serialization still
+serve distinct documentation needs.</li>
+</ul>
+</main>
+</body>
+</html>

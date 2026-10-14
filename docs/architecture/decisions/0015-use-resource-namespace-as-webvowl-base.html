@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0015: Use the resource namespace as the WebVOWL base · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0015-use-resource-namespace-as-webvowl-base.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0015-use-the-resource-namespace-as-the-webvowl-base">ADR 0015: Use the resource namespace as the WebVOWL base</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Refines
+<a href="0014-preserve-node-shapes-in-webvowl-projection.html">ADR 0014</a>.</p>
+<h2 id="context">Context</h2>
+<p>WebVOWL decides whether an element is external by comparing its namespace with
+the documented ontology IRI. The derived graph used
+<code>resources/sql-api/visualization/</code> as that IRI while the authored example nodes
+use <code>resources/sql-api/#</code>. Consequently, WebVOWL marked <code>Article</code>,
+<code>ArticleShape</code>, <code>GetArticleEndpoint</code>, and <code>ArticlesTable</code> as external even
+though they are the graph's primary subject.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Use <code>resources/sql-api/</code> as the ontology IRI and WebVOWL base of the derived
+SQL API graph.</li>
+<li>Preserve all authored example IRIs unchanged.</li>
+<li>Keep generated Object Properties under
+<code>resources/sql-api/visualization/#</code> so their derived status remains explicit.</li>
+<li>Fail the site build if any of the four projected example classes is marked
+<code>external</code> in WebVOWL's JSON.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>The four example nodes appear as internal WebVOWL classes without changing
+their identity.</li>
+<li>Visualization-only properties remain distinguishable by namespace.</li>
+<li>The temporary OWL ontology declaration shares the dereferenceable SQL API
+resource base; it remains documentation metadata and is not compiler input.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Mint duplicate visualization IRIs for every node. Rejected because searches
+and links would no longer use the authored resource identities.</li>
+<li>Patch WebVOWL's generated JSON or JavaScript. Rejected because it would be a
+brittle presentation-layer modification.</li>
+<li>Accept the <code>external</code> labels. Rejected because they miscommunicate the role of
+the example's central nodes.</li>
+</ul>
+</main>
+</body>
+</html>

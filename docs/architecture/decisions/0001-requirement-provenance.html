@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0001: Restrict generated requirements to explicit sources · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0001-requirement-provenance.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0001-restrict-generated-requirements-to-explicit-sources">ADR 0001: Restrict generated requirements to explicit sources</h1>
+<h2 id="status">Status</h2>
+<p>Accepted.</p>
+<h2 id="context">Context</h2>
+<p>The first generated test imported FastAPI product code even though the specs did
+not require Python, FastAPI, a module name, or an application factory. A
+deterministic generator can still produce unjustified requirements if its rules
+contain hidden architectural assumptions.</p>
+<h2 id="decision">Decision</h2>
+<p>Every generated obligation and assertion must be traceable to either:</p>
+<ol>
+<li>an explicit statement in the Product Bundle's specs, or</li>
+<li>a named, versioned Compiler Convention or Runtime Protocol rule.</li>
+</ol>
+<p>The generator fails when required information is absent, ambiguous, unsafe, or
+outside the supported profile. Work Items list their sources. Compiler
+Conventions v1 are documented in <code>docs/generation-principles.md</code> and versioned
+in the Work Graph.</p>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Product language, framework, module names, and internal layering remain free.</li>
+<li>Specs are more explicit about status, media type, identifier semantics,
+storage engine, and endpoint-to-table relationships.</li>
+<li>Compiler limitations become visible errors rather than accidental contracts.</li>
+<li>New mappings require documentation, tests, and a compatibility decision.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Infer conventional defaults such as HTTP 200, JSON, FastAPI, or integer IDs.
+Rejected because convenient guesses become hidden requirements.</li>
+<li>Let an LLM interpret missing semantics. Rejected because requirements and
+generated proofs would no longer be reproducible.</li>
+</ul>
+</main>
+</body>
+</html>

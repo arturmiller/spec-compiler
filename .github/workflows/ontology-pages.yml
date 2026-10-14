@@ -1,4 +1,4 @@
-name: Publish ontology documentation
+name: Publish project documentation
 
 on:
   push:
@@ -31,14 +31,19 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Install Node for the pinned Archify renderer
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
       - name: Install Graphviz for fixed ontology layouts
         run: sudo apt-get update && sudo apt-get install -y graphviz
 
       - name: Verify contracts and tests
         run: uv run --extra dev poe run
 
-      - name: Build ontology references and relationship graph
-        run: uv run --extra dev poe ontology-site
+      - name: Build HTML documentation, diagrams, and ontology references
+        run: uv run --extra dev poe documentation-site
 
       - name: Configure GitHub Pages
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

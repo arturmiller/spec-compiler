@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0010: Materialize and execute a bootstrap generation · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0010-materialize-and-execute-bootstrap-generation.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0010-materialize-and-execute-a-bootstrap-generation">ADR 0010: Materialize and execute a bootstrap generation</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Supersedes the deferred-synthesis statement in
+<a href="0009-separate-bootstrap-provenance-from-transformation-contract.html">ADR 0009</a>.</p>
+<h2 id="context">Context</h2>
+<p>The Bootstrap Process identified G0 and the modify-existing strategy but did
+not produce a new compiler implementation. Generated compiler tests still
+invoked <code>tools/generate.py</code>, so the purported G1 was only another process
+running G0.</p>
+<p>A useful bootstrap step must create a separately addressable implementation and
+execute it without importing or invoking the G0 source path. The result need not
+be source-identical or technology-independent from its seed.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Add <code>sco:generatesImplementationArtifact</code> to the Bootstrap Process and set it
+to <code>src/spec_compiler.py</code> for the Spec Compiler.</li>
+<li>Under Compiler Conventions v1, <code>sco:ModifyExistingImplementation</code> copies the
+executing seed source to that artifact while incrementing one unique
+<code>BOOTSTRAP_GENERATION</code> marker.</li>
+<li>Treat <code>tools/generate.py</code> as G0 and the generated
+<code>products/spec_compiler/src/spec_compiler.py</code> as G1.</li>
+<li>Give G1 its own <code>pyproject.toml</code>, <code>uv.lock</code>, and Compiler Protocol manifest.
+The manifest executes G1's source path with its own frozen project rather than
+invoking G0.</li>
+<li>Generate a black-box proof that the declared G1 artifact exists with the
+expected generation and that the manifest-driven G1 compiles the valid
+fixture successfully.</li>
+<li>Keep stochastic coding-agent evolution outside this deterministic bootstrap
+step. A later agent may modify the accepted G1 implementation, but is not
+required to establish executable self-bootstrap.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Running the repository generation workflow now performs a real G0-to-G1
+source transformation.</li>
+<li>Contract tests execute the generated G1 as a separate compiler product.</li>
+<li>Python and the current architecture are inherited by this bootstrap strategy,
+but remain absent from the technology-neutral Transformation Contract.</li>
+<li>G1 and G0 share almost all source and therefore do not provide an independent
+semantic oracle or diverse double-compilation guarantee.</li>
+<li>Generating G2 from G1 requires a separately versioned Bootstrap Process whose
+seed statement identifies G1; this change does not silently reinterpret G0 as
+a later-generation seed.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Continue invoking G0 under a G1 process name. Rejected because no successor
+implementation would exist.</li>
+<li>Require an external coding agent for G1. Rejected for the initial bootstrap
+because it would make the core generation step stochastic and unavailable in
+ordinary CI.</li>
+<li>Claim recursive G1-to-G2 generation from the unchanged G0 seed statement.
+Rejected because the generated implementation would contradict its declared
+provenance.</li>
+</ul>
+</main>
+</body>
+</html>

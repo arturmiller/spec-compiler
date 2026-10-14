@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0026: Use the Ontology Relationship Graph as the site entry · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0026-use-relationship-graph-as-site-entry.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0026-use-the-ontology-relationship-graph-as-the-site-entry">ADR 0026: Use the Ontology Relationship Graph as the site entry</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Supersedes the separate <code>/graph/</code> entry path in
+<a href="0025-publish-fixed-ontology-relationship-graph.html">ADR 0025</a>.</p>
+<h2 id="context">Context</h2>
+<p>The site landing page lists references and graph links for the same vocabularies.
+The Ontology Relationship Graph already offers all four vocabularies and the
+SQL API example through its dataset selector. A separate landing page duplicates
+that navigation and makes the available views harder to discover.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Render the Ontology Relationship Graph directly at the site root, with one
+selector naming all five datasets and the existing fixed-layout interactions.</li>
+<li>Link German and English references and the authoritative Turtle source for
+the selected dataset. Keep example specifications and the source repository
+available from the same interface.</li>
+<li>Build the viewer HTML and self-hosted Cytoscape.js asset at the site root.
+Internal graph links point to <code>?ontology=&lt;key&gt;</code> relative to that root, so the
+same artifact works under the GitHub Pages repository prefix and localhost.</li>
+<li>Preserve <code>/graph/</code> and <code>/graph/index.html</code> links with a static client-side
+redirect to the root, carrying query parameters and fragments unchanged.</li>
+<li>Keep vocabulary namespace pages, WIDOCO references, RDF downloads, example
+resources, and legacy WebVOWL URLs at their existing locations.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<p>Readers can select any available graph and open its references from one entry
+point. The separate card-based landing page is removed. Static publication,
+ontology boundaries, dataset extraction, and product compilation are unchanged.
+The compatibility redirect requires JavaScript; a plain root link remains as
+its fallback. No additional library or runtime service is introduced.</p>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Keep the card-based landing page and reduce its links. This would still
+duplicate the viewer's dataset selection.</li>
+<li>Redirect the root to <code>/graph/</code>. This preserves two entry paths and leaves the
+actual site root as an intermediate page.</li>
+</ul>
+</main>
+</body>
+</html>

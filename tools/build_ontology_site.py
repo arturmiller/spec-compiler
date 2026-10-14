@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 from pathlib import Path
@@ -70,6 +71,27 @@ ONTOLOGY_PUBLICATIONS = (
     (FUNDING_ONTOLOGY, FUNDING_ONTOLOGY_IRI, FUNDING_VOCABULARY_IRI),
     (CLOUD_ONTOLOGY, CLOUD_ONTOLOGY_IRI, CLOUD_VOCABULARY_IRI),
 )
+
+
+@contextmanager
+def site_output(output: Path):
+    """Point derived artifacts at a private candidate, never at live preview files."""
+    global OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT
+    global FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT
+    previous = (OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT,
+                FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT)
+    OUTPUT = output
+    GRAPH_OUTPUT = output / "graph"
+    REFERENCE_OUTPUT = output / "ontology"
+    DECISION_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "decision"
+    FUNDING_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "funding"
+    CLOUD_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "cloud"
+    SQL_API_OUTPUT = output / "examples" / "sql-api"
+    try:
+        yield
+    finally:
+        (OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT,
+         FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT) = previous
 
 
 def _sha256(path: Path) -> str:
@@ -170,40 +192,25 @@ def validate_publication_sources() -> None:
             raise ValueError(f"SQL API visual term lacks bilingual labels: {term}")
 
 
-def _write_landing_page() -> None:
-    (OUTPUT / "index.html").write_text(
+def _write_graph_redirect() -> None:
+    """Keep previously shared graph links pointing at the unified entry point."""
+    GRAPH_OUTPUT.mkdir(parents=True, exist_ok=True)
+    (GRAPH_OUTPUT / "index.html").write_text(
         '''<!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Spec Compiler ontologies</title>
-  <style>
-    body { font: 18px/1.55 system-ui, sans-serif; max-width: 52rem; margin: 5rem auto; padding: 0 1.5rem; color: #17202a; }
-    h1 { line-height: 1.15; }
-    nav { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); margin: 2rem 0; }
-    a { color: #075fa8; }
-    .card { border: 1px solid #ccd6dd; border-radius: .6rem; padding: 1rem; text-decoration: none; }
-    .card strong { display: block; margin-bottom: .35rem; }
-    code { overflow-wrap: anywhere; }
-  </style>
+  <title>Ontologie-Beziehungsgraph · Spec Compiler</title>
+  <script>
+    const target = new URL('../ontologies/', location.href);
+    target.search = location.search;
+    target.hash = location.hash;
+    location.replace(target.href);
+  </script>
 </head>
 <body>
-  <h1>Spec Compiler ontologies</h1>
-  <p>Separate experimental vocabularies for executable contracts, reusable decision semantics, funding concepts, and cloud-compliance concepts. Explore their fixed-layout relationship graphs or read the bilingual references.</p>
-  <nav>
-    <a class="card" href="ontology/index-en.html"><strong>SHACL Contract Ontology</strong>Executable product and protocol contracts</a>
-    <a class="card" href="ontology/decision/index-en.html"><strong>Decision and Obligation Core Ontology</strong>Domain-independent decision semantics</a>
-    <a class="card" href="ontology/funding/index-en.html"><strong>Funding Domain Ontology</strong>Funding programs and scoped eligibility</a>
-    <a class="card" href="ontology/cloud/index-en.html"><strong>Cloud Compliance Domain Ontology</strong>Cloud systems and scoped policy decisions</a>
-    <a class="card" href="graph/?ontology=contract"><strong>Contract graph</strong>Explore the contract vocabulary</a>
-    <a class="card" href="graph/?ontology=decision"><strong>Decision graph</strong>Explore the core decision vocabulary</a>
-    <a class="card" href="graph/?ontology=funding"><strong>Funding graph</strong>Explore the funding vocabulary</a>
-    <a class="card" href="graph/?ontology=cloud"><strong>Cloud graph</strong>Explore the cloud-compliance vocabulary</a>
-    <a class="card" href="graph/?ontology=sql-api"><strong>SQL API example graph</strong>Explore Article, Shape, endpoint, and table separately</a>
-  </nav>
-  <p>Namespaces: <code>.../ontology/#</code>, <code>.../ontology/decision/#</code>, <code>.../ontology/funding/#</code>, and <code>.../ontology/cloud/#</code></p>
-  <p><a href="examples/">Published example specifications</a> · <a href="https://github.com/arturmiller/spec-compiler">Source repository</a></p>
+  <p><a href="../ontologies/">Ontologie-Beziehungsgraph öffnen</a></p>
 </body>
 </html>
 ''',
@@ -229,11 +236,11 @@ def _write_reference_index(
   <ul>
     <li><a href="index-en.html">English reference</a></li>
     <li><a href="index-de.html">Deutsche Referenz</a></li>
-    <li><a href="{landing_page}graph/?ontology={graph_key}">Ontology Relationship Graph</a></li>
+    <li><a href="{landing_page}ontologies/?ontology={graph_key}">Ontology Relationship Graph</a></li>
     <li><a href="webvowl/index.html">Earlier WebVOWL graph</a></li>
     <li><a href="ontology.ttl">Turtle serialization</a></li>
   </ul>
-  <p><a href="{landing_page}">Project ontology landing page</a></p>
+  <p><a href="{landing_page}">Project documentation</a></p>
 </body>
 </html>
 ''',
@@ -280,7 +287,7 @@ def _publish_examples() -> None:
             destination=resource_root / "resources.ttl", format="turtle"
         )
         visualization_link = (
-            f'<a href="{site_root_href}graph/?ontology=sql-api">'
+            f'<a href="{site_root_href}ontologies/?ontology=sql-api">'
             "Ontology Relationship Graph</a> · "
             if product_name == "sql_api_example"
             else ""
@@ -492,45 +499,13 @@ def _build_sql_api_visualization(jar: Path) -> Graph:
     return graph
 
 
-def build_site(jar: Path) -> None:
-    output = OUTPUT.resolve()
-    build_root = (ROOT / "build").resolve()
-    if not output.is_relative_to(build_root):
-        raise ValueError(f"Refusing to replace output outside {build_root}: {output}")
-    if output.exists():
-        shutil.rmtree(output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    _run_widoco(jar, ONTOLOGY, REFERENCE_OUTPUT)
-    _run_widoco(jar, DECISION_ONTOLOGY, DECISION_REFERENCE_OUTPUT)
-    _run_widoco(jar, FUNDING_ONTOLOGY, FUNDING_REFERENCE_OUTPUT)
-    _run_widoco(jar, CLOUD_ONTOLOGY, CLOUD_REFERENCE_OUTPUT)
-    _write_landing_page()
-    _write_reference_index(
-        REFERENCE_OUTPUT,
-        title="SHACL Contract Ontology",
-        landing_page="../",
-        graph_key="contract",
-    )
-    _write_reference_index(
-        DECISION_REFERENCE_OUTPUT,
-        title="Decision and Obligation Core Ontology",
-        landing_page="../../",
-        graph_key="decision",
-    )
-    _write_reference_index(
-        FUNDING_REFERENCE_OUTPUT,
-        title="Funding Domain Ontology",
-        landing_page="../../",
-        graph_key="funding",
-    )
-    _write_reference_index(
-        CLOUD_REFERENCE_OUTPUT,
-        title="Cloud Compliance Domain Ontology",
-        landing_page="../../",
-        graph_key="cloud",
-    )
-    _publish_examples()
-    sql_api_graph = _build_sql_api_visualization(jar)
+def build_relationship_graph(sql_api_graph: Graph | None = None) -> None:
+    """Refresh just the ontology viewer for the local authoring loop."""
+    if sql_api_graph is None:
+        sql_api_graph = Graph()
+        for source in sorted((ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")):
+            sql_api_graph.parse(source, format="turtle")
+        _add_sql_api_visualization_projection(sql_api_graph)
     datasets = [
         build_dataset(
             Graph().parse(path, format="turtle"),
@@ -538,12 +513,25 @@ def build_site(jar: Path) -> None:
             title=title,
             namespace=namespace,
             source_href=source_href,
+            reference_href=reference_href,
         )
-        for path, key, title, namespace, source_href in (
-            (ONTOLOGY, "contract", "SHACL Contract", VOCABULARY_IRI, "../ontology/ontology.ttl"),
-            (DECISION_ONTOLOGY, "decision", "Decision & Obligation", DECISION_VOCABULARY_IRI, "../ontology/decision/ontology.ttl"),
-            (FUNDING_ONTOLOGY, "funding", "Funding", FUNDING_VOCABULARY_IRI, "../ontology/funding/ontology.ttl"),
-            (CLOUD_ONTOLOGY, "cloud", "Cloud Compliance", CLOUD_VOCABULARY_IRI, "../ontology/cloud/ontology.ttl"),
+        for path, key, title, namespace, source_href, reference_href in (
+            (
+                ONTOLOGY, "contract", "SHACL Contract Ontology", VOCABULARY_IRI,
+                "../ontology/ontology.ttl", "../ontology/",
+            ),
+            (
+                DECISION_ONTOLOGY, "decision", "Decision and Obligation Core Ontology",
+                DECISION_VOCABULARY_IRI, "../ontology/decision/ontology.ttl", "../ontology/decision/",
+            ),
+            (
+                FUNDING_ONTOLOGY, "funding", "Funding Domain Ontology", FUNDING_VOCABULARY_IRI,
+                "../ontology/funding/ontology.ttl", "../ontology/funding/",
+            ),
+            (
+                CLOUD_ONTOLOGY, "cloud", "Cloud Compliance Domain Ontology", CLOUD_VOCABULARY_IRI,
+                "../ontology/cloud/ontology.ttl", "../ontology/cloud/",
+            ),
         )
     ]
     datasets.append(
@@ -552,7 +540,8 @@ def build_site(jar: Path) -> None:
             key="sql-api",
             title="SQL API example",
             namespace=str(ARTICLE),
-            source_href="../examples/",
+            source_href="../resources/sql-api/resources.ttl",
+            reference_href="../examples/sql-api/",
             property_namespaces=(str(SQL_API_VISUALIZATION),),
         )
     )
@@ -568,12 +557,36 @@ def build_site(jar: Path) -> None:
     }
     if not expected_sql_edges <= sql_edges:
         raise ValueError("SQL API Relationship Graph is missing its Shape chain")
-    write_graph_site(GRAPH_OUTPUT, datasets)
+    write_graph_site(OUTPUT / "ontologies", datasets)
+    _write_graph_redirect()
+
+
+def build_site(jar: Path) -> None:
+    output = OUTPUT.resolve()
+    build_root = (ROOT / "build").resolve()
+    if not output.is_relative_to(build_root):
+        raise ValueError(f"Refusing to replace output outside {build_root}: {output}")
+    if output.exists():
+        shutil.rmtree(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    _run_widoco(jar, ONTOLOGY, REFERENCE_OUTPUT)
+    _run_widoco(jar, DECISION_ONTOLOGY, DECISION_REFERENCE_OUTPUT)
+    _run_widoco(jar, FUNDING_ONTOLOGY, FUNDING_REFERENCE_OUTPUT)
+    _run_widoco(jar, CLOUD_ONTOLOGY, CLOUD_REFERENCE_OUTPUT)
+    for reference, title, landing, key in (
+        (REFERENCE_OUTPUT, "SHACL Contract Ontology", "../", "contract"),
+        (DECISION_REFERENCE_OUTPUT, "Decision and Obligation Core Ontology", "../../", "decision"),
+        (FUNDING_REFERENCE_OUTPUT, "Funding Domain Ontology", "../../", "funding"),
+        (CLOUD_REFERENCE_OUTPUT, "Cloud Compliance Domain Ontology", "../../", "cloud"),
+    ):
+        _write_reference_index(reference, title=title, landing_page=landing, graph_key=key)
+    _publish_examples()
+    build_relationship_graph(_build_sql_api_visualization(jar))
     (OUTPUT / ".nojekyll").write_text("", encoding="utf-8")
     required = [
-        OUTPUT / "index.html",
+        OUTPUT / "ontologies" / "index.html",
         GRAPH_OUTPUT / "index.html",
-        GRAPH_OUTPUT / "cytoscape.min.js",
+        OUTPUT / "ontologies" / "cytoscape.min.js",
         REFERENCE_OUTPUT / "index.html",
         REFERENCE_OUTPUT / "index-en.html",
         REFERENCE_OUTPUT / "index-de.html",

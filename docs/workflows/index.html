@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="doc-route" content="workflows/">
+  <meta name="description" content="Kompilierung und Produktauswertung sind unterschiedliche Abläufe mit expliziten Quellen und getrennten Laufzeitprotokollen.">
+  <title>Abläufe · Spec Compiler</title>
+  <link rel="stylesheet" href="../assets/site.css"><script src="../assets/site.js" defer></script>
+</head>
+<body><main id="content" class="doc-content">
+  <p class="eyebrow">Laufzeit und Nachweise</p><h1 id="ablaeufe">Vom Vertrag zum beobachtbaren Ergebnis</h1>
+  <p class="lead">Die Kompilierung liest autorisierte Specs. Der Contract Verification Harness startet anschließend Produkte und beobachtet ihr Verhalten. Eine Next Question entsteht bei einer Decision-Auswertung, nicht beim Einlesen der Specs.</p>
+  <nav class="section-navigation" aria-label="Abläufe"><a href="#kompilierung">Kompilierung</a><a href="#produktpruefung">Produktprüfung</a><a href="#decision">Decision Requests</a><a href="#bootstrap">Bootstrap</a><a href="#dokumentation">Dokumentation</a></nav>
+  <h2 id="kompilierung">1. Specs kompilieren</h2>
+  <p>Die sortierten Turtle-Dateien eines Product Bundle werden zusammengeführt, auf Eindeutigkeit geprüft und in das zuständige Explicit Obligation Model oder Explicit Decision and Obligation Model überführt. Deterministische Renderer erzeugen Verträge, Tests und Work Items. Fehlende Spec-Angaben werden nicht durch Fragen an Produktnutzer ersetzt: Sie sind Kompilierungsfehler.</p>
+  <figure data-diagram="compile-contracts"><figcaption>Deterministische Kompilierung</figcaption></figure>
+  <h2 id="produktpruefung">2. Ein Produkt prüfen</h2>
+  <p>Runtime Protocol v1 deklariert, wie ein Produkt gestartet wird. Der Harness wartet auf OpenAPI, prüft Schnittstelle und Verhalten, kontrolliert gegebenenfalls die explizit verlangte SQLite-Speicherung und beendet den vollständigen Prozessbaum. Die Implementierung wird nicht importiert.</p>
+  <figure data-diagram="verify-product"><figcaption>Black-Box-Produkttest</figcaption></figure>
+  <h2 id="decision">3. Einen Decision Request auswerten</h2>
+  <p>Ein Decision Request nennt Contract, stabiles Rule Set, Decision Date und Case Facts. Das Decision Product wählt die ausdrücklich gültige Rule Set Version und wertet ihre Rules aus. Fehlende Facts werden als Fact Gaps ausgewiesen. Nur ein noch undeterminiertes Resultat trägt die nach expliziter Priorität ausgewählte Next Question.</p>
+  <figure data-diagram="decision-request"><figcaption>Stateless Request und Result</figcaption></figure>
+  <p>Der Client ergänzt die Antwort im vollständigen Case und sendet einen neuen Request. Evidence Requirements und Rule-imposed Obligations werden getrennt ausgewertet; ihre Ergebnisse ändern weder Condition truth noch den Decision Outcome.</p>
+  <p>Die Zustandsansicht zeigt positive, negative und undeterminierte Ergebnisarten eines einzelnen Aufrufs, keine Sitzung. Die Specs benennen konkrete Outcomes, zum Beispiel <code>eligible</code> / <code>ineligible</code> oder <code>compliant</code> / <code>non_compliant</code>.</p>
+  <figure data-diagram="decision-lifecycle"><figcaption>Ergebnisarten eines Decision-Aufrufs</figcaption></figure>
+  <h2 id="bootstrap">4. Den Compiler als Produkt prüfen</h2>
+  <p>G0 materialisiert G1 aus dem deklarierten Seed. Generierte Black-Box-Nachweise starten G1 über Compiler Protocol v1 und vergleichen zwei Kompilierungen derselben Fixtures byteweise. Das prüft ausführbare Kontinuität und Determinismus; eine unabhängige fachliche Oracle ersetzt es nicht.</p>
+  <figure data-diagram="compiler-bootstrap"><figcaption>Bootstrap und Fixpunktnachweis</figcaption></figure>
+  <h2 id="dokumentation">5. Die Dokumentation veröffentlichen</h2>
+  <p>HTML-Quellen, Diagrammmodelle und Ontologien werden als abgeleitete Website zusammengeführt. Die lokale Vorschau verwendet dieselben Quellen. GitHub Actions prüft den vollständigen Workflow und veröffentlicht den statischen Build nach einem Push auf main. Pull Requests bauen ohne Veröffentlichung.</p>
+  <figure data-diagram="publish-documentation"><figcaption>Dokumentationsbuild und GitHub Pages</figcaption></figure>
+  <p>Details zu Protokollen und unterstützten Konventionen stehen in den <a href="../generation-principles.html">Generierungsprinzipien</a>; ihre Architekturgrenzen in <a href="../architecture/arc42.html">arc42</a>.</p>
+</main></body>
+</html>

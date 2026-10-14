@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0024: Author HTTP messages and bindings in product specs · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0024-author-http-messages-and-bindings-in-product-specs.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0024-author-http-messages-and-bindings-in-product-specs">ADR 0024: Author HTTP messages and bindings in product specs</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Supersedes the fixed Decision HTTP Mapping v1 choice in
+<a href="0022-expose-decision-contract-through-an-authored-http-endpoint.html">ADR 0022</a>
+and the mapping-selection requirement in
+<a href="0023-separate-post-method-from-decision-http-mapping.html">ADR 0023</a>.
+The generic POST type and separate Decision Protocol v1 remain in force.</p>
+<h2 id="context">Context</h2>
+<p>The previous compiler recognized the exact <code>sco:DecisionHttpMappingV1</code> IRI and
+built a predetermined HTTP request, result, error schema, status pair, and
+tests. Moving that IRI into a product namespace would leave the actual API
+definition in compiler code. The product needs to own its concrete wire
+contract, while the shared ontology should provide reusable vocabulary.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Remove the named Decision HTTP mapping and its dispatch. The SHACL Contract
+Ontology supplies generic HTTP endpoints, requests, responses, body schemas,
+media types, statuses, body pointers, and contract invocation relations.</li>
+<li>The KfW <code>http_api.ttl</code> explicitly declares the endpoint and three message
+resources. Endpoint and messages must be named resources for deterministic
+provenance. <code>sco:bodySchema</code> holds an authored JSON Schema Draft 2020-12 value
+as an <code>rdf:JSON</code> literal. JSON Schema describes the actual JSON wire contract
+directly; the existing SQL SHACL profile remains available separately.</li>
+<li>Define HTTP Contract Conventions v1 for these general vocabulary semantics.
+<code>sco:request</code>, <code>sco:successResponse</code>, and <code>sco:invalidRequestResponse</code> give each
+message its role. <code>sco:bodyPointer</code> selects contract input from the request
+and locates the result or error text in the corresponding response. The
+empty pointer denotes the entire body; other pointers describe object
+envelopes. <code>sco:invokesContract</code> names the invoked contract.</li>
+<li>The HTTP Contract Reader validates declarations and the supported schema
+subset. The OpenAPI Contract Renderer copies authored schemas and HTTP values
+without adding Decision fields. It also renders <code>x-spec-compiler-binding</code>
+metadata consumed by the reference adapter; equivalent implementations need
+not publish that extension.</li>
+<li>Keep one POST operation with a required JSON body, one body-bearing 2xx
+success response, and one 4xx invalid-request response in the current
+profile. JSON media types can differ between messages. Missing statements,
+unsupported schema keywords or formats, schema references, invalid pointers,
+and ambiguous response roles fail compilation.</li>
+<li>The product integration currently invokes Decision Protocol v1 contracts.
+The Decision Contract Reader checks that the explicit invoked contract is
+the product's Decision Contract. HTTP parsing and rendering themselves have
+no product-resource or mapping-IRI dispatch.</li>
+<li>Generate HTTP proofs from authored message schemas and bindings. The
+explicit invocation relation also justifies testing all Decision Conformance
+Cases and comparing the extracted result with the CLI result. Invalid-body
+tests derive from schema constraints and malformed JSON, without KfW field
+names, fixed status codes, or implementation-specific error messages.</li>
+<li>Declare <code>jsonschema</code> in the toolchain, G1, and KfW product environments. It
+validates schemas during compilation and observed bodies during tests; the
+reference adapter uses it for request and response validation. This is an
+implementation dependency, not a product-contract requirement.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Changing product schemas, paths, JSON media types, success/error status
+codes, or body envelopes changes generated OpenAPI, proof expectations, and
+the reference adapter's behavior. A mutation test changes only the specs,
+renames their HTTP resources, and runs generated black-box proofs against
+the same backend implementation.</li>
+<li>The default KfW API keeps its existing path, JSON body shapes, and 200/400
+responses. Its JSON schemas are now maintained explicitly in the product.
+They can drift from Decision semantics; generated case validation and CLI
+parity provide checks, but the finite cases are not a completeness proof.</li>
+<li>The supported schema keywords and structural comparison rules are documented
+in the generation principles. The compiler does not fetch schema references
+or claim general JSON Schema logical equivalence. Additional methods,
+multiple operations, optional bodies, and non-JSON transports need further
+explicit support.</li>
+<li>The old mapping term and <code>sco:exposesDecisionContract</code> are removed from the
+experimental shared vocabulary; the product uses <code>sco:invokesContract</code> and
+explicit messages. Historical ADRs retain the superseded design.</li>
+</ul>
+<h2 id="alternatives">Alternatives</h2>
+<ul>
+<li>Move <code>DecisionHttpMappingV1</code> into the KfW namespace while retaining special
+compiler code. Rejected because the API definition would still be implicit.</li>
+<li>Keep generating complete HTTP schemas from the Decision Contract. Rejected
+because the product could not independently describe its HTTP wire contract.</li>
+<li>Introduce another vocabulary for every JSON Schema keyword. Rejected because
+JSON Schema already describes nested JSON objects, arrays, unions, and
+constraints without duplicating the standard in the shared ontology.</li>
+<li>Handwrite an unrelated OpenAPI document. Rejected because the authored HTTP
+bindings and the executable proofs should continue to share one spec source.</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0008: Rename the system and repository to Spec Compiler · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0008-rename-system-and-repository-to-spec-compiler.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0008-rename-the-system-and-repository-to-spec-compiler">ADR 0008: Rename the system and repository to Spec Compiler</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Supersedes the system and repository naming in earlier ADRs and the
+GitHub-hosted IRI paths selected by
+<a href="0007-publish-experimental-ontology-with-github-pages.html">ADR 0007</a>. The
+remaining publication decisions in ADR 0007 stay in effect.</p>
+<h2 id="context">Context</h2>
+<p>The original repository name <code>shacl_example</code> and system name SHACL Contract
+Toolchain described an early example rather than the emerging product. The
+system now compiles explicit product specifications into executable contracts,
+tests, expected artifacts, and work guidance. Its product identity should not
+be tied to SHACL or confused with the narrower Transformation Contract concept.</p>
+<p>Because the experimental ontology and resource IRIs use the GitHub Pages
+project path, renaming the repository also changes those IRIs. ADR 0007 already
+accepted this instability for the prototype.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Name the software system and GitHub repository <strong>Spec Compiler</strong> and
+<code>spec-compiler</code> respectively.</li>
+<li>Use <code>spec_compiler</code> for Python/package and Product Bundle identifiers where
+hyphens are inappropriate.</li>
+<li>Identify the self-described product as <code>tool:SpecCompiler</code> and its current
+Transformation Contract as <code>tool:SpecCompilationV1</code>.</li>
+<li>Move the Self-Description Bundle to <code>products/spec_compiler/</code> and call it the
+<strong>Spec Compiler Self-Description Bundle</strong>.</li>
+<li>Publish experimental vocabulary and resource IRIs below
+<code>https://arturmiller.github.io/spec-compiler/</code>.</li>
+<li>Keep the ontology name <strong>SHACL Contract Ontology</strong> because it names the
+reusable vocabulary, not the compiler product.</li>
+<li>Do not provide compatibility aliases for the old experimental IRIs.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>The product name now communicates the broader compilation of specifications,
+while contracts remain the binding, executable subset of those specs.</li>
+<li>Code, architecture documentation, generated proofs, package metadata, GitHub
+Pages, and public RDF resources use the same canonical product name.</li>
+<li>Existing references below <code>https://arturmiller.github.io/shacl_example/</code>
+become obsolete. This is acceptable before a stable vocabulary release.</li>
+<li>A future stable release still requires a repository-independent persistent
+namespace such as w3id.org.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Use <code>specs-compiler</code>. Rejected because the plural form is less idiomatic and
+does not improve the meaning.</li>
+<li>Use <code>contract-compiler</code>. Rejected because it narrows the product identity to
+executable contracts and leaves less room for other compiled spec artifacts.</li>
+<li>Retain <code>shacl_example</code>. Rejected because it presents the system as a sample
+and couples its identity to one input technology.</li>
+</ul>
+</main>
+</body>
+</html>

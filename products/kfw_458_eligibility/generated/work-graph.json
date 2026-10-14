@@ -7,6 +7,7 @@
   "evidence_evaluation_conventions_version": 1,
   "version_selection_conventions_version": 1,
   "obligation_evaluation_conventions_version": 1,
+  "http_contract_conventions_version": 1,
   "work_items": [
     {
       "id": "kfw-458-eligibility.decision-runtime",
@@ -151,6 +152,35 @@
       "excluded": [
         "Document file formats, upload protocols, or storage",
         "Automatic document-content or authenticity verification"
+      ]
+    },
+    {
+      "id": "kfw-458-eligibility.http-api",
+      "title": "Expose the Decision Contract over HTTP",
+      "goal": "Accept Decision Requests from an HTTP client and return the same sourced Decision Results.",
+      "depends_on": [
+        "kfw-458-eligibility.decision-runtime",
+        "kfw-458-eligibility.decision-evaluation"
+      ],
+      "obligations": [
+        "POST `/eligibility-decisions` accepts `application/json` according to the authored request schema.",
+        "The request body at JSON Pointer `` is the invoked contract input.",
+        "HTTP 200 returns `application/json` with the Decision Result at JSON Pointer `` according to the authored response schema.",
+        "Invalid requests return HTTP 400 with `application/json` and error text at JSON Pointer `/error` according to the authored error schema.",
+        "The product publishes an OpenAPI 3.1 document compatible with the generated HTTP contract."
+      ],
+      "sources": [
+        "POST endpoint `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityPostEndpoint` and sco:invokesContract in the product specs",
+        "Request `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibilityHttpRequest`: body schema, media type, requirement, and input pointer",
+        "Success response `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibilityHttpResult`: body schema, media type, status, and result pointer",
+        "Invalid-request response `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#EligibilityHttpError`: body schema, media type, status, and error pointer",
+        "Decision Contract `https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision`",
+        "HTTP Contract Conventions v1: explicit JSON message schemas and body-pointer bindings"
+      ],
+      "test": "products/kfw_458_eligibility/tests/test_http_contract.py::test_decision_http_cases",
+      "excluded": [
+        "A particular web framework or implementation language",
+        "A user interface, session store, or funding calculation"
       ]
     }
   ]

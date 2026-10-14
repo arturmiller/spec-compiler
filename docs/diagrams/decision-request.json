@@ -1,0 +1,21 @@
+{
+  "schema_version": 1, "diagram_type": "sequence",
+  "meta": {"title": "Stateless Decision Request und Result", "locale": "de", "quality_profile": "showcase", "column_fit": "spread", "viewBox": [1080, 660]},
+  "participants": [
+    {"id": "client", "type": "external", "label": "Client / Harness", "sublabel": "hält die Case Facts"},
+    {"id": "product", "type": "backend", "label": "Decision Product", "sublabel": "Decision Protocol v1"},
+    {"id": "contract", "type": "database", "label": "Decision Contract", "sublabel": "Rules und Provenance"}
+  ],
+  "messages": [
+    {"id": "request", "from": "client", "to": "product", "y": 170, "label": "vollständigen Decision Request senden", "variant": "emphasis"},
+    {"id": "version", "from": "product", "to": "contract", "y": 240, "label": "Version anhand Decision Date wählen"},
+    {"id": "rules", "from": "product", "to": "contract", "y": 310, "label": "Rules und getrennte Nachweise auswerten"},
+    {"id": "result", "from": "product", "to": "client", "y": 390, "label": "Result, ggf. mit einer Next Question", "variant": "return"},
+    {"id": "resubmit", "from": "client", "to": "product", "y": 550, "label": "ergänzten vollständigen Case erneut senden", "variant": "emphasis"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Explizite Zeit", "items": ["Der Request benennt das stabile Rule Set und Decision Date.", "Weder der Client noch die Systemuhr wählen eine neueste Version."]},
+    {"dot": "emerald", "title": "Fragen aus Fact Gaps", "items": ["Eine fehlende Eingabe ist kein false.", "Die optionale Next Question ist Teil desselben JSON Result, keine zweite Nachricht.", "Sie folgt nur bei unknown aus der expliziten Fragepriorität."]},
+    {"dot": "violet", "title": "Getrennte Ergebnisse", "items": ["Evidence Requirements und Obligations ändern den Outcome nicht.", "Das Referenzprodukt liest den Vertrag; das Protokoll schreibt dies nicht vor."]}
+  ]
+}

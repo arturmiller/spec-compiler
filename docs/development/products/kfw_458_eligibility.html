@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KfW 458 applicant eligibility example · Spec Compiler</title>
+<meta name="doc-route" content="development/products/kfw_458_eligibility.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<h1 id="kfw-458-applicant-eligibility-example">KfW 458 applicant eligibility example</h1>
+<p>This versioned reference Product Bundle implements the bounded KfW 458
+Applicant Eligibility Pilot. Its authored Turtle specs cite the December 2025
+and July 2026 KfW Merkblatt revisions and define version-local Rules over six boolean Conditions with authored Fact
+Questions, two Evidence-applicability Conditions, one independently cited
+ownership Evidence Requirement, seven Conformance Cases, and the scoped outcomes
+<code>eligible</code>, <code>ineligible</code>, and <code>unknown</code>.</p>
+<p>The implementation is a technology choice of this example. The CLI reads one
+JSON Decision Request from standard input and writes one JSON Decision Result
+to standard output through Decision Protocol v1. An additional HTTP adapter
+exposes the same request and result at <code>POST /eligibility-decisions</code>; its OpenAPI
+contract is generated from the explicit messages and body bindings in
+<code>specs/http_api.ttl</code>. The black-box tests also use the invoked Decision Contract
+for its authored cases and CLI parity. Generated tests invoke the manifest and never import product
+implementation modules. When Facts are missing and the outcome
+is still <code>unknown</code>, the result selects the lowest-priority current Fact Question
+and includes its Rule and Source Citation justification. A client adds the
+boolean answer at the returned JSON Pointer and submits the complete Case
+again; no session or UI is required by the protocol.</p>
+<p>Each request names the stable Rule Set and an explicit Decision Date. Version
+Selection Conventions v1 select exactly one version from the authored half-open
+Validity Periods; callers cannot select a version and neither “today” nor
+“latest” is a default. The same usufruct-applicant facts are <code>eligible</code> on
+2026-07-20 under revision 12/2025 and <code>ineligible</code> on 2026-07-21 under revision
+07/2026. Every result reports the selected version and Decision Date.</p>
+<p>For a self-using owner who claims the climate-speed or income bonus, the
+Decision Result evaluates the required land-register excerpt independently as
+<code>fulfilled</code>, <code>missing</code>, or <code>not_applicable</code>. Supplied Evidence is classified
+against the requirement and fulfills it only with a matching type and an
+explicit accepted Evidence Assessment. This Evidence evaluation never changes
+the ownership Condition or applicant-eligibility outcome. It requires no
+particular file format, upload protocol, storage system, or automatic document
+inspection.</p>
+<p>The result covers only the modeled applicant-eligibility question. It does not
+assess heating measures, calculate a subsidy, provide legal or financial advice,
+or represent a KfW funding commitment or approval.</p>
+<h2 id="run-the-example-request-manually">Run the example request manually</h2>
+<p>From this product directory in PowerShell, pipe the example JSON into the
+one-request CLI:</p>
+<pre><code class="language-powershell">Get-Content -Raw -Encoding UTF8 .\examples\eligible-request.json |
+  uv run --locked python app.py --contract .\generated\decision-contract.json
+</code></pre>
+<p>The result should report <code>&quot;outcome&quot;: &quot;eligible&quot;</code> and
+<code>&quot;rule_set_version_label&quot;: &quot;2026-07&quot;</code>. Edit a copy of the request to try
+different facts or decision dates.</p>
+<h2 id="run-the-http-api-manually">Run the HTTP API manually</h2>
+<p>From this product directory in one PowerShell terminal, start the HTTP adapter:</p>
+<pre><code class="language-powershell">$env:HOST = '127.0.0.1'
+$env:PORT = '8765'
+uv run --locked python http_api.py --contract .\generated\decision-contract.json --openapi .\generated\expected-openapi.json
+</code></pre>
+<p>From the same directory in a second terminal, submit the same example request:</p>
+<pre><code class="language-powershell">$body = Get-Content -Raw -Encoding UTF8 .\examples\eligible-request.json
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8765/eligibility-decisions' -ContentType 'application/json; charset=utf-8' -Body $body |
+  Select-Object outcome, rule_set_version_label, next_question
+</code></pre>
+<p><code>GET http://127.0.0.1:8765/openapi.json</code> returns the generated OpenAPI 3.1
+document. Stop the server with Ctrl+C when finished. The HTTP API evaluates only
+the same bounded applicant-eligibility decision as the CLI.</p>
+<h2 id="change-the-http-interface">Change the HTTP interface</h2>
+<p>Edit <a href="../../../products/kfw_458_eligibility/specs/http_api.ttl">specs/http_api.ttl</a>. It owns the endpoint path and
+three message resources:</p>
+<ul>
+<li><code>EligibilityHttpRequest</code>: JSON media type, required body, full JSON Schema,
+and the pointer selecting the Decision Request from the body.</li>
+<li><code>EligibilityHttpResult</code>: success status, JSON media type, full JSON Schema,
+and the pointer locating the complete Decision Result in the response.</li>
+<li><code>EligibilityHttpError</code>: invalid-request status, JSON media type, full JSON
+Schema, and the pointer locating the error text.</li>
+</ul>
+<p>The schemas are authored JSON Schema literals inside Turtle. For example,
+changing the success message to <code>sco:statusCode 202</code> changes the generated
+OpenAPI, adapter response, and test expectation. To return
+<code>{&quot;result&quot;: &lt;Decision Result&gt;}</code>, set its <code>sco:bodyPointer</code> to <code>&quot;/result&quot;</code> and
+wrap the existing result schema in an object with a <code>result</code> property. Update
+both declarations together. Empty <code>sco:bodyPointer &quot;&quot;</code> means the whole body.</p>
+<p>From the repository root, regenerate and verify:</p>
+<pre><code class="language-powershell">uv run --extra dev poe run
+</code></pre>
+<p>Restart the HTTP adapter so it reloads the generated contract. The compiler
+copies these explicit schemas; it does not infer extra HTTP fields from the
+Decision Contract. Keep both contracts consistent when changing facts or
+outcomes. See <a href="../../generation-principles.html#http-contract-conventions-v1">HTTP Contract Conventions v1</a>
+for supported JSON Schema keywords and binding limits. The example HTTP adapter
+uses <code>jsonschema</code> as an implementation dependency.</p>
+</main>
+</body>
+</html>

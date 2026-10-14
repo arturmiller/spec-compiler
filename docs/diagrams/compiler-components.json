@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Spec Compiler CLI – Reader und normalisierte Modelle",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Component"
+        },
+        "database": {
+          "label": "In-Memory Data"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "coordinator",
+      "type": "backend",
+      "label": "CLI and Output Coordinator",
+      "sublabel": "Component · argparse / pathlib · steuert Profile",
+      "pos": [
+        460,
+        60
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "sql-reader",
+      "type": "backend",
+      "label": "RDF/SHACL Obligation Reader",
+      "sublabel": "Component · RDFLib · liest SQL-Verpflichtungen",
+      "pos": [
+        40,
+        350
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "decision-reader",
+      "type": "backend",
+      "label": "Decision Contract Reader",
+      "sublabel": "Component · RDFLib · prüft Rules und Quellen",
+      "pos": [
+        460,
+        350
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "http-reader",
+      "type": "backend",
+      "label": "HTTP Contract Reader",
+      "sublabel": "Component · jsonschema · prüft HTTP-Bindings",
+      "pos": [
+        880,
+        350
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "sql-model",
+      "type": "database",
+      "label": "Explicit Obligation Model",
+      "sublabel": "In-Memory Data · normalisierte SQL-Obligations",
+      "pos": [
+        40,
+        650
+      ],
+      "size": [
+        330,
+        80
+      ]
+    },
+    {
+      "id": "decision-model",
+      "type": "database",
+      "label": "Explicit Decision and Obligation Model",
+      "sublabel": "In-Memory Data · typisierte Decision-Semantik",
+      "pos": [
+        420,
+        650
+      ],
+      "size": [
+        410,
+        80
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "sql-profile",
+      "from": "coordinator",
+      "to": "sql-reader",
+      "label": "SQL-Profil lesen",
+      "fromSide": "left",
+      "toSide": "top",
+      "via": [
+        [
+          205,
+          100
+        ]
+      ]
+    },
+    {
+      "id": "decision-profile",
+      "from": "coordinator",
+      "to": "decision-reader",
+      "label": "Decision-Profil lesen",
+      "labelDy": 24
+    },
+    {
+      "id": "http-contract",
+      "from": "decision-reader",
+      "to": "http-reader",
+      "label": "optionalen HTTP-Vertrag prüfen",
+      "labelDy": 71
+    },
+    {
+      "id": "sql-normalize",
+      "from": "sql-reader",
+      "to": "sql-model",
+      "label": "normalisieren",
+      "labelDy": 24
+    },
+    {
+      "id": "decision-normalize",
+      "from": "decision-reader",
+      "to": "decision-model",
+      "label": "normalisieren",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Ein Modell pro Profil",
+      "items": [
+        "Reader lesen sortierte Turtle-Specs aus dem Product Workspace.",
+        "Quellen und versionierte Konventionen begründen jede Obligation."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Kein erfundener Container",
+      "items": [
+        "Normalisierte Modelle sind Daten im Compilerprozess.",
+        "Renderer erzeugen daraus Verträge, Work Graph, Issues und Black-Box-Tests."
+      ]
+    }
+  ]
+}

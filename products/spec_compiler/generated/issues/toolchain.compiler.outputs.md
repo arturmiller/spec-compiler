@@ -18,9 +18,11 @@ Compile a valid Product Bundle through Compiler Protocol v1.
 - The `CloudAccessComplianceFixture` conformance fixture emits `generated/work-graph.json`.
 - The `CloudAccessComplianceFixture` conformance fixture emits `tests/test_contract.py`.
 - The `Kfw458Fixture` conformance fixture emits `generated/decision-contract.json`.
+- The `Kfw458Fixture` conformance fixture emits `generated/expected-openapi.json`.
 - The `Kfw458Fixture` conformance fixture emits `generated/issues/*.md`.
 - The `Kfw458Fixture` conformance fixture emits `generated/work-graph.json`.
 - The `Kfw458Fixture` conformance fixture emits `tests/test_contract.py`.
+- The `Kfw458Fixture` conformance fixture emits `tests/test_http_contract.py`.
 - The `SqlApiFixture` conformance fixture emits `generated/expected-openapi.json`.
 - The `SqlApiFixture` conformance fixture emits `generated/issues/*.md`.
 - The `SqlApiFixture` conformance fixture emits `generated/work-graph.json`.

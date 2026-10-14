@@ -1,0 +1,20 @@
+{
+  "decision_contract": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision",
+  "rule_set": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules",
+  "decision_date": "2026-09-04",
+  "case": {
+    "applicant": {
+      "naturalPerson": true,
+      "owner": true,
+      "ownershipViaGbR": false,
+      "hasUsufructRight": false,
+      "claimsClimateOrIncomeBonus": false,
+      "selfUsesResidentialProperty": false
+    },
+    "project": {
+      "existingResidentialBuilding": true,
+      "buildingInGermany": true
+    }
+  },
+  "evidence": []
+}

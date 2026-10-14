@@ -1,0 +1,22 @@
+{
+  "schema_version": 1, "diagram_type": "sequence",
+  "meta": {"title": "Specs deterministisch kompilieren", "locale": "de", "quality_profile": "showcase", "column_fit": "spread", "viewBox": [1080, 690]},
+  "participants": [
+    {"id": "reviewer", "type": "external", "label": "Reviewer / CI", "sublabel": "startet den Workflow"},
+    {"id": "compiler", "type": "backend", "label": "Spec Compiler CLI", "sublabel": "Python · RDFLib"},
+    {"id": "bundle", "type": "database", "label": "Product Bundle", "sublabel": "Specs und Artefakte"}
+  ],
+  "messages": [
+    {"id": "compile", "from": "reviewer", "to": "compiler", "y": 170, "label": "Kompilierung starten", "variant": "emphasis"},
+    {"id": "read-specs", "from": "compiler", "to": "bundle", "y": 230, "label": "sortierte specs/*.ttl lesen"},
+    {"id": "rdf-graph", "from": "bundle", "to": "compiler", "y": 290, "label": "gemeinsamer RDF-Graph", "variant": "return"},
+    {"id": "contract-output", "from": "compiler", "to": "bundle", "y": 380, "label": "kompilierten Vertrag schreiben", "variant": "emphasis"},
+    {"id": "proof-output", "from": "compiler", "to": "bundle", "y": 450, "label": "Tests und Work Graph schreiben"},
+    {"id": "finish", "from": "compiler", "to": "reviewer", "y": 530, "label": "erzeugte Pfade ausgeben", "variant": "return"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Validierung vor Ausgabe", "items": ["Der Compiler normalisiert das zuständige explizite Modell.", "Fehlende oder mehrdeutige Spec-Angaben ergeben eine Diagnose."]},
+    {"dot": "emerald", "title": "Deterministische Ergebnisse", "items": ["JSON, Black-Box-Tests und Work Items stammen aus demselben Modell.", "Gleiche Specs und Compiler-Konventionen erzeugen gleiche Vertragsartefakte."]},
+    {"dot": "violet", "title": "Keine Produktinteraktion", "items": ["Die Kompilierung stellt Produktnutzern keine Next Questions.", "Runtime-Auswertung erfolgt erst im getrennten Decision Product."]}
+  ]
+}

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0023: Separate the POST method from Decision HTTP Mapping · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0023-separate-post-method-from-decision-http-mapping.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0023-separate-the-post-method-from-decision-http-mapping">ADR 0023: Separate the POST method from Decision HTTP Mapping</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Supersedes the endpoint-class choice in
+<a href="0022-expose-decision-contract-through-an-authored-http-endpoint.html">ADR 0022</a>.
+The HTTP behavior, Decision Contract, and other decisions in ADR 0022 remain in
+force.</p>
+<h2 id="context">Context</h2>
+<p>ADR 0022 introduced both <code>sco:DecisionPostEndpoint</code> and the explicit,
+versioned <code>sco:DecisionHttpMappingV1</code>. The class combines the HTTP method with
+Decision semantics, while the mapping already names and defines those
+semantics. This duplicates one concern in two vocabulary terms and makes a
+method-only POST endpoint impossible to describe with the shared vocabulary.
+The KfW endpoint is a product resource; its reusable vocabulary belongs in the
+shared SHACL Contract Ontology.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Replace <code>sco:DecisionPostEndpoint</code> with generic <code>sco:PostEndpoint</code>, a subclass
+of <code>sco:HttpEndpoint</code>. Its class membership states only the HTTP method.</li>
+<li>The KfW product endpoint declares both <code>a sco:PostEndpoint</code> and
+<code>dcterms:conformsTo sco:DecisionHttpMappingV1</code>. Only the versioned mapping
+defines Decision Request, Decision Result, and HTTP status behavior.</li>
+<li>The Decision Contract Reader requires both declarations for the optional
+Decision HTTP projection. A mapping without the POST type, a POST endpoint
+without the supported mapping, or multiple candidate endpoints fails
+compilation. The current compiler does not implement other POST mappings.</li>
+<li>Give <code>sco:exposesDecisionContract</code> and <code>sco:invalidRequestStatus</code> the general
+<code>sco:HttpEndpoint</code> domain. Their allowed values and Decision-specific meaning
+are validated by the compiler convention, not inferred from RDFS domains.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>The shared ontology names the method independently of any product or API
+domain. A future mapping can reuse <code>sco:PostEndpoint</code> without another
+method-and-domain class.</li>
+<li>The KfW HTTP path, JSON contract, generated OpenAPI, runtime behavior, and
+black-box proofs keep their existing meaning. The product spec and compiler
+change together, and G1 is regenerated from G0.</li>
+<li>Specs still using <code>sco:DecisionPostEndpoint</code> must migrate to the generic type
+and the explicit mapping; silent fallback to Decision Protocol v1 is not a
+supported migration path.</li>
+</ul>
+<h2 id="alternatives">Alternatives</h2>
+<ul>
+<li>Keep <code>sco:DecisionPostEndpoint</code>. Rejected because its Decision meaning
+duplicates <code>sco:DecisionHttpMappingV1</code>.</li>
+<li>Infer POST solely from the mapping and omit an endpoint type. Rejected because
+method and mapping are separate declarations that the compiler can verify.</li>
+<li>Define <code>kfw458:PostEndpoint</code> in the product namespace. Rejected because POST
+is a reusable HTTP method; the concrete KfW endpoint instance already lives
+in the product namespace.</li>
+</ul>
+</main>
+</body>
+</html>

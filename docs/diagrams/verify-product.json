@@ -1,0 +1,26 @@
+{
+  "schema_version": 1, "diagram_type": "sequence",
+  "meta": {"title": "Ein Produkt als Black Box prüfen", "locale": "de", "quality_profile": "showcase", "column_fit": "spread", "viewBox": [1080, 704]},
+  "participants": [
+    {"id": "harness", "type": "backend", "label": "Verification Harness", "sublabel": "Contract Verification Harness"},
+    {"id": "manifest", "type": "database", "label": "product.toml", "sublabel": "Runtime Protocol v1"},
+    {"id": "product", "type": "external", "label": "Product Runtime", "sublabel": "separater Prozess"},
+    {"id": "storage", "type": "database", "label": "Contracted Data Store", "sublabel": "explizit verlangtes SQLite"}
+  ],
+  "messages": [
+    {"id": "manifest", "from": "harness", "to": "manifest", "y": 170, "label": "Adapter lesen"},
+    {"id": "start-runtime", "from": "harness", "to": "product", "y": 220, "label": "mit Host, Port und DB-Pfad starten", "variant": "emphasis"},
+    {"id": "initialize", "from": "product", "to": "storage", "y": 270, "label": "Schema initialisieren"},
+    {"id": "ready", "from": "harness", "to": "product", "y": 320, "label": "GET openapi_path"},
+    {"id": "openapi", "from": "product", "to": "harness", "y": 370, "label": "200 + OpenAPI 3.1", "variant": "return"},
+    {"id": "fixture", "from": "harness", "to": "storage", "y": 430, "label": "Schema prüfen und Fixture schreiben"},
+    {"id": "request", "from": "harness", "to": "product", "y": 490, "label": "GET deklarierte Ressource", "variant": "emphasis"},
+    {"id": "response", "from": "product", "to": "harness", "y": 550, "label": "deklarierte JSON-Antwort", "variant": "return"},
+    {"id": "stop", "from": "harness", "to": "product", "y": 620, "label": "vollständigen Prozessbaum beenden"}
+  ],
+  "cards": [
+    {"dot": "cyan", "title": "Beobachtbare Schnittstelle", "items": ["Der Harness prüft vollständiges OpenAPI und den geforderten Vertragsausschnitt.", "Er importiert keine Produktimplementierung."]},
+    {"dot": "emerald", "title": "Explizite Speicherung", "items": ["Direkter SQLite-Zugriff gehört nur zum deklarierten SQL-Profil.", "Response-Felder werden aus den Shape-Verpflichtungen geprüft."]},
+    {"dot": "rose", "title": "Lebenszyklus", "items": ["Manifest und Protokoll bestimmen Start und Bereitschaft.", "Nach Erfolg und Fehler werden auch Kindprozesse beendet."]}
+  ]
+}

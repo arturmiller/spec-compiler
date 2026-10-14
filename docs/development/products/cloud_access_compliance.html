@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud privileged-access compliance example · Spec Compiler</title>
+<meta name="doc-route" content="development/products/cloud_access_compliance.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<h1 id="cloud-privileged-access-compliance-example">Cloud privileged-access compliance example</h1>
+<p>This deliberately small reference Product Bundle evaluates two controls from
+NIST SP 800-53 Rev. 5: IA-2 and IA-2(1). It uses the reusable <code>sdo:</code> decision,
+obligation, provenance, validity, question, and evidence concepts while every
+cloud-specific type, fact property, and outcome remains in the separate
+<code>cloud:</code> Domain Ontology.</p>
+<p>The product reads a JSON Decision Request from standard input and writes one
+JSON Decision Result to standard output through Decision Protocol v1. Generated
+black-box tests invoke only the manifest boundary. Results contain
+source-backed Condition Evaluations, Rule-imposed Obligation Evaluations, the
+next decision-relevant Fact Question, and an independently evaluated MFA
+mechanism Evidence Requirement sourced from NIST SP 800-53A Rev. 5.</p>
+<p>The scope is intentionally narrow. A <code>satisfied</code> result covers only the two
+authored controls against supplied boolean system-profile facts. It is not a
+complete NIST assessment, certification, provider configuration scan,
+remediation plan, or security guarantee.</p>
+</main>
+</body>
+</html>

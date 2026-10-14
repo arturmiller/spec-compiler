@@ -3,6 +3,7 @@ name = "spec-compiler"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+  "jsonschema>=4.26,<5",
   "rdflib>=7.1,<8",
 ]
 
@@ -21,9 +22,12 @@ generate-kfw-458 = { cmd = "python tools/generate.py --product products/kfw_458_
 generate-cloud-compliance = { cmd = "python tools/generate.py --product products/cloud_access_compliance", help = "Generate the cloud compliance decision contract" }
 generate = { sequence = ["generate-sql-api", "generate-kfw-458", "generate-cloud-compliance", "generate-spec-compiler"], help = "Generate all contract tests and work items" }
 ontology-validate = { cmd = "python tools/build_ontology_site.py --validate-only", help = "Validate the public ontology and its use in specs" }
-ontology-site = { cmd = "python tools/build_ontology_site.py", help = "Build ontology references and relationship graph" }
+documentation-site = { cmd = "python tools/build_documentation_site.py", help = "Build the complete HTML documentation website" }
+documentation-preview = { cmd = "python tools/preview_documentation.py", help = "Serve and automatically refresh the local documentation" }
+documentation-validate = { cmd = "python tools/build_documentation_site.py --validate-only", help = "Validate HTML sources, links, and diagram models" }
+ontology-site = { ref = "documentation-site", help = "Build the complete documentation including ontology references" }
 test = { cmd = "pytest -q", help = "Run the test suite" }
-run = { sequence = ["generate", "ontology-validate", "test"], help = "Generate all artifacts and run validation and tests" }
+run = { sequence = ["generate", "ontology-validate", "documentation-validate", "test"], help = "Generate all artifacts and run validation and tests" }
 
 [tool.pytest.ini_options]
 testpaths = ["tools/tests", "products/sql_api_example/tests", "products/kfw_458_eligibility/tests", "products/cloud_access_compliance/tests", "products/spec_compiler/tests"]

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0005: Bootstrap the toolchain from an explicit compiler contract · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0005-bootstrap-toolchain-self-description.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0005-bootstrap-the-toolchain-from-an-explicit-compiler-contract">ADR 0005: Bootstrap the toolchain from an explicit compiler contract</h1>
+<h2 id="status">Status</h2>
+<p>Accepted.</p>
+<h2 id="context">Context</h2>
+<p>The SHACL Contract Toolchain previously generated contracts only for HTTP and
+SQLite products. Its own observable behavior—accepted Product Bundles,
+generated artifacts, failure behavior, and reproducibility—was documented but
+not expressed as a product spec or verified through a generated black-box test.
+Treating the existing compiler as proof of its own correctness would be
+circular.</p>
+<h2 id="decision">Decision</h2>
+<p>Introduce <strong>Compiler Protocol v1</strong> as a second product protocol. A compiler
+manifest declares a command, working directory, timeout, and the
+<code>{input_product_root}</code> placeholder. The Contract Verification Harness invokes
+that command as a separate process and observes exit status, combined output,
+and files written below the input Product Bundle.</p>
+<p><code>products/shacl_contract_toolchain/</code> is the versioned <strong>Toolchain
+Self-Description Bundle</strong>. Its RDF spec declares the compiler input pattern,
+generated artifact patterns, missing-spec rejection, and deterministic output.
+The existing checked-in Contract Compiler CLI is the trusted bootstrap compiler
+<code>G0</code>; it generates the self-description tests and Work Graph. Generated tests
+then exercise a fresh compiler invocation <code>G1</code> twice and require a byte-identical
+artifact fixpoint.</p>
+<p>The fixpoint proves reproducibility for the declared example. It does not prove
+that <code>G0</code> interpreted its own spec correctly or generate a new compiler
+implementation.</p>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>The toolchain's external compiler behavior is now specified and tested without
+importing <code>tools.generate</code>.</li>
+<li>Product Bundle input paths may be outside the repository, which enables tests
+to compile isolated temporary copies.</li>
+<li>Runtime Protocol v1 and Compiler Protocol v1 remain separate because their
+lifecycle and observation models differ.</li>
+<li>The bootstrap compiler remains in the trusted computing base; independent
+implementations or conformance fixtures are future strengthening steps.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Model the compiler as an HTTP product. Rejected because HTTP and OpenAPI are
+not part of its actual product interface.</li>
+<li>Claim full self-hosting after two runs of the same implementation. Rejected
+because no new compiler implementation is produced and the bootstrap
+interpretation remains trusted.</li>
+<li>Handwrite the toolchain contract tests. Rejected because that would not test
+whether compiler-product specs can generate executable proofs.</li>
+</ul>
+</main>
+</body>
+</html>

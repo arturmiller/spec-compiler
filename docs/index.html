@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="doc-route" content="">
+  <meta name="description" content="Der Spec Compiler übersetzt explizite Produktspezifikationen in nachvollziehbare Verträge, Nachweise und Arbeitsaufträge.">
+  <title>Spec Compiler – Dokumentation</title>
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+  <p class="eyebrow">Dokumentation · Architektur · Ontologien</p>
+  <h1 id="spec-compiler">Von expliziten Specs zu überprüfbarem Verhalten.</h1>
+  <p class="lead">Der Spec Compiler übersetzt RDF-/SHACL-Spezifikationen in deterministische Verträge, Black-Box-Nachweise und kleine Arbeitsaufträge. Produktentwickler behalten die Wahl ihrer Implementierungstechnologie.</p>
+  <div class="card-grid">
+    <a class="doc-card" href="architecture/arc42.html"><h2 id="architektur">Architektur verstehen</h2><p>Systemgrenze, Bausteine und Qualitätsziele. arc42 und C4 erschließen dasselbe System mit interaktiven Archify-Ansichten.</p></a>
+    <a class="doc-card" href="workflows/index.html"><h2 id="ablaeufe">Abläufe nachvollziehen</h2><p>Wie Specs kompiliert, Produkte geprüft und Decision Requests ausgewertet werden.</p></a>
+    <a class="doc-card" href="../tools/ontology_relationship_graph.html"><h2 id="ontologien">Begriffe erkunden</h2><p>Fünf getrennte Beziehungsgraphen: Contract, Decision Core, Funding, Cloud Compliance und das SQL-API-Beispiel.</p></a>
+    <a class="doc-card" href="architecture/decisions/index.html"><h2 id="entscheidungen">Entscheidungen verstehen</h2><p>Die Gründe, Alternativen und Folgen der Architekturentscheidungen bleiben nachvollziehbar.</p></a>
+    <a class="doc-card" href="development/index.html"><h2 id="entwicklung">Am Projekt arbeiten</h2><p>Einrichtung, Quellen, Referenzprodukte, Build und lokale Vorschau.</p></a>
+    <a class="doc-card" href="glossary.html"><h2 id="sprache">Dieselbe Sprache verwenden</h2><p>Die verbindlichen Begriffe und ihre Beziehungen: Spec, Decision Contract, Fact Gap, Evidence Requirement und mehr.</p></a>
+  </div>
+  <h2 id="systemueberblick">Ein System, klare Grenzen</h2>
+  <p>Der Spec Compiler umfasst Kompilierung, Contract Verification Harness und Dokumentationsbuild. Ein Generated Product läuft separat und wird ausschließlich über sein deklariertes Protokoll beobachtet. GitHub Pages veröffentlicht die statische Dokumentation.</p>
+  <figure data-diagram="system-context"><figcaption>Systemkontext</figcaption></figure>
+  <h2 id="referenzprodukte">Drei fachliche Referenzprodukte</h2>
+  <div class="card-grid">
+    <a class="doc-card" href="development/products/sql_api_example.html"><h3>SQL API</h3><p>Ein Artikelvertrag verbindet HTTP-Antwort, OpenAPI und explizite SQLite-Speicherung.</p></a>
+    <a class="doc-card" href="development/products/kfw_458_eligibility.html"><h3>KfW 458</h3><p>Eine begrenzte Antragstellerentscheidung prüft Rules, historische Gültigkeit, Fragen und getrennte Nachweise.</p></a>
+    <a class="doc-card" href="development/products/cloud_access_compliance.html"><h3>Cloud Compliance</h3><p>Ein zweiter Decision-Schnitt prüft NIST IA-2 und IA-2(1) mit derselben domänenunabhängigen Semantik.</p></a>
+  </div>
+  <aside class="callout"><strong>Keine erfundenen Anforderungen.</strong> Jeder generierte Nachweis stammt aus einer expliziten Spec-Aussage oder einer benannten, versionierten Konvention. <a href="generation-principles.html">Generierungsprinzipien lesen</a>.</aside>
+</main>
+</body>
+</html>

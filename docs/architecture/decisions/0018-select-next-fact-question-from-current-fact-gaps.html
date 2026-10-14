@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0018: Select the next Fact Question from current Fact Gaps · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0018-select-next-fact-question-from-current-fact-gaps.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0018-select-the-next-fact-question-from-current-fact-gaps">ADR 0018: Select the next Fact Question from current Fact Gaps</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. This decision extends the decision profile established by ADR 0017
+and implements Issue #3.</p>
+<h2 id="context">Context</h2>
+<p>Decision Conventions v1 can distinguish a missing Fact from a violated
+Condition and can therefore return <code>unknown</code> with explicit Fact Gaps. It does
+not tell a Decision Product which missing Fact to request next. Deriving a
+prompt from labels or implementation order would invent wording and selection
+semantics, while asking every missing Fact would include questions that no
+longer affect a determinate result.</p>
+<p>The first interaction slice must remain deterministic, source-backed,
+technology-neutral, and observable through the existing stateless Decision
+Protocol v1 boundary.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Add the domain-independent <strong>Fact Question</strong> and <strong>Question Flow Case</strong> terms
+to the Decision and Obligation Core Ontology. Every Condition used by the
+current decision profile has exactly one authored Fact Question with explicit
+text and a unique positive priority.</li>
+<li>Define <strong>Question Selection Conventions v1</strong>. A Decision Result contains at
+most one <strong>Next Question</strong>. It is selected only when the current outcome is
+<code>unknown</code>, from Fact Questions whose Conditions currently have Fact Gaps, by
+the lowest numeric priority. A violated Condition makes the result
+determinate and suppresses all further questions.</li>
+<li>Compile the selected question's identity, authored text, Condition, Fact
+property, input JSON Pointer, boolean answer schema, and justification into
+the Decision Result. The justification follows the Condition's Rule to its
+Source Citation, immutable Source Revision, locator, and authored source
+statement.</li>
+<li>Require exactly one authored Question Flow Case per Decision Contract. It is
+a complete positive Conformance Case whose Facts supply the answers used by
+a generated multi-step black-box proof.</li>
+<li>Keep interaction stateless. A client adds the answer at the returned JSON
+Pointer and resubmits the complete accumulated Case through another Decision
+Protocol v1 invocation. The protocol does not prescribe a session, UI, or
+conversation framework.</li>
+<li>Keep Decision Protocol v1 unchanged. The transport still exchanges one JSON
+Decision Request and one JSON Decision Result per process invocation;
+Question Selection Conventions v1 version the new selection semantics in the
+compiled Decision Contract and Work Graph.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Every emitted question is explicit, deterministic, tied to a current Fact
+Gap, and justified by the same source-backed Rule that can affect the
+decision.</li>
+<li>Repeated black-box requests prove progress from an incomplete Case to the
+next justified question or a determinate outcome without importing product
+code.</li>
+<li>Priorities are authored policy, not inferred optimization. The first version
+cannot choose by cost, information gain, user role, branching probability,
+or dependencies between questions.</li>
+<li>Boolean Conditions imply boolean answers in this profile. More expressive
+answers require a later convention rather than an inferred schema.</li>
+<li>A complete positive case is an executable interaction oracle, but it does
+not prove that the question order is optimal or that the authored wording is
+suitable for every audience.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Use Rule or RDF iteration order. Rejected because storage order is not an
+authored selection policy and can change without domain intent.</li>
+<li>Generate question text from property labels. Rejected because labels are not
+necessarily understandable prompts and would create an untraceable
+requirement.</li>
+<li>Return every Fact Gap as a questionnaire. Rejected because a violated
+Condition may already determine the outcome and because Issue #3 asks for
+the next decision-relevant question.</li>
+<li>Add a stateful conversational protocol. Rejected because the current proof
+needs only repeated complete Case submissions and must not impose session or
+UI architecture.</li>
+<li>Increment Decision Protocol to v2. Rejected because transport and lifecycle
+semantics are unchanged; the new behavior belongs to the independently
+versioned decision contract conventions.</li>
+</ul>
+</main>
+</body>
+</html>

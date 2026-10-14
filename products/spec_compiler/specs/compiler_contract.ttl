@@ -35,7 +35,9 @@ tool:SqlApiFixture a sco:CompilerConformanceFixture ;
 tool:Kfw458Fixture a sco:CompilerConformanceFixture ;
     sco:fixtureProduct "../kfw_458_eligibility" ;
     sco:expectsArtifact "tests/test_contract.py" ,
+        "tests/test_http_contract.py" ,
         "generated/decision-contract.json" ,
+        "generated/expected-openapi.json" ,
         "generated/work-graph.json" ,
         "generated/issues/*.md" .
 

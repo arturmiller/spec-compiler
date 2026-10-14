@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0013: Project example relations for WebVOWL · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0013-project-example-relations-for-webvowl.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0013-project-example-relations-for-webvowl">ADR 0013: Project example relations for WebVOWL</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Refines <a href="0011-publish-separate-example-webvowl-graph.html">ADR 0011</a>.</p>
+<h2 id="context">Context</h2>
+<p>The SQL API specs model <code>GetArticleEndpoint</code> and <code>ArticlesTable</code> as instances
+and connect them to <code>ArticleShape</code>. The shape targets the OWL class <code>Article</code>.
+This is appropriate for the executable contract, but WebVOWL primarily renders
+OWL class and property structure. It therefore showed <code>Article</code> without the
+endpoint, table, or their connecting relations.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Keep the authored RDF/SHACL specs unchanged and authoritative.</li>
+<li>During documentation generation, treat the concrete endpoint and table as
+OWL classes in the derived SQL API visualization graph.</li>
+<li>Resolve <code>sco:returns</code> and <code>sco:stores</code> through the shape's single
+<code>sh:targetClass</code> and emit visualization-only OWL Object Properties for
+<code>returns</code>, <code>reads from</code>, and <code>stores</code>.</li>
+<li>Give each concrete edge its own property IRI, domain, and range so adding a
+second endpoint cannot accidentally create intersecting RDFS domains.</li>
+<li>Fail the documentation build if the expected projected terms are absent from
+the generated WebVOWL data.</li>
+<li>Never use the projection as compiler input or requirement provenance.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>WebVOWL connects <code>GetArticleEndpoint</code>, <code>ArticlesTable</code>, and <code>Article</code> while
+preserving the semantics of the executable specs.</li>
+<li>The same resource IRIs appear as instances in the source graph and classes in
+the derived graph (OWL punning). This is limited to disposable documentation.</li>
+<li>A shape used by a projected relation must have exactly one <code>sh:targetClass</code>;
+ambiguity stops publication instead of inventing a target.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Change the product specs so endpoints and tables are OWL classes. Rejected
+because visualization needs should not distort the executable domain model.</li>
+<li>Teach WebVOWL to render SHACL and arbitrary instance edges. Rejected because
+it would require maintaining a custom WebVOWL fork.</li>
+<li>Show only <code>Article</code>. Rejected because it hides the product relationships the
+example is intended to explain.</li>
+</ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,564 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KfW 458 applicant eligibility API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/eligibility-decisions": {
+      "post": {
+        "x-spec-compiler-binding": {
+          "invokes_contract": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision",
+          "request_pointer": "",
+          "success_status": 200,
+          "result_pointer": "",
+          "invalid_status": 400,
+          "error_pointer": "/error"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "not": {
+                  "required": [
+                    "rule_set_version"
+                  ]
+                },
+                "properties": {
+                  "case": {
+                    "properties": {
+                      "applicant": {
+                        "properties": {
+                          "claimsClimateOrIncomeBonus": {
+                            "type": "boolean"
+                          },
+                          "hasUsufructRight": {
+                            "type": "boolean"
+                          },
+                          "naturalPerson": {
+                            "type": "boolean"
+                          },
+                          "owner": {
+                            "type": "boolean"
+                          },
+                          "ownershipViaGbR": {
+                            "type": "boolean"
+                          },
+                          "selfUsesResidentialProperty": {
+                            "type": "boolean"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "project": {
+                        "properties": {
+                          "buildingInGermany": {
+                            "type": "boolean"
+                          },
+                          "existingResidentialBuilding": {
+                            "type": "boolean"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "decision_contract": {
+                    "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision",
+                    "type": "string"
+                  },
+                  "decision_date": {
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "evidence": {
+                    "items": {
+                      "properties": {
+                        "assessments": {
+                          "items": {
+                            "properties": {
+                              "accepted": {
+                                "type": "boolean"
+                              },
+                              "evidence_requirement": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "evidence_requirement",
+                              "accepted"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "evidence_type": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "id": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "evidence_type",
+                        "assessments"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "rule_set": {
+                    "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision_contract",
+                  "rule_set",
+                  "decision_date"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Decision Result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "condition_evaluations": {
+                      "items": {
+                        "properties": {
+                          "condition": {
+                            "type": "string"
+                          },
+                          "rule": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "enum": [
+                              "satisfied",
+                              "violated",
+                              "unknown"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "condition",
+                          "state"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "decision_contract": {
+                      "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityDecision",
+                      "type": "string"
+                    },
+                    "decision_date": {
+                      "format": "date",
+                      "type": "string"
+                    },
+                    "decisive_rules": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "evidence_requirement_evaluations": {
+                      "items": {
+                        "properties": {
+                          "applicability_conditions": {
+                            "items": {
+                              "properties": {
+                                "condition": {
+                                  "type": "string"
+                                },
+                                "state": {
+                                  "enum": [
+                                    "satisfied",
+                                    "violated",
+                                    "unknown"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "condition",
+                                "state"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "evidence_requirement": {
+                            "type": "string"
+                          },
+                          "explanation": {
+                            "type": "string"
+                          },
+                          "provenance": {
+                            "properties": {
+                              "source_citation": {
+                                "type": "string"
+                              },
+                              "source_locator": {
+                                "type": "string"
+                              },
+                              "source_revision": {
+                                "type": "string"
+                              },
+                              "source_statement": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "source_citation",
+                              "source_revision",
+                              "source_locator",
+                              "source_statement"
+                            ],
+                            "type": "object"
+                          },
+                          "required_evidence_type": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "fulfilled",
+                              "missing",
+                              "not_applicable"
+                            ],
+                            "type": "string"
+                          },
+                          "supplied_evidence": {
+                            "items": {
+                              "properties": {
+                                "classification": {
+                                  "enum": [
+                                    "accepted",
+                                    "rejected",
+                                    "unassessed",
+                                    "not_relevant"
+                                  ],
+                                  "type": "string"
+                                },
+                                "evidence": {
+                                  "type": "string"
+                                },
+                                "evidence_type": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "evidence",
+                                "evidence_type",
+                                "classification"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "supports_condition": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "evidence_requirement",
+                          "supports_condition",
+                          "required_evidence_type",
+                          "applicability_conditions",
+                          "status",
+                          "supplied_evidence",
+                          "provenance",
+                          "explanation"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "explanation": {
+                      "type": "string"
+                    },
+                    "fact_gaps": {
+                      "items": {
+                        "properties": {
+                          "condition": {
+                            "type": "string"
+                          },
+                          "fact_property": {
+                            "type": "string"
+                          },
+                          "input_json_pointer": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "condition",
+                          "fact_property",
+                          "input_json_pointer"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "next_question": {
+                      "properties": {
+                        "answer_schema": {
+                          "properties": {
+                            "type": {
+                              "const": "boolean",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "type"
+                          ],
+                          "type": "object"
+                        },
+                        "condition": {
+                          "type": "string"
+                        },
+                        "fact_property": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "input_json_pointer": {
+                          "type": "string"
+                        },
+                        "justification": {
+                          "properties": {
+                            "rule": {
+                              "type": "string"
+                            },
+                            "source_citation": {
+                              "type": "string"
+                            },
+                            "source_locator": {
+                              "type": "string"
+                            },
+                            "source_revision": {
+                              "type": "string"
+                            },
+                            "source_statement": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "rule",
+                            "source_citation",
+                            "source_revision",
+                            "source_locator",
+                            "source_statement"
+                          ],
+                          "type": "object"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text",
+                        "condition",
+                        "fact_property",
+                        "input_json_pointer",
+                        "answer_schema",
+                        "justification"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    },
+                    "obligation_evaluations": {
+                      "items": {
+                        "properties": {
+                          "condition": {
+                            "type": "string"
+                          },
+                          "explanation": {
+                            "type": "string"
+                          },
+                          "obligation": {
+                            "type": "string"
+                          },
+                          "provenance": {
+                            "properties": {
+                              "source_citation": {
+                                "type": "string"
+                              },
+                              "source_locator": {
+                                "type": "string"
+                              },
+                              "source_revision": {
+                                "type": "string"
+                              },
+                              "source_statement": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "source_citation",
+                              "source_revision",
+                              "source_locator",
+                              "source_statement"
+                            ],
+                            "type": "object"
+                          },
+                          "rule": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "fulfilled",
+                              "violated",
+                              "unknown"
+                            ],
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "obligation",
+                          "text",
+                          "rule",
+                          "condition",
+                          "status",
+                          "provenance",
+                          "explanation"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "outcome": {
+                      "enum": [
+                        "eligible",
+                        "ineligible",
+                        "unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "outcome_id": {
+                      "enum": [
+                        "https://arturmiller.github.io/spec-compiler/ontology/funding/#Eligible",
+                        "https://arturmiller.github.io/spec-compiler/ontology/funding/#Ineligible",
+                        "https://arturmiller.github.io/spec-compiler/ontology/funding/#Unknown"
+                      ],
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "items": {
+                        "properties": {
+                          "rule": {
+                            "type": "string"
+                          },
+                          "source_citation": {
+                            "type": "string"
+                          },
+                          "source_locator": {
+                            "type": "string"
+                          },
+                          "source_revision": {
+                            "type": "string"
+                          },
+                          "source_statement": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "rule",
+                          "source_citation",
+                          "source_revision",
+                          "source_locator",
+                          "source_statement"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "rule_set": {
+                      "const": "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules",
+                      "type": "string"
+                    },
+                    "rule_set_version": {
+                      "enum": [
+                        "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2025_12",
+                        "https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#ApplicantEligibilityRules2026_07"
+                      ],
+                      "type": "string"
+                    },
+                    "rule_set_version_label": {
+                      "enum": [
+                        "2025-12",
+                        "2026-07"
+                      ],
+                      "type": "string"
+                    },
+                    "scope_note": {
+                      "const": "This result covers only the modeled natural-person applicant-eligibility question for KfW product 458 at the supplied decision date. It does not assess the measure, calculate funding, provide advice, or represent a KfW commitment or approval.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "decision_contract",
+                    "rule_set",
+                    "rule_set_version",
+                    "rule_set_version_label",
+                    "decision_date",
+                    "outcome",
+                    "outcome_id",
+                    "condition_evaluations",
+                    "decisive_rules",
+                    "fact_gaps",
+                    "next_question",
+                    "evidence_requirement_evaluations",
+                    "obligation_evaluations",
+                    "provenance",
+                    "explanation",
+                    "scope_note"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Decision Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

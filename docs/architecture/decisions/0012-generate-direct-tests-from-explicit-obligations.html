@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0012: Generate direct tests from explicit obligations · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0012-generate-direct-tests-from-explicit-obligations.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0012-generate-direct-tests-from-explicit-obligations">ADR 0012: Generate direct tests from explicit obligations</h1>
+<h2 id="status">Status</h2>
+<p>Accepted. Refines the shared intermediate-model decision in
+<a href="0004-common-contract-model-and-work-graph.html">ADR 0004</a>.</p>
+<h2 id="context">Context</h2>
+<p>The HTTP behavior test converted a JSON response into an artificial RDF graph
+and then invoked pySHACL with the authored specs. The conversion itself encoded
+JSON-to-RDF semantics and duplicated constraints already normalized by the
+compiler for OpenAPI, SQL, fixtures, and tests.</p>
+<p>The product-generation model deliberately follows an open-world principle:
+explicit statements constrain an implementation, while unspecified choices
+remain available to a coding agent. The internal representation should make
+that boundary visible and generated tests should exercise the real product
+interface directly.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Name the normalized shared representation <strong>Explicit Obligation Model</strong>.</li>
+<li>Keep SHACL as the current RDF input profile for datatypes, cardinalities,
+bounds, string lengths, and explicit closure.</li>
+<li>Generate direct JSON assertions for required fields, supported datatypes,
+declared bounds, and stored values.</li>
+<li>Permit optional fields to be absent and additional fields to exist unless the
+Shape explicitly declares <code>sh:closed true</code>.</li>
+<li>Generate negative harness tests showing that each declared constraint rejects
+a representative invalid payload.</li>
+<li>Remove JSON-to-RDF conversion and pySHACL from generated product tests and
+from development dependencies.</li>
+<li>Keep product tests black-box: products do not import or depend on RDF, SHACL,
+or the compiler implementation.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Test behavior follows only normalized, traceable obligations and makes the
+open/closed boundary explicit.</li>
+<li>SHACL remains useful and interoperable as an authoring language without
+becoming a product-runtime dependency.</li>
+<li>The harness no longer risks validating a mistaken RDF interpretation instead
+of the actual JSON response.</li>
+<li>pySHACL may be reintroduced later as a compiler-frontend conformance oracle or
+for a product whose observable interface is genuinely RDF, but it is not part
+of the current product verification path.</li>
+<li>The untyped dictionary remains technical debt; the new name clarifies its
+invariant before a future typed representation is introduced.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Continue validating reconstructed RDF with pySHACL. Rejected because the
+reconstructed graph is not the observable product interface.</li>
+<li>Generate Pydantic models. Rejected because the product should receive tests,
+not a Python implementation constraint or generated application model.</li>
+<li>Replace SHACL with a custom constraint vocabulary. Rejected because the
+supported SHACL subset already expresses the required authoring semantics.</li>
+</ul>
+</main>
+</body>
+</html>

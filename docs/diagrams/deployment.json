@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Entwicklung, CI und statische Veröffentlichung",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Lokaler Host oder Prozess"
+        },
+        "cloud": {
+          "label": "CI Runner"
+        },
+        "external": {
+          "label": "Externes Veröffentlichungssystem"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "local",
+      "type": "backend",
+      "label": "Development Host",
+      "sublabel": "Windows / Linux · uv, Python und Node",
+      "pos": [
+        40,
+        100
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "cloud",
+      "label": "GitHub Actions Runner",
+      "sublabel": "Linux · baut und prüft dieselben Quellen",
+      "pos": [
+        740,
+        100
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "preview",
+      "type": "backend",
+      "label": "Documentation Preview Server",
+      "sublabel": "Loopback HTTP · Watch und Last-Good-Reload",
+      "pos": [
+        40,
+        450
+      ],
+      "size": [
+        310,
+        80
+      ]
+    },
+    {
+      "id": "pages",
+      "type": "external",
+      "label": "GitHub Pages",
+      "sublabel": "Statisches HTTPS · kein Python-Backend",
+      "pos": [
+        740,
+        450
+      ],
+      "size": [
+        310,
+        80
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "git",
+      "from": "local",
+      "to": "actions",
+      "label": "Git-Push oder Pull Request"
+    },
+    {
+      "id": "serve",
+      "from": "local",
+      "to": "preview",
+      "label": "poe documentation-preview",
+      "labelDy": 24
+    },
+    {
+      "id": "publish",
+      "from": "actions",
+      "to": "pages",
+      "label": "validiertes Site-Artefakt · nur main",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Gleicher Build",
+      "items": [
+        "Lokal und in CI komponiert der Documentation Site Builder dieselbe Website.",
+        "Nur der lokale Server ergänzt Live-Reload und Fehlerstatus."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Keine Veröffentlichung beim Speichern",
+      "items": [
+        "Quick Builds verwenden bestehende WIDOCO-Referenzen weiter.",
+        "Änderungen werden erst durch einen expliziten Push veröffentlicht."
+      ]
+    }
+  ]
+}

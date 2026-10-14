@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR 0003: Separate the toolchain from Product Bundles · Spec Compiler</title>
+<meta name="doc-route" content="decisions/0003-separate-toolchain-and-product-bundles.html">
+<link rel="stylesheet" href="../../assets/site.css">
+<script src="../../assets/site.js" defer></script>
+</head>
+<body>
+<main id="content" class="doc-content">
+<aside class="callout"><p>Historischer Entscheidungsdatensatz. Originaltext und damaliger Status sind erhalten. Aktuelle, ablösende Entscheidungen stehen im <a href="index.html">ADR-Register</a>.</p></aside>
+<h1 id="adr-0003-separate-the-toolchain-from-product-bundles">ADR 0003: Separate the toolchain from Product Bundles</h1>
+<h2 id="status">Status</h2>
+<p>Accepted.</p>
+<h2 id="context">Context</h2>
+<p>Generated products, their specs, tests, dependencies, and implementation choices
+must not become dependencies or source structure of the compiler itself. The
+repository also needs one inspectable example without committing every future
+generated product.</p>
+<h2 id="decision">Decision</h2>
+<ul>
+<li>Tool code lives under <code>tools/</code> with the root <code>pyproject.toml</code> and <code>uv.lock</code>.</li>
+<li>Every product lives in a self-contained <code>products/&lt;name&gt;/</code> Product Bundle.</li>
+<li>A Product Bundle owns its specs, runtime manifest, generated contracts, tests,
+implementation, dependency manifest, and lockfile.</li>
+<li>Git ignores products by default and explicitly includes only
+<code>products/sql_api_example/</code> as the reference bundle.</li>
+<li><code>sql_api_example</code> may use Python and FastAPI, but those choices are not
+described as toolchain or product-contract requirements.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<ul>
+<li>Product dependencies do not leak into the root tool environment.</li>
+<li>A Product Bundle is portable as one artifact boundary.</li>
+<li>The compiler accepts <code>--product products/&lt;name&gt;</code> rather than importing a fixed
+product package.</li>
+<li>Repository tooling needs explicit paths for the versioned reference product.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered</h2>
+<ul>
+<li>Keep one root-level <code>product/</code>, <code>specs/</code>, <code>tests/</code>, and <code>generated/</code>. Rejected
+because multiple products would mix their inputs and outputs.</li>
+<li>Commit every generated product. Rejected because products are outputs; only one
+reference example is needed to explain and test the toolchain.</li>
+</ul>
+</main>
+</body>
+</html>
