@@ -7,7 +7,7 @@
     "quality_profile": "showcase",
     "viewBox": [
       1080,
-      640
+      720
     ],
     "legend": {
       "entries": {
@@ -50,7 +50,17 @@
       "label": "Case",
       "sublabel": "Facts und Decision Date",
       "lane": "main",
-      "col": 0
+      "col": 0,
+      "summary": "Liefert Fakten und Datum. Begrenzt den Sachverhalt.",
+      "description": "Der Case bezeichnet den ausdrücklich betrachteten Sachverhalt und seine gelieferten Fakten. Der Request enthält außerdem Vertrag, Regelmenge und Datum. Fehlende Eingaben werden nicht in falsche Fakten umgewandelt. Die Ansicht zeigt einen unabhängigen Aufruf, keine Session.",
+      "links": [
+        {
+          "label": "Zum Glossar: Case",
+          "href": "../reference/glossary.html#case"
+        }
+      ],
+      "width": 118,
+      "height": 116
     },
     {
       "id": "evaluate",
@@ -58,7 +68,17 @@
       "label": "Auswertung",
       "sublabel": "Version und Conditions",
       "lane": "main",
-      "col": 3
+      "col": 3,
+      "summary": "Wählt die gültige Version. Bewertet ihre Bedingungen.",
+      "description": "Das Produkt wählt die Regelversion nur aus explizitem Datum und Gültigkeitszeiträumen. Die Bedingungen werden als erfüllt, verletzt oder unbekannt bewertet. Daraus folgt der fachliche Outcome nach der benannten Konvention. Evidence und Pflichten verändern diese Wahrheit nicht.",
+      "links": [
+        {
+          "label": "Zum Glossar: Decision",
+          "href": "../reference/glossary.html#decision"
+        }
+      ],
+      "width": 118,
+      "height": 116
     },
     {
       "id": "unknown",
@@ -66,7 +86,17 @@
       "label": "unknown",
       "sublabel": "Facts fehlen",
       "lane": "terminal",
-      "col": 0
+      "col": 0,
+      "summary": "Fakten fehlen. Der Ausgang bleibt undeterminiert.",
+      "description": "Dieser Outcome bedeutet, dass die vorhandenen Fakten keinen eindeutigen Ausgang begründen. Nur hier kann eine priorisierte nächste Frage für eine aktuelle Lücke ausgegeben werden. Der Client ergänzt Fakten und sendet einen neuen vollständigen Request. unknown ist kein als dritter Faktenwert gespeicherter Eintrag.",
+      "links": [
+        {
+          "label": "Zum Glossar: Fact Gap",
+          "href": "../reference/glossary.html#fact-gap"
+        }
+      ],
+      "width": 118,
+      "height": 116
     },
     {
       "id": "negative",
@@ -74,7 +104,17 @@
       "label": "negative",
       "sublabel": "Bedingungen nicht erfüllt",
       "lane": "terminal",
-      "col": 1
+      "col": 1,
+      "summary": "Eine Bedingung ist verletzt. Der Ausgang ist negativ.",
+      "description": "Unter der unterstützten All-Rules-Konvention genügt eine verletzte Bedingung für den negativen fachlichen Ausgang. Andere Fakten können trotzdem fehlen. Ein determiniertes Ergebnis trägt keine nächste Frage. Der konkrete Outcome-Code stammt aus der jeweiligen Spec.",
+      "links": [
+        {
+          "label": "Zum Glossar: Decision Outcome",
+          "href": "../reference/glossary.html#decision-outcome"
+        }
+      ],
+      "width": 118,
+      "height": 116
     },
     {
       "id": "positive",
@@ -82,7 +122,17 @@
       "label": "positive",
       "sublabel": "Bedingungen erfüllt",
       "lane": "terminal",
-      "col": 2
+      "col": 2,
+      "summary": "Die Bedingungen sind erfüllt. Der Ausgang ist positiv.",
+      "description": "Der positive fachliche Ausgang folgt aus allen benötigten erfüllten Bedingungen. Er gilt nur für die ausdrücklich begrenzte modellierte Frage. Evidence-Anforderungen können unabhängig davon unerfüllt sein. Er ist keine allgemeine Förderzusage oder Sicherheitsgarantie.",
+      "links": [
+        {
+          "label": "Zum Glossar: Decision Outcome",
+          "href": "../reference/glossary.html#decision-outcome"
+        }
+      ],
+      "width": 118,
+      "height": 116
     }
   ],
   "transitions": [
@@ -114,24 +164,6 @@
       "to": "positive",
       "label": "true",
       "route": "drop"
-    }
-  ],
-  "cards": [
-    {
-      "dot": "cyan",
-      "title": "Keine serverseitige Sitzung",
-      "items": [
-        "Der Client ergänzt Facts und sendet einen neuen vollständigen Case.",
-        "Jeder Aufruf liefert genau ein Decision Result."
-      ]
-    },
-    {
-      "dot": "violet",
-      "title": "Keine Obligation-Lifecycle-Engine",
-      "items": [
-        "Evidence und Obligations werden unabhängig vom Outcome ausgewertet.",
-        "Remediation, Dokumentenspeicherung und Session-Verwaltung sind nicht implementiert."
-      ]
     }
   ]
 }

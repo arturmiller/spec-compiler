@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "Spec Compiler – Container und Datenspeicher",
+    "title": "Spec Compiler – Kompilierung und Produktprüfung",
     "locale": "de",
     "quality_profile": "showcase",
     "legend": {
@@ -31,13 +31,21 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Liest und validiert Specs. Erzeugt Vertragsartefakte.",
+      "description": "Die CLI erhält den Pfad zu einem Product Bundle und liest dessen sortierte Turtle-Dateien. Das erklärte Protokoll wählt den unterstützten Reader und die gemeinsame interne Darstellung. Deterministische Renderer schreiben Verträge, Tests und Arbeitsaufträge. Die Produktimplementierung wird dabei nicht gestartet oder als Quelle zusätzlicher Anforderungen benutzt.",
+      "links": [
+        {
+          "label": "Zum Glossar: Spec Compiler",
+          "href": "../reference/glossary.html#spec-compiler"
+        }
       ]
     },
     {
       "id": "workspace",
       "type": "database",
-      "label": "Product Workspace",
+      "label": "Product Bundle",
       "sublabel": "Data Store · Dateisystem · Specs und Artefakte",
       "pos": [
         740,
@@ -45,7 +53,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Enthält Specs und Manifest. Nimmt die Ausgaben auf.",
+      "description": "Das Product Bundle ist die statische Dateigrenze eines Produkts. Darin liegen Specs, Startmanifest und selbst gewählte Implementierung sowie später die erzeugten Verträge und Nachweise. Der Compiler liest und schreibt diese Dateien; der Harness benutzt das Manifest als Prozessgrenze. Das Verzeichnis ist kein eigener laufender Dienst.",
+      "links": [
+        {
+          "label": "Zum Glossar: Product Bundle",
+          "href": "../reference/glossary.html#product-bundle"
+        }
       ]
     },
     {
@@ -59,7 +75,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Startet Produkte separat. Prüft ihr äußeres Verhalten.",
+      "description": "Der Contract Verification Harness führt die generierten Nachweise als Black-Box-Prüfungen aus. Manifeste liefern Startbefehle, Arbeitsverzeichnisse und die passenden Protokollangaben. Der Harness beobachtet Antworten, Exitstatus und deklarierte Dateien und beendet danach den vollständigen Prozessbaum. Er importiert keine Produktimplementierung.",
+      "links": [
+        {
+          "label": "Zum Glossar: Contract Verification Harness",
+          "href": "../reference/glossary.html#contract-verification-harness"
+        }
       ]
     },
     {
@@ -73,46 +97,25 @@
       ],
       "size": [
         310,
-        80
-      ]
-    },
-    {
-      "id": "builder",
-      "type": "backend",
-      "label": "Documentation Site Builder",
-      "sublabel": "Container · Python / Node / Java · baut HTML",
-      "pos": [
-        80,
-        500
+        124
       ],
-      "size": [
-        310,
-        80
-      ]
-    },
-    {
-      "id": "sources",
-      "type": "database",
-      "label": "Documentation Sources",
-      "sublabel": "Data Store · HTML, Archify JSON, Turtle",
-      "pos": [
-        740,
-        500
-      ],
-      "size": [
-        310,
-        80
+      "summary": "Erfüllt den Vertrag. Wird nur von außen geprüft.",
+      "description": "Das Produkt ist ein getrenntes Software System mit selbst gewählter Implementierungstechnologie. Der Harness startet es über das Manifest und beobachtet ausschließlich das deklarierte Protokoll. Seine Eingaben und Ergebnisse müssen den ausdrücklich beschriebenen Verpflichtungen entsprechen. Interne Module werden nicht importiert.",
+      "links": [
+        {
+          "label": "Zum Glossar: Generated Product",
+          "href": "../reference/glossary.html#generated-product"
+        }
       ]
     }
   ],
   "boundaries": [
     {
       "kind": "region",
-      "label": "Software System: Spec Compiler",
+      "label": "Scope: Compiler und Produktprüfung",
       "wraps": [
         "compiler",
-        "harness",
-        "builder"
+        "harness"
       ],
       "pad": 30
     }
@@ -138,12 +141,6 @@
       "to": "compiler",
       "label": "Compiler Protocol v1",
       "labelDy": -24
-    },
-    {
-      "id": "docs",
-      "from": "builder",
-      "to": "sources",
-      "label": "liest Quellen und rendert die Website"
     }
   ],
   "cards": [
@@ -151,24 +148,8 @@
       "dot": "cyan",
       "title": "Dateien sind keine Anwendungen",
       "items": [
-        "Product Workspace und Self-Description Bundle sind statische Datenspeicher.",
+        "Product Bundle und Self-Description Bundle sind statische Datenspeicher.",
         "Der Harness lädt Manifeste und generierte Nachweise aus dem Workspace."
-      ]
-    },
-    {
-      "dot": "emerald",
-      "title": "Dokumentationspipeline",
-      "items": [
-        "Archify rendert JSON, WIDOCO die vier RDF-Vokabulare.",
-        "Cytoscape.js zeigt vier Ontologien und den separaten SQL-API-Graph."
-      ]
-    },
-    {
-      "dot": "violet",
-      "title": "Externe Veröffentlichung",
-      "items": [
-        "GitHub Actions übergibt das Site-Artefakt an GitHub Pages.",
-        "Poe orchestriert Befehle und ist kein eigener Container."
       ]
     }
   ]

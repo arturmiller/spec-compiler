@@ -31,7 +31,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Startet Produkte separat. Prüft ihr äußeres Verhalten.",
+      "description": "Der Contract Verification Harness führt die generierten Nachweise als Black-Box-Prüfungen aus. Manifeste liefern Startbefehle, Arbeitsverzeichnisse und die passenden Protokollangaben. Der Harness beobachtet Antworten, Exitstatus und deklarierte Dateien und beendet danach den vollständigen Prozessbaum. Er importiert keine Produktimplementierung.",
+      "links": [
+        {
+          "label": "Zum Glossar: Contract Verification Harness",
+          "href": "../reference/glossary.html#contract-verification-harness"
+        }
       ]
     },
     {
@@ -45,7 +53,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Läuft als separater Prozess. Antwortet am erklärten Interface.",
+      "description": "Die Runtime implementiert das vertraglich verlangte Verhalten am äußeren Interface. Das Manifest sagt dem Harness, wie sie gestartet und begrenzt wird. Im SQL-Beispiel handelt es sich um eine FastAPI-Implementierung mit SQLite; diese Technologie ist keine allgemeine Produktanforderung. Die Tests importieren keinen Produktcode.",
+      "links": [
+        {
+          "label": "Zum Glossar: Product Runtime",
+          "href": "../reference/glossary.html#product-runtime"
+        }
       ]
     },
     {
@@ -59,7 +75,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Speichert die erklärten Daten. Wird im SQL-Profil geprüft.",
+      "description": "Dieser Datenspeicher ist ausdrücklich Teil des SQL-Beispielvertrags. Der Harness prüft das deklarierte SQLite-Schema, schreibt gültige Fixtures und beobachtet den passenden HTTP-Abruf. Andere Compilerprofile verlangen diesen direkten Datenbankzugriff nicht. Die Tabelle wird nicht aus einer bloßen Beispielimplementierung zur universellen Pflicht gemacht.",
+      "links": [
+        {
+          "label": "Zum Glossar: Vertrag",
+          "href": "../reference/glossary.html#contract"
+        }
       ]
     }
   ],
@@ -95,13 +119,7 @@
       "to": "storage",
       "label": "prüft Schema und schreibt Fixture",
       "fromSide": "bottom",
-      "toSide": "left",
-      "via": [
-        [
-          195,
-          460
-        ]
-      ]
+      "toSide": "left"
     }
   ],
   "cards": [

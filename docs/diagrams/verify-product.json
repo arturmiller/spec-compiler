@@ -1,26 +1,141 @@
 {
-  "schema_version": 1, "diagram_type": "sequence",
-  "meta": {"title": "Ein Produkt als Black Box prüfen", "locale": "de", "quality_profile": "showcase", "column_fit": "spread", "viewBox": [1080, 704]},
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "SQL-Beispiel: HTTP, OpenAPI und SQLite prüfen",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      780
+    ]
+  },
   "participants": [
-    {"id": "harness", "type": "backend", "label": "Verification Harness", "sublabel": "Contract Verification Harness"},
-    {"id": "manifest", "type": "database", "label": "product.toml", "sublabel": "Runtime Protocol v1"},
-    {"id": "product", "type": "external", "label": "Product Runtime", "sublabel": "separater Prozess"},
-    {"id": "storage", "type": "database", "label": "Contracted Data Store", "sublabel": "explizit verlangtes SQLite"}
+    {
+      "id": "harness",
+      "type": "backend",
+      "label": "Prüfwerkzeug",
+      "sublabel": "Contract Verification Harness · pytest",
+      "summary": "Startet Produkte separat. Prüft ihr äußeres Verhalten.",
+      "description": "Der Contract Verification Harness führt die generierten Nachweise als Black-Box-Prüfungen aus. Manifeste liefern Startbefehle, Arbeitsverzeichnisse und die passenden Protokollangaben. Der Harness beobachtet Antworten, Exitstatus und deklarierte Dateien und beendet danach den vollständigen Prozessbaum. Er importiert keine Produktimplementierung.",
+      "links": [
+        {
+          "label": "Zum Glossar: Contract Verification Harness",
+          "href": "../reference/glossary.html#contract-verification-harness"
+        }
+      ]
+    },
+    {
+      "id": "manifest",
+      "type": "database",
+      "label": "product.toml",
+      "sublabel": "Runtime Protocol v1",
+      "summary": "Benennt den Startbefehl. Erklärt die Protokollgrenze.",
+      "description": "Das statische Manifest gehört zum Produkt und benennt Befehl, Arbeitsverzeichnis und protokollabhängige Angaben. Der Harness ersetzt nur die unterstützten Platzhalter und startet daraus einen separaten Prozess. Das Manifest ist kein eigener Container. Seine lokalen Befehle setzen eine vertrauenswürdige Umgebung voraus.",
+      "links": [
+        {
+          "label": "Zum Glossar: Product Bundle",
+          "href": "../reference/glossary.html#product-bundle"
+        }
+      ]
+    },
+    {
+      "id": "product",
+      "type": "external",
+      "label": "Product Runtime",
+      "sublabel": "separater Prozess",
+      "summary": "Läuft als separater Prozess. Antwortet am erklärten Interface.",
+      "description": "Die Runtime implementiert das vertraglich verlangte Verhalten am äußeren Interface. Das Manifest sagt dem Harness, wie sie gestartet und begrenzt wird. Im SQL-Beispiel handelt es sich um eine FastAPI-Implementierung mit SQLite; diese Technologie ist keine allgemeine Produktanforderung. Die Tests importieren keinen Produktcode.",
+      "links": [
+        {
+          "label": "Zum Glossar: Product Runtime",
+          "href": "../reference/glossary.html#product-runtime"
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "type": "database",
+      "label": "Contracted Data Store",
+      "sublabel": "explizit verlangtes SQLite",
+      "summary": "Speichert die erklärten Daten. Wird im SQL-Profil geprüft.",
+      "description": "Dieser Datenspeicher ist ausdrücklich Teil des SQL-Beispielvertrags. Der Harness prüft das deklarierte SQLite-Schema, schreibt gültige Fixtures und beobachtet den passenden HTTP-Abruf. Andere Compilerprofile verlangen diesen direkten Datenbankzugriff nicht. Die Tabelle wird nicht aus einer bloßen Beispielimplementierung zur universellen Pflicht gemacht.",
+      "links": [
+        {
+          "label": "Zum Glossar: Vertrag",
+          "href": "../reference/glossary.html#contract"
+        }
+      ]
+    }
   ],
   "messages": [
-    {"id": "manifest", "from": "harness", "to": "manifest", "y": 170, "label": "Adapter lesen"},
-    {"id": "start-runtime", "from": "harness", "to": "product", "y": 220, "label": "mit Host, Port und DB-Pfad starten", "variant": "emphasis"},
-    {"id": "initialize", "from": "product", "to": "storage", "y": 270, "label": "Schema initialisieren"},
-    {"id": "ready", "from": "harness", "to": "product", "y": 320, "label": "GET openapi_path"},
-    {"id": "openapi", "from": "product", "to": "harness", "y": 370, "label": "200 + OpenAPI 3.1", "variant": "return"},
-    {"id": "fixture", "from": "harness", "to": "storage", "y": 430, "label": "Schema prüfen und Fixture schreiben"},
-    {"id": "request", "from": "harness", "to": "product", "y": 490, "label": "GET deklarierte Ressource", "variant": "emphasis"},
-    {"id": "response", "from": "product", "to": "harness", "y": 550, "label": "deklarierte JSON-Antwort", "variant": "return"},
-    {"id": "stop", "from": "harness", "to": "product", "y": 620, "label": "vollständigen Prozessbaum beenden"}
-  ],
-  "cards": [
-    {"dot": "cyan", "title": "Beobachtbare Schnittstelle", "items": ["Der Harness prüft vollständiges OpenAPI und den geforderten Vertragsausschnitt.", "Er importiert keine Produktimplementierung."]},
-    {"dot": "emerald", "title": "Explizite Speicherung", "items": ["Direkter SQLite-Zugriff gehört nur zum deklarierten SQL-Profil.", "Response-Felder werden aus den Shape-Verpflichtungen geprüft."]},
-    {"dot": "rose", "title": "Lebenszyklus", "items": ["Manifest und Protokoll bestimmen Start und Bereitschaft.", "Nach Erfolg und Fehler werden auch Kindprozesse beendet."]}
+    {
+      "id": "manifest",
+      "from": "harness",
+      "to": "manifest",
+      "y": 246,
+      "label": "Adapter lesen"
+    },
+    {
+      "id": "start-runtime",
+      "from": "harness",
+      "to": "product",
+      "y": 296,
+      "label": "mit Host, Port und DB-Pfad starten",
+      "variant": "emphasis"
+    },
+    {
+      "id": "initialize",
+      "from": "product",
+      "to": "storage",
+      "y": 346,
+      "label": "Schema initialisieren"
+    },
+    {
+      "id": "ready",
+      "from": "harness",
+      "to": "product",
+      "y": 396,
+      "label": "GET openapi_path"
+    },
+    {
+      "id": "openapi",
+      "from": "product",
+      "to": "harness",
+      "y": 446,
+      "label": "200 + OpenAPI 3.1",
+      "variant": "return"
+    },
+    {
+      "id": "fixture",
+      "from": "harness",
+      "to": "storage",
+      "y": 506,
+      "label": "Schema prüfen und Fixture schreiben"
+    },
+    {
+      "id": "request",
+      "from": "harness",
+      "to": "product",
+      "y": 566,
+      "label": "GET deklarierte Ressource",
+      "variant": "emphasis"
+    },
+    {
+      "id": "response",
+      "from": "product",
+      "to": "harness",
+      "y": 626,
+      "label": "deklarierte JSON-Antwort",
+      "variant": "return"
+    },
+    {
+      "id": "stop",
+      "from": "harness",
+      "to": "product",
+      "y": 696,
+      "label": "vollständigen Prozessbaum beenden"
+    }
   ]
 }

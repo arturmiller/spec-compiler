@@ -31,7 +31,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Baut und prüft lokal. Zeigt die gespeicherten Quellen.",
+      "description": "Auf dem Entwicklungshost laufen Compiler, Tests und die unterstützenden Build-Werkzeuge. Die lokale Website-Vorschau verwendet denselben statischen Build wie CI und ergänzt nur Watch, Reload und Fehleranzeige. Speichern veröffentlicht nichts. Die Produktumgebungen bleiben von der Toolchain getrennt.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Preview Server",
+          "href": "../reference/glossary.html#documentation-preview-server"
+        }
       ]
     },
     {
@@ -45,7 +53,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Prüft den Workflow. Baut das Website-Artefakt.",
+      "description": "Der CI-Runner führt den Repository-Workflow und den statischen Dokumentationsbuild aus. Dabei werden Specs, Links, Diagramme und Nachweise geprüft. Ein Pull Request baut ohne Deployment; main veröffentlicht das akzeptierte Artefakt. Das ist Website-Infrastruktur, keine Produktruntime.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Site Builder",
+          "href": "../reference/glossary.html#documentation-site-builder"
+        }
       ]
     },
     {
@@ -59,7 +75,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Beobachtet gespeicherte Quellen. Zeigt den letzten gültigen Build.",
+      "description": "Der lokale Loopback-Server verwendet den Documentation Site Builder. Er beobachtet HTML-, JSON- und RDF-Quellen und baut nach gespeicherten Änderungen neu. Fehler werden angezeigt, ohne einen ungültigen Kandidaten zu veröffentlichen. Er pusht keine Dateien und betreibt kein Produktbackend.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Preview Server",
+          "href": "../reference/glossary.html#documentation-preview-server"
+        }
       ]
     },
     {
@@ -73,7 +97,15 @@
       ],
       "size": [
         310,
-        80
+        124
+      ],
+      "summary": "Liefert die statische Website. Betreibt kein Produktbackend.",
+      "description": "GitHub Pages stellt den geprüften HTML-/JavaScript-/RDF-Build per HTTPS bereit. Die Quelle bleibt im Repository und wird durch GitHub Actions gebaut. Hier laufen weder der Compiler noch die Beispielprodukte als Backend. RDF-Dateien haben ausdrückliche URLs; es gibt keine Inhaltsaushandlung oder SPARQL-Runtime.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Website",
+          "href": "../reference/glossary.html#documentation-website"
+        }
       ]
     }
   ],
@@ -112,7 +144,7 @@
       "dot": "emerald",
       "title": "Keine Veröffentlichung beim Speichern",
       "items": [
-        "Quick Builds verwenden bestehende WIDOCO-Referenzen weiter.",
+        "Jeder Build erneuert auch die RDF-Referenzen.",
         "Änderungen werden erst durch einen expliziten Push veröffentlicht."
       ]
     }

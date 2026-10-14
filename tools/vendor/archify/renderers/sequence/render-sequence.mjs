@@ -1,3 +1,4 @@
+import { renderSummary, explanationMetadata } from '../shared/node-explanation.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { esc, renderDefinitions, renderSemanticSigil, textUnits } from '../shared/utils.mjs';
@@ -41,8 +42,8 @@ const colGap = columnFit === 'spread' && participantCount > 1
 const layout = {
   topY: 72,
   participantW,
-  participantH: 54,
-  lifelineTop: 142,
+  participantH: asArray(sequence.participants).some(p => p.summary) ? 112 : 54,
+  lifelineTop: asArray(sequence.participants).some(p => p.summary) ? 200 : 142,
   lifelineBottom: viewBox[1] - 65,
   legendY: viewBox[1] - 54,
   leftX: columnFit === 'spread' ? sideMargin + participantW / 2 : sideMargin,
@@ -318,6 +319,7 @@ function renderParticipant(participant) {
   const brand = renderBrandMark(participant, { x: participant.x + layout.participantW - 22, y: layout.topY + 6 });
   const labelFontSize = fittedNodeFontSize(participant.label, brandLabelFitWidth(participant, layout.participantW), 11, 8);
   const passport = {
+    ...explanationMetadata(participant),
     kind: participant.type,
     sublabel: participant.sublabel,
     context: i18nText(sequence.meta.locale, 'node.context.sequence'),
@@ -328,7 +330,7 @@ function renderParticipant(participant) {
           <rect x="${participant.x}" y="${layout.topY}" width="${layout.participantW}" height="${layout.participantH}" rx="6" class="c-mask"/>
           <rect x="${participant.x}" y="${layout.topY}" width="${layout.participantW}" height="${layout.participantH}" rx="6" class="${fill}"${animateAttr(sequence.meta, 'node', participant.index)} stroke-width="1.5"/>
           ${renderSemanticSigil(participant.type, { x: participant.x + 6, y: layout.topY + 6 })}${brand ? `\n          ${brand}` : ''}
-          <text data-node-label=""${hasSub ? ' data-detail-anchor=""' : ''} x="${participant.cx}" y="${layout.topY + 22}" class="t-primary" font-size="${labelFontSize}" font-weight="600" text-anchor="middle">${esc(participant.label)}</text>${sub}
+          <text data-node-label=""${hasSub ? ' data-detail-anchor=""' : ''} x="${participant.cx}" y="${layout.topY + 22}" class="t-primary" font-size="${labelFontSize}" font-weight="600" text-anchor="middle">${esc(participant.label)}</text>${sub}${renderSummary(participant, participant.cx, layout.topY, layout.participantW, layout.participantH, 60)}
         </g>`;
 }
 

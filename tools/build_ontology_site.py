@@ -4,17 +4,18 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
-import hashlib
-import json
 from pathlib import Path
 import shutil
-import subprocess
-from urllib.request import urlopen
 
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
-from rdflib.namespace import DCTERMS, OWL, RDFS, SH
+from rdflib.namespace import OWL, RDFS, SH
 
-from ontology_relationship_graph import build_dataset, write_graph_site
+if __package__:
+    from .ontology_relationship_graph import build_dataset, write_graph_site
+    from .ontology_reference import turtle, write_reference
+else:
+    from ontology_relationship_graph import build_dataset, write_graph_site
+    from ontology_reference import turtle, write_reference
 
 
 ROOT = Path(__file__).parents[1]
@@ -29,14 +30,6 @@ DECISION_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "decision"
 FUNDING_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "funding"
 CLOUD_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "cloud"
 SQL_API_OUTPUT = OUTPUT / "examples" / "sql-api"
-CACHE = ROOT / ".cache" / "widoco"
-WIDOCO_VERSION = "1.4.25"
-WIDOCO_NAME = f"widoco-{WIDOCO_VERSION}-jar-with-dependencies_JDK-17.jar"
-WIDOCO_URL = (
-    "https://github.com/dgarijo/Widoco/releases/download/"
-    f"v{WIDOCO_VERSION}/{WIDOCO_NAME}"
-)
-WIDOCO_SHA256 = "be57a270fffb91e55810fa308717e704a44e2e7c027a3d68125a49da6c8b4e2b"
 ONTOLOGY_IRI = "https://arturmiller.github.io/spec-compiler/ontology/"
 VOCABULARY_IRI = ONTOLOGY_IRI + "#"
 SCO = Namespace(VOCABULARY_IRI)
@@ -92,35 +85,6 @@ def site_output(output: Path):
     finally:
         (OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT,
          FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT) = previous
-
-
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _widoco_jar(explicit: Path | None) -> Path:
-    if explicit is not None:
-        jar = explicit.resolve()
-    else:
-        jar = CACHE / WIDOCO_NAME
-        if not jar.exists():
-            jar.parent.mkdir(parents=True, exist_ok=True)
-            temporary = jar.with_suffix(".download")
-            with urlopen(WIDOCO_URL) as response, temporary.open("wb") as target:
-                shutil.copyfileobj(response, target)
-            temporary.replace(jar)
-    if not jar.is_file():
-        raise ValueError(f"WIDOCO JAR does not exist: {jar}")
-    actual_hash = _sha256(jar)
-    if actual_hash != WIDOCO_SHA256:
-        raise ValueError(
-            f"Unexpected WIDOCO SHA-256 for {jar}: {actual_hash}"
-        )
-    return jar
 
 
 def validate_publication_sources() -> None:
@@ -218,36 +182,6 @@ def _write_graph_redirect() -> None:
     )
 
 
-def _write_reference_index(
-    output: Path, *, title: str, landing_page: str, graph_key: str
-) -> None:
-    (output / "index.html").write_text(
-        f'''<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title} reference</title>
-  <style>body {{ font: 18px/1.55 system-ui, sans-serif; max-width: 46rem; margin: 5rem auto; padding: 0 1.5rem; }} li {{ margin: .7rem 0; }} a {{ color: #075fa8; }}</style>
-</head>
-<body>
-  <h1>{title} reference</h1>
-  <p>This document is the target of the public vocabulary namespace.</p>
-  <ul>
-    <li><a href="index-en.html">English reference</a></li>
-    <li><a href="index-de.html">Deutsche Referenz</a></li>
-    <li><a href="{landing_page}ontologies/?ontology={graph_key}">Ontology Relationship Graph</a></li>
-    <li><a href="webvowl/index.html">Earlier WebVOWL graph</a></li>
-    <li><a href="ontology.ttl">Turtle serialization</a></li>
-  </ul>
-  <p><a href="{landing_page}">Project documentation</a></p>
-</body>
-</html>
-''',
-        encoding="utf-8",
-    )
-
-
 def _publish_examples() -> None:
     examples = OUTPUT / "examples"
     examples.mkdir(parents=True, exist_ok=True)
@@ -257,6 +191,8 @@ def _publish_examples() -> None:
     }
     for spec_file in sorted((ROOT / "products").glob("*/specs/*.ttl")):
         product_name = spec_file.parents[1].name
+        if product_name not in RESOURCE_PUBLICATIONS:
+            continue
         destination = examples / f"{product_name}-{spec_file.name}"
         shutil.copy2(spec_file, destination)
         links.append(f'<li><a href="{destination.name}">{destination.name}</a></li>')
@@ -283,9 +219,7 @@ def _publish_examples() -> None:
                 f'<li><a href="{site_root_href}examples/{destination.name}">'
                 f"{destination.name}</a></li>"
             )
-        resource_graph.serialize(
-            destination=resource_root / "resources.ttl", format="turtle"
-        )
+        (resource_root / "resources.ttl").write_text(turtle(resource_graph), encoding="utf-8", newline="\n")
         visualization_link = (
             f'<a href="{site_root_href}ontologies/?ontology=sql-api">'
             "Ontology Relationship Graph</a> · "
@@ -303,29 +237,6 @@ def _publish_examples() -> None:
             + f'<a href="{site_root_href}">Back</a></p></body></html>\n',
             encoding="utf-8",
         )
-
-
-def _run_widoco(jar: Path, ontology: Path, output: Path) -> None:
-    subprocess.run(
-        [
-            "java",
-            "-jar",
-            str(jar),
-            "-ontFile",
-            str(ontology),
-            "-outFolder",
-            str(output.resolve()),
-            "-rewriteAll",
-            "-getOntologyMetadata",
-            "-includeAnnotationProperties",
-            "-lang",
-            "en-de",
-            "-webVowl",
-            "-noPlaceHolderText",
-        ],
-        cwd=ROOT,
-        check=True,
-    )
 
 
 def _single_target_class(graph: Graph, shape: URIRef) -> URIRef:
@@ -379,7 +290,7 @@ def _project_shape(graph: Graph, shape: URIRef) -> set[URIRef]:
 
 
 def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
-    """Project instance/SHACL relations into an OWL graph understood by WebVOWL."""
+    """Project explicit instance/SHACL relations for the Relationship Graph."""
     generated_terms: set[URIRef] = set()
     endpoints = set(graph.subjects(RDF.type, SCO.GetEndpoint))
     tables = set(graph.subjects(RDF.type, SCO.SqlTable))
@@ -441,64 +352,6 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
     return generated_terms
 
 
-def _build_sql_api_visualization(jar: Path) -> Graph:
-    graph = Graph()
-    for spec_file in sorted(
-        (ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")
-    ):
-        graph.parse(spec_file, format="turtle")
-    # WebVOWL uses the ontology IRI as its internal namespace. The projected
-    # classes retain their authored article:* IRIs, so use that resource base
-    # here and keep visualization-only edge IRIs in their separate namespace.
-    visualization_iri = URIRef(SQL_API_IRI)
-    graph.add((visualization_iri, RDF.type, OWL.Ontology))
-    graph.add(
-        (visualization_iri, DCTERMS.title, Literal("SQL API example", lang="en"))
-    )
-    graph.add(
-        (visualization_iri, DCTERMS.title, Literal("SQL-API-Beispiel", lang="de"))
-    )
-    graph.add(
-        (
-            visualization_iri,
-            DCTERMS.description,
-            Literal(
-                "Derived OWL projection for visualization; the linked Turtle "
-                "specifications remain authoritative.",
-                lang="en",
-            ),
-        )
-    )
-    projected_terms = _add_sql_api_visualization_projection(graph)
-    expected_projected_terms = {
-        ARTICLE.GetArticleEndpoint,
-        ARTICLE.ArticlesTable,
-        ARTICLE.ArticleShape,
-        SQL_API_VISUALIZATION["GetArticleEndpoint-returns-ArticleShape"],
-        SQL_API_VISUALIZATION["GetArticleEndpoint-reads-from-ArticlesTable"],
-        SQL_API_VISUALIZATION["ArticlesTable-stores-ArticleShape"],
-        SQL_API_VISUALIZATION["ArticleShape-target-class-Article"],
-    }
-    missing_projected_terms = expected_projected_terms - projected_terms
-    if missing_projected_terms:
-        raise ValueError(
-            "SQL API visualization projection is incomplete: "
-            f"{sorted(map(str, missing_projected_terms))}"
-        )
-    source = OUTPUT.parent / "sql-api-visualization.ttl"
-    graph.serialize(destination=source, format="turtle")
-    try:
-        _run_widoco(jar, source, SQL_API_OUTPUT)
-        nested_output = SQL_API_OUTPUT / "doc"
-        if nested_output.is_dir():
-            for child in nested_output.iterdir():
-                shutil.move(str(child), SQL_API_OUTPUT / child.name)
-            nested_output.rmdir()
-    finally:
-        source.unlink(missing_ok=True)
-    return graph
-
-
 def build_relationship_graph(sql_api_graph: Graph | None = None) -> None:
     """Refresh just the ontology viewer for the local authoring loop."""
     if sql_api_graph is None:
@@ -557,225 +410,59 @@ def build_relationship_graph(sql_api_graph: Graph | None = None) -> None:
     }
     if not expected_sql_edges <= sql_edges:
         raise ValueError("SQL API Relationship Graph is missing its Shape chain")
-    write_graph_site(OUTPUT / "ontologies", datasets)
+    write_graph_site(OUTPUT / "ontologies", datasets[:-1])
+    example = dict(datasets[-1])
+    example["sourceHref"] = "../../../resources/sql-api/resources.ttl"
+    example["referenceHref"] = "../../../examples/sql-api/"
+    write_graph_site(OUTPUT / "tutorials" / "sql-api" / "graph", [example])
     _write_graph_redirect()
 
 
-def build_site(jar: Path) -> None:
+def build_site() -> None:
+    """Build a private, complete ontology candidate without Java or WIDOCO."""
     output = OUTPUT.resolve()
     build_root = (ROOT / "build").resolve()
     if not output.is_relative_to(build_root):
         raise ValueError(f"Refusing to replace output outside {build_root}: {output}")
     if output.exists():
         shutil.rmtree(output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    _run_widoco(jar, ONTOLOGY, REFERENCE_OUTPUT)
-    _run_widoco(jar, DECISION_ONTOLOGY, DECISION_REFERENCE_OUTPUT)
-    _run_widoco(jar, FUNDING_ONTOLOGY, FUNDING_REFERENCE_OUTPUT)
-    _run_widoco(jar, CLOUD_ONTOLOGY, CLOUD_REFERENCE_OUTPUT)
-    for reference, title, landing, key in (
-        (REFERENCE_OUTPUT, "SHACL Contract Ontology", "../", "contract"),
-        (DECISION_REFERENCE_OUTPUT, "Decision and Obligation Core Ontology", "../../", "decision"),
-        (FUNDING_REFERENCE_OUTPUT, "Funding Domain Ontology", "../../", "funding"),
-        (CLOUD_REFERENCE_OUTPUT, "Cloud Compliance Domain Ontology", "../../", "cloud"),
-    ):
-        _write_reference_index(reference, title=title, landing_page=landing, graph_key=key)
-    _publish_examples()
-    build_relationship_graph(_build_sql_api_visualization(jar))
-    (OUTPUT / ".nojekyll").write_text("", encoding="utf-8")
-    required = [
-        OUTPUT / "ontologies" / "index.html",
-        GRAPH_OUTPUT / "index.html",
-        OUTPUT / "ontologies" / "cytoscape.min.js",
-        REFERENCE_OUTPUT / "index.html",
-        REFERENCE_OUTPUT / "index-en.html",
-        REFERENCE_OUTPUT / "index-de.html",
-        REFERENCE_OUTPUT / "ontology.ttl",
-        REFERENCE_OUTPUT / "webvowl" / "index.html",
-        REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
-        DECISION_REFERENCE_OUTPUT / "index.html",
-        DECISION_REFERENCE_OUTPUT / "index-en.html",
-        DECISION_REFERENCE_OUTPUT / "index-de.html",
-        DECISION_REFERENCE_OUTPUT / "ontology.ttl",
-        DECISION_REFERENCE_OUTPUT / "webvowl" / "index.html",
-        DECISION_REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
-        FUNDING_REFERENCE_OUTPUT / "index.html",
-        FUNDING_REFERENCE_OUTPUT / "index-en.html",
-        FUNDING_REFERENCE_OUTPUT / "index-de.html",
-        FUNDING_REFERENCE_OUTPUT / "ontology.ttl",
-        FUNDING_REFERENCE_OUTPUT / "webvowl" / "index.html",
-        FUNDING_REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
-        CLOUD_REFERENCE_OUTPUT / "index.html",
-        CLOUD_REFERENCE_OUTPUT / "index-en.html",
-        CLOUD_REFERENCE_OUTPUT / "index-de.html",
-        CLOUD_REFERENCE_OUTPUT / "ontology.ttl",
-        CLOUD_REFERENCE_OUTPUT / "webvowl" / "index.html",
-        CLOUD_REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json",
-        OUTPUT / "resources" / "toolchain" / "index.html",
-        OUTPUT / "resources" / "toolchain" / "resources.ttl",
-        OUTPUT / "resources" / "sql-api" / "index.html",
-        OUTPUT / "resources" / "sql-api" / "resources.ttl",
-        OUTPUT / "resources" / "funding" / "kfw-458" / "index.html",
-        OUTPUT / "resources" / "funding" / "kfw-458" / "resources.ttl",
-        OUTPUT / "resources" / "cloud" / "privileged-access" / "index.html",
-        OUTPUT / "resources" / "cloud" / "privileged-access" / "resources.ttl",
-        SQL_API_OUTPUT / "index-en.html",
-        SQL_API_OUTPUT / "index-de.html",
-        SQL_API_OUTPUT / "webvowl" / "index.html",
-        SQL_API_OUTPUT / "webvowl" / "data" / "ontology.json",
-    ]
-    missing = [str(path) for path in required if not path.is_file()]
-    if missing:
-        raise ValueError(f"WIDOCO site is incomplete: {missing}")
-    webvowl = (REFERENCE_OUTPUT / "webvowl" / "index.html").read_text(
-        encoding="utf-8"
-    )
-    if 'id="search-input-text"' not in webvowl:
-        raise ValueError("Generated WebVOWL site has no entity search input")
-    webvowl_data = json.loads(
-        (REFERENCE_OUTPUT / "webvowl" / "data" / "ontology.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    serialized_data = json.dumps(webvowl_data)
-    missing_visual_terms = [
-        str(term)
-        for term in (SCO.TransformationContract, SCO.GetEndpoint, SCO.SqlTable)
-        if str(term) not in serialized_data
-    ]
-    if missing_visual_terms:
-        raise ValueError(
-            f"Core ontology terms are absent from WebVOWL: {missing_visual_terms}"
-        )
-    for label, reference_output, terms in (
-        (
-            "Decision and Obligation Core Ontology",
-            DECISION_REFERENCE_OUTPUT,
-            (
-                SDO.DecisionContract,
-                SDO.RuleSetVersion,
-                SDO.Condition,
-                SDO.FactQuestion,
-                SDO.QuestionFlowCase,
-                SDO.EvidenceRequirement,
-                SDO.EvidenceAssessment,
-                SDO.Obligation,
-                SDO.ObligationEvaluation,
-                SDO.SourceCitation,
-            ),
-        ),
-        (
-            "Funding Domain Ontology",
-            FUNDING_REFERENCE_OUTPUT,
-            (
-                FUNDING.FundingProgram,
-                FUNDING.Applicant,
-                FUNDING.Project,
-                FUNDING.LandRegisterExcerpt,
-                FUNDING.Eligible,
-            ),
-        ),
-        (
-            "Cloud Compliance Domain Ontology",
-            CLOUD_REFERENCE_OUTPUT,
-            (
-                CLOUD.CloudSystem,
-                CLOUD.PrivilegedAccessComplianceDecision,
-                CLOUD.AuthenticationMechanismTestResult,
-                CLOUD.Satisfied,
-            ),
-        ),
-    ):
-        webvowl_page = (reference_output / "webvowl" / "index.html").read_text(
-            encoding="utf-8"
-        )
-        if 'id="search-input-text"' not in webvowl_page:
-            raise ValueError(f"{label} WebVOWL site has no entity search input")
-        webvowl_document = json.loads(
-            (reference_output / "webvowl" / "data" / "ontology.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        serialized_document = json.dumps(webvowl_document)
-        missing_terms = [
-            str(term) for term in terms if str(term) not in serialized_document
-        ]
-        if missing_terms:
-            raise ValueError(
-                f"{label} terms are absent from WebVOWL: {missing_terms}"
-            )
-    sql_api_webvowl = (SQL_API_OUTPUT / "webvowl" / "index.html").read_text(
-        encoding="utf-8"
-    )
-    if 'id="search-input-text"' not in sql_api_webvowl:
-        raise ValueError("SQL API WebVOWL site has no entity search input")
-    sql_api_data = json.loads(
-        (SQL_API_OUTPUT / "webvowl" / "data" / "ontology.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    serialized_sql_api = json.dumps(sql_api_data)
-    missing_example_terms = [
-        str(term)
-        for term in (
-            ARTICLE.Article,
-            ARTICLE.description,
-            ARTICLE.price,
-            ARTICLE.GetArticleEndpoint,
-            ARTICLE.ArticlesTable,
-            ARTICLE.ArticleShape,
-            SQL_API_VISUALIZATION["GetArticleEndpoint-returns-ArticleShape"],
-            SQL_API_VISUALIZATION["GetArticleEndpoint-reads-from-ArticlesTable"],
-            SQL_API_VISUALIZATION["ArticlesTable-stores-ArticleShape"],
-            SQL_API_VISUALIZATION["ArticleShape-target-class-Article"],
-        )
-        if str(term) not in serialized_sql_api
-    ]
-    if missing_example_terms:
-        raise ValueError(
-            f"SQL API terms are absent from WebVOWL: {missing_example_terms}"
-        )
-    internal_example_classes = {
-        str(ARTICLE.Article),
-        str(ARTICLE.ArticleShape),
-        str(ARTICLE.GetArticleEndpoint),
-        str(ARTICLE.ArticlesTable),
+    output.mkdir(parents=True, exist_ok=True)
+    publications = {
+        VOCABULARY_IRI: "ontology/",
+        DECISION_VOCABULARY_IRI: "ontology/decision/",
+        FUNDING_VOCABULARY_IRI: "ontology/funding/",
+        CLOUD_VOCABULARY_IRI: "ontology/cloud/",
+        str(ARTICLE): "examples/sql-api/",
     }
-    external_example_classes = [
-        item["iri"]
-        for item in sql_api_data.get("classAttribute", [])
-        if item.get("iri") in internal_example_classes
-        and "external" in item.get("attributes", [])
-    ]
-    if external_example_classes:
-        raise ValueError(
-            "SQL API classes are incorrectly marked external in WebVOWL: "
-            f"{external_example_classes}"
-        )
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--widoco-jar",
-        type=Path,
-        help="Use this pinned WIDOCO 1.4.25 JDK 17 JAR instead of the cache",
-    )
-    parser.add_argument(
-        "--validate-only",
-        action="store_true",
-        help="Validate ontology publication sources without building HTML",
-    )
-    return parser.parse_args()
+    for source, reference, title, namespace, landing, key in (
+        (ONTOLOGY, REFERENCE_OUTPUT, "SHACL Contract Ontology", VOCABULARY_IRI, "../", "contract"),
+        (DECISION_ONTOLOGY, DECISION_REFERENCE_OUTPUT, "Decision and Obligation Core Ontology", DECISION_VOCABULARY_IRI, "../../", "decision"),
+        (FUNDING_ONTOLOGY, FUNDING_REFERENCE_OUTPUT, "Funding Domain Ontology", FUNDING_VOCABULARY_IRI, "../../", "funding"),
+        (CLOUD_ONTOLOGY, CLOUD_REFERENCE_OUTPUT, "Cloud Compliance Domain Ontology", CLOUD_VOCABULARY_IRI, "../../", "cloud"),
+    ):
+        write_reference(Graph().parse(source, format="turtle"), reference, title=title,
+                        namespace=namespace, graph_key=key, site_root_href=landing, publications=publications)
+    _publish_examples()
+    sql_api = Graph()
+    for source in sorted((ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")):
+        sql_api.parse(source, format="turtle")
+    _add_sql_api_visualization_projection(sql_api)
+    write_reference(sql_api, SQL_API_OUTPUT, title="SQL API Example", namespace=str(ARTICLE),
+                    graph_key="sql-api", site_root_href="../../", publications=publications,
+                    source_href="../../resources/sql-api/resources.ttl", derived=True)
+    build_relationship_graph(sql_api)
+    (OUTPUT / ".nojekyll").write_text("", encoding="utf-8")
 
 
 def main() -> None:
-    args = parse_args()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--validate-only", action="store_true", help="Validate public RDF sources without building HTML")
+    args = parser.parse_args()
     validate_publication_sources()
     if args.validate_only:
         print("Ontology publication sources are valid.")
         return
-    build_site(_widoco_jar(args.widoco_jar))
+    build_site()
     print(f"Built ontology site at {OUTPUT.relative_to(ROOT)}")
 
 

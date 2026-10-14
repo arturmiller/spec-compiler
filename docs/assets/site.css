@@ -1,8 +1,4 @@
 @charset "UTF-8";
-.reference-page { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
-.reference-page > .head, .reference-page > #toc, .reference-page > #overview, .reference-page > #description, .reference-page > #crossref, .reference-page > #references, .reference-page > #acknowledgements { margin: 24px auto; padding: 0 24px; max-width: 1280px; }
-[data-theme="dark"] .reference-page .entity, [data-theme="dark"] .reference-page .description { background: var(--surface); color: var(--ink); }
-[data-theme="dark"] .reference-page a { color: var(--accent); }
 .technical-details { margin: 22px 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
 .technical-details > summary { cursor: pointer; color: var(--muted); font-weight: 600; }
 [data-theme="dark"] .shell .field, [data-theme="dark"] .shell .surface, [data-theme="dark"] .shell .small-button, [data-theme="dark"] .shell .filter-button, [data-theme="dark"] .shell .property-catalog { background: var(--surface); }
@@ -99,4 +95,18 @@ summary { cursor: pointer; font-weight: 650; }
   .diagram-frame { height: 860px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+.rdf-term { margin: 28px 0; padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); scroll-margin-top: 140px; }
+.rdf-term h3 { margin-top: 0; }
+.rdf-iri, .rdf-statements td, .rdf-statements th { overflow-wrap: anywhere; }
+.doc-content .rdf-statements { display: table; width: 100%; table-layout: fixed; }
+.rdf-statements th { width: 30%; }
+.rdf-statements small { display: block; color: var(--muted); }
+.rdf-literal { white-space: pre-wrap; }
+.reference-toc { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0; }
+.ontology-reference details { overflow-wrap: anywhere; }
+.glossary-terms > div { padding: 18px 0; border-bottom: 1px solid var(--line); }
+.glossary-terms dt { scroll-margin-top: 140px; }
+.glossary-terms dt small { display: block; color: var(--muted); }
+.glossary-terms dd { margin: 8px 0 0; max-width: 88ch; }
+.glossary-link { text-decoration-style: dotted; }
 @media print { .site-header, .site-footer, .site-actions, .search-dialog { display: none; } body { background: white; color: black; } .doc-content { max-width: none; padding: 0; } }

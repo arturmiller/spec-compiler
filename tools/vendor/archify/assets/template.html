@@ -1849,12 +1849,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     .semantic-passport-detail {
       display: block;
       margin-top: 0.12rem;
-      overflow: hidden;
       color: var(--text-muted);
-      font-size: 0.625rem;
+      font-size: 0.75rem;
       line-height: 1.4;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
     .semantic-passport-detail[hidden] { display: none; }
     .semantic-passport-meta {
@@ -7922,7 +7921,26 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         evidence.hidden = false;
       }
       function renderPassport(id, node) {
-        setPassportValue(detail, node.getAttribute('data-node-sublabel'));
+        setPassportValue(detail, node.getAttribute('data-node-description') || node.getAttribute('data-node-summary') || node.getAttribute('data-node-sublabel'));
+        var authoredLinks = document.getElementById('focus-authored-links');
+        if (!authoredLinks) {
+          authoredLinks = document.createElement('nav');
+          authoredLinks.id = 'focus-authored-links';
+          authoredLinks.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;font-size:12px';
+          detail.parentNode.insertBefore(authoredLinks, detail.nextSibling);
+        }
+        authoredLinks.replaceChildren();
+        var links;
+        try { links = JSON.parse(node.getAttribute('data-node-links') || '[]'); } catch (_) { links = []; }
+        links.forEach(function (item) {
+          if (!item || !/^(?:\.\.\/)?[a-zA-Z0-9_][a-zA-Z0-9_./-]*(?:#[a-zA-Z0-9_-]+)?$/.test(item.href)) return;
+          var link = document.createElement('a');
+          link.textContent = item.label;
+          link.href = item.href;
+          link.target = '_top';
+          link.style.cssText = 'color:inherit;text-decoration:underline';
+          authoredLinks.appendChild(link);
+        });
         setPassportValue(kind, viewerKindLabel(node.getAttribute('data-node-kind') || 'node'));
         setPassportValue(context, node.getAttribute('data-node-context'));
         setPassportValue(tag, node.getAttribute('data-node-tag'));

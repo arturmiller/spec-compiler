@@ -88,6 +88,14 @@
 window.addEventListener('DOMContentLoaded', () => {
   const datasets=JSON.parse(document.getElementById('ontology-data').textContent);
   const params=new URLSearchParams(location.search);
+  if(params.get('ontology')==='sql-api' && !datasets.some(d=>d.key==='sql-api')){
+    const target=new URL('../tutorials/sql-api/graph/',location.href);
+    target.search=location.search;target.hash=location.hash;location.replace(target.href);return;
+  }
+  if(datasets.length===1 && datasets[0].key==='sql-api'){
+    document.querySelector('h1').textContent='Der SQL-API-Beispielgraph.';
+    document.querySelector('.intro p').textContent='Tutorialansicht: eine abgeleitete Projektion der Produktspecs, keine kanonische Ontologie.';
+  }
   let ontology=datasets.find(d=>d.key===params.get('ontology'))||datasets[0];
   let selected=ontology.nodes.find(n=>n.id===params.get('term'))?.id||ontology.nodes[0]?.id;
   let edgeKind=['all','object','subclass'].includes(params.get('relation'))?params.get('relation'):'all';

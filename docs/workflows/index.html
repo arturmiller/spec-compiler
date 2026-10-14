@@ -1,34 +1,12 @@
 <!doctype html>
-<html lang="de">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="doc-route" content="workflows/">
-  <meta name="description" content="Kompilierung und Produktauswertung sind unterschiedliche Abläufe mit expliziten Quellen und getrennten Laufzeitprotokollen.">
-  <title>Abläufe · Spec Compiler</title>
-  <link rel="stylesheet" href="../assets/site.css"><script src="../assets/site.js" defer></script>
-</head>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="doc-route" content="compiler/workflows.html"><meta name="doc-alias" content="workflows/"><title>Compilerabläufe und Produktprüfung · Spec Compiler</title><link rel="stylesheet" href="../assets/site.css"><script src="../assets/site.js" defer></script></head>
 <body><main id="content" class="doc-content">
-  <p class="eyebrow">Laufzeit und Nachweise</p><h1 id="ablaeufe">Vom Vertrag zum beobachtbaren Ergebnis</h1>
-  <p class="lead">Die Kompilierung liest autorisierte Specs. Der Contract Verification Harness startet anschließend Produkte und beobachtet ihr Verhalten. Eine Next Question entsteht bei einer Decision-Auswertung, nicht beim Einlesen der Specs.</p>
-  <nav class="section-navigation" aria-label="Abläufe"><a href="#kompilierung">Kompilierung</a><a href="#produktpruefung">Produktprüfung</a><a href="#decision">Decision Requests</a><a href="#bootstrap">Bootstrap</a><a href="#dokumentation">Dokumentation</a></nav>
-  <h2 id="kompilierung">1. Specs kompilieren</h2>
-  <p>Die sortierten Turtle-Dateien eines Product Bundle werden zusammengeführt, auf Eindeutigkeit geprüft und in das zuständige Explicit Obligation Model oder Explicit Decision and Obligation Model überführt. Deterministische Renderer erzeugen Verträge, Tests und Work Items. Fehlende Spec-Angaben werden nicht durch Fragen an Produktnutzer ersetzt: Sie sind Kompilierungsfehler.</p>
-  <figure data-diagram="compile-contracts"><figcaption>Deterministische Kompilierung</figcaption></figure>
-  <h2 id="produktpruefung">2. Ein Produkt prüfen</h2>
-  <p>Runtime Protocol v1 deklariert, wie ein Produkt gestartet wird. Der Harness wartet auf OpenAPI, prüft Schnittstelle und Verhalten, kontrolliert gegebenenfalls die explizit verlangte SQLite-Speicherung und beendet den vollständigen Prozessbaum. Die Implementierung wird nicht importiert.</p>
-  <figure data-diagram="verify-product"><figcaption>Black-Box-Produkttest</figcaption></figure>
-  <h2 id="decision">3. Einen Decision Request auswerten</h2>
-  <p>Ein Decision Request nennt Contract, stabiles Rule Set, Decision Date und Case Facts. Das Decision Product wählt die ausdrücklich gültige Rule Set Version und wertet ihre Rules aus. Fehlende Facts werden als Fact Gaps ausgewiesen. Nur ein noch undeterminiertes Resultat trägt die nach expliziter Priorität ausgewählte Next Question.</p>
-  <figure data-diagram="decision-request"><figcaption>Stateless Request und Result</figcaption></figure>
-  <p>Der Client ergänzt die Antwort im vollständigen Case und sendet einen neuen Request. Evidence Requirements und Rule-imposed Obligations werden getrennt ausgewertet; ihre Ergebnisse ändern weder Condition truth noch den Decision Outcome.</p>
-  <p>Die Zustandsansicht zeigt positive, negative und undeterminierte Ergebnisarten eines einzelnen Aufrufs, keine Sitzung. Die Specs benennen konkrete Outcomes, zum Beispiel <code>eligible</code> / <code>ineligible</code> oder <code>compliant</code> / <code>non_compliant</code>.</p>
-  <figure data-diagram="decision-lifecycle"><figcaption>Ergebnisarten eines Decision-Aufrufs</figcaption></figure>
-  <h2 id="bootstrap">4. Den Compiler als Produkt prüfen</h2>
-  <p>G0 materialisiert G1 aus dem deklarierten Seed. Generierte Black-Box-Nachweise starten G1 über Compiler Protocol v1 und vergleichen zwei Kompilierungen derselben Fixtures byteweise. Das prüft ausführbare Kontinuität und Determinismus; eine unabhängige fachliche Oracle ersetzt es nicht.</p>
-  <figure data-diagram="compiler-bootstrap"><figcaption>Bootstrap und Fixpunktnachweis</figcaption></figure>
-  <h2 id="dokumentation">5. Die Dokumentation veröffentlichen</h2>
-  <p>HTML-Quellen, Diagrammmodelle und Ontologien werden als abgeleitete Website zusammengeführt. Die lokale Vorschau verwendet dieselben Quellen. GitHub Actions prüft den vollständigen Workflow und veröffentlicht den statischen Build nach einem Push auf main. Pull Requests bauen ohne Veröffentlichung.</p>
-  <figure data-diagram="publish-documentation"><figcaption>Dokumentationsbuild und GitHub Pages</figcaption></figure>
-  <p>Details zu Protokollen und unterstützten Konventionen stehen in den <a href="../generation-principles.html">Generierungsprinzipien</a>; ihre Architekturgrenzen in <a href="../architecture/arc42.html">arc42</a>.</p>
-</main></body>
-</html>
+
+<p class="eyebrow">Compiler · Vertiefung</p><h1 id="ablaeufe">Kompilieren ist nicht Auswerten.</h1><p class="lead">Die Kompilierung erzeugt aus Anforderungen überprüfbare Vorgaben. Erst danach wird ein getrenntes Produkt gestartet und sein Verhalten beobachtet.</p>
+<h2 id="kompilierung">Spezifikationen zu Artefakten übersetzen</h2><p>Der Compiler liest die Specs aus einem <a href="../glossary.html#product-bundle">Product Bundle</a>, validiert das deklarierte Profil, baut sein internes Modell und erzeugt Verträge, Nachweise und Arbeitsaufträge. Diese Phase benötigt keine Produktimplementierung und ergänzt keine Anforderungen aus deren Code.</p><figure data-diagram="compile-contracts"><figcaption>Kompilierung mit festen Eingaben und Ausgaben</figcaption></figure>
+<h2 id="produktpruefung">Produkte durch ihr Protokoll prüfen</h2><p>Die generierten Tests benutzen die Adapter des <a href="../glossary.html#contract-verification-harness">Contract Verification Harness</a>. Das Manifest nennt Startbefehl, Arbeitsverzeichnis und gegebenenfalls Umgebung und Timeout. Das passende Protokoll bestimmt, welche Grenze beobachtet wird.</p><figure data-diagram="harness-components"><figcaption>Protokolladapter und gemeinsames Prozess-Cleanup</figcaption></figure>
+<table><thead><tr><th>Protokoll</th><th>Beobachtung</th></tr></thead><tbody><tr><td><a href="../generation-principles.html#laufzeitprotokoll-v1">Runtime Protocol v1</a></td><td>HTTP-/OpenAPI-Verhalten; im SQL-Profil zusätzlich die deklarierte SQLite-Datei.</td></tr><tr><td><a href="../generation-principles.html#decision-protocol-v1">Decision Protocol v1</a></td><td>Eine UTF-8-JSON-Anfrage auf stdin, eine JSON-Antwort auf stdout, Exitstatus und Prozess-Cleanup.</td></tr><tr><td><a href="../generation-principles.html#compiler-protocol-v1">Compiler Protocol v1</a></td><td>Exitstatus, Prozessausgabe und deklarierte Ausgabedateien für ein Eingabeprodukt.</td></tr></tbody></table>
+<h2 id="decision">Eine konkrete Entscheidung auswerten</h2><p>Ein laufendes Decision-Produkt erhält Vertrag, Regelmenge, explizites Datum und Fakten. Es wählt genau eine gültige Regelversion. Fehlende Fakten sind keine negativen Fakten. Nur solange das Ergebnis nicht determiniert ist, kann die priorisierte nächste Frage ausgegeben werden.</p><p>Die <a href="../reference/profiles.html#decision">Profilreferenz</a> trennt Regelauswertung, Pflichten und Nachweisanforderungen. Ausführbare Anfragen und die Ergebnisansichten stehen in den <a href="../tutorials/kfw.html">Decision-Tutorials</a>, nicht als allgemeines Compiler-Laufzeitverhalten.</p>
+<h2 id="bootstrap">Den Compiler selbst prüfen</h2><p>Ein Compiler kann hinter Compiler Protocol v1 ebenfalls ein separat gestartetes Produkt sein. Die Selbstbeschreibung verlangt Ausgabepfade, Fehlerverhalten und Ergebnisgleichheit, ohne ein Produktframework vorzuschreiben. <a href="../compiler/bootstrap.html">Bootstrap und Grenzen des Fixpunktnachweises →</a></p>
+<p><a href="../compiler/index.html">Zur Erklärung des Compilers</a> · <a href="../reference/profiles.html">Zur technischen Profilreferenz</a></p>
+</main></body></html>

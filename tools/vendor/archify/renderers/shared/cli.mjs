@@ -182,6 +182,9 @@ export function focusNodeAttrs(id, label, metadata = {}, locale) {
   const optional = [
     ['data-node-kind', metadata.kind],
     ['data-node-sublabel', metadata.sublabel],
+    ['data-node-summary', metadata.summary],
+    ['data-node-description', metadata.description],
+    ['data-node-links', metadata.links ? JSON.stringify(metadata.links) : undefined],
     ['data-node-tag', metadata.tag],
     ['data-node-context', metadata.context],
     ['data-node-brand', metadata.brand],

@@ -1,0 +1,216 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="doc-route" content="tutorials/sources.html"><title>Quellen und Scope der Beispiele · Spec Compiler</title><link rel="stylesheet" href="../assets/site.css"><script src="../assets/site.js" defer></script></head><body><main id="content" class="doc-content"><h1 id="quellen">Quellen und Grenzen der Tutorialbeispiele</h1><p>Die folgenden kuratierten Quellenrevisionen und Abgrenzungen gehören zu den konkreten Beispielprodukten. Ihre Identität wird von Specs geprüft; die Toolchain interpretiert externe Dokumente nicht automatisch. Das ist keine aktuelle fachliche Beratung oder allgemeine Vollständigkeitsgarantie.</p><p><a href="kfw.html">KfW-Tutorial</a> · <a href="cloud.html">Cloud-Tutorial</a> · <a href="../architecture/decision-and-obligation-roadmap.html">Compiler-Roadmap</a></p><details class="technical-details"><summary>Bestehender Quellen- und Scope-Kontext der Beispiele (Originalfassung)</summary><div lang="en"><h2 id="kfw-458-applicant-eligibility-pilot">KfW 458 Applicant Eligibility Pilot</h2>
+<h3 id="decision-question">Decision question</h3>
+<p>For a natural-person Case, determine whether the supplied applicant facts
+satisfy the modeled applicant-eligibility rules of KfW product 458 under the
+Rule Set Version selected by the explicit Decision Date.</p>
+<p><code>eligible</code> means only a positive answer to this scoped applicant question. It is
+not a statement about measure eligibility, application completeness, funding
+amount, KfW approval, available budget, or legal entitlement.</p>
+<h3 id="source-register">Source register</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>December 2025 revision</th>
+<th>July 2026 revision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Source</td>
+<td>KfW Merkblatt, Zuschuss Nr. 458</td>
+<td>Same stable Source</td>
+</tr>
+<tr>
+<td>Source Revision</td>
+<td><code>Kfw458Merkblatt2025_12</code></td>
+<td><code>Kfw458Merkblatt2026_07</code></td>
+</tr>
+<tr>
+<td>Stand / identifier</td>
+<td>12/2025; Bestellnummer 600 000 5131</td>
+<td>07/2026; Bestellnummer 600 000 5131</td>
+</tr>
+<tr>
+<td>Declared validity</td>
+<td>Valid from 2025-12-10; modeled until 2026-07-21 exclusive</td>
+<td>Valid from 2026-07-21; open end</td>
+</tr>
+<tr>
+<td>Authoritative passages</td>
+<td>Page 1 validity; page 2 applicant categories and GbR exclusion</td>
+<td>Page 1 validity; page 2 categories, GbR and usufruct exclusions; page 8 ownership Evidence Requirement</td>
+</tr>
+<tr>
+<td>Retrieved document</td>
+<td><a href="https://www.kfw.de/partner/Dokumente/Archiv/750-2025-Q4/6000005131_M_458_2025_12_Schwarz.pdf">Archived KfW Merkblatt 458</a></td>
+<td><a href="https://www.kfw.de/PDF/Download-Center/F%C3%B6rderprogramme-%28Inlandsf%C3%B6rderung%29/PDF-Dokumente/6000005131_M_458.pdf">Current KfW Merkblatt 458</a></td>
+</tr>
+<tr>
+<td>Content identity</td>
+<td>250,112 bytes; SHA-256 <code>0bbe3f9a82b2fdfc2ca8f9037b73e01093aa2ce49709681eba152c2800610369</code></td>
+<td>256,308 bytes; SHA-256 <code>27056983339718d66cb02e9dd526db5787df742350de15eb7821040299d9fd5d</code></td>
+</tr>
+</tbody>
+</table>
+<p>The official version catalogue is the <a href="https://www.kfw.de/partner/KfW-Partnerportal/Service/Dokumente-zum-Produkt/458/index.jsp">KfW product 458 document
+archive</a>.</p>
+<h3 id="source-selection-review">Source selection review</h3>
+<p>The official KfW document catalogue identifies a July 2026 revision and retains
+the December 2025 revision separately. Both PDFs state their validity dates.
+Page 2 of the December revision lists the GbR exclusion but no usufruct
+exclusion; page 2 of the July revision adds that exclusion. Therefore identical
+modeled usufruct-applicant Facts yield <code>eligible</code> on 2026-07-20 and <code>ineligible</code>
+on 2026-07-21. The July PDF declares Stand 07/2026,
+Bestellnummer 600 000 5131, and validity from 2026-07-21. Its page 2 contains the
+selected applicant categories and explicit exclusions. Page 8 separately
+requires self-using owners claiming the climate-speed or income bonus to submit
+a land-register excerpt as ownership Evidence. The recorded lengths and
+SHA-256 values identify the exact current bytes reverified on 2026-09-08 and
+the archived bytes reviewed on 2026-09-08.</p>
+<p>The Merkblatt states that the program is based on the BEG EM guideline, but the
+pilot deliberately compiles only the product-specific applicant passage. If a
+later Rule depends on BEG EM, technical requirements, FAQs, or another KfW
+document, that document must be registered as its own pinned Source Revision
+and cited explicitly; authority is never inherited through an unmodeled link.</p>
+<p>The version catalogue is evidence for document identity and version history; it
+does not itself supply compiled eligibility Rules. Both selected Merkblatt
+revisions are external Source Revisions. An authored Spec must
+represent and cite each selected statement before it can produce a generated
+requirement or result.</p>
+<h3 id="pilot-boundary">Pilot boundary</h3>
+<p>The first slice supports only the natural-person category and the applicant
+facts needed to distinguish ownership from the explicitly excluded GbR and
+usufruct cases for an existing residential building in Germany. A negative
+<code>naturalPerson</code> Fact means only that this scoped category is not satisfied;
+other applicant categories, including a Wohnungseigentümergemeinschaft, require
+their own Decision Contract and are not assessed as program-wide ineligible.</p>
+<p>The pilot produces:</p>
+<ul>
+<li><code>eligible</code> when a unique positive applicant-eligibility conclusion is entailed;</li>
+<li><code>ineligible</code> when a source-backed applicant exclusion or failed necessary
+applicant condition entails that conclusion;</li>
+<li><code>unknown</code> when one or more named Fact Gaps prevent a unique conclusion;</li>
+<li>one source-justified Next Question, selected deterministically from the
+current Fact Gaps while the outcome remains <code>unknown</code>;</li>
+<li>an independent ownership Evidence Requirement Evaluation of <code>fulfilled</code>,
+<code>missing</code>, or <code>not_applicable</code>, with classifications for supplied Evidence
+and its own page-8 Source Citation;</li>
+<li>an error for input outside the pilot boundary, conflicting Facts, ambiguous
+Rules, or a missing or non-unique applicable Rule Set Version.</li>
+</ul>
+<p>Version Selection Conventions v1 use only the stable Rule Set, the explicit
+Decision Date, and the authored half-open Validity Periods. The caller cannot
+pin a version and no today/latest default exists.</p>
+<h3 id="explicitly-excluded-from-the-pilot">Explicitly excluded from the pilot</h3>
+<ul>
+<li>technical eligibility of a heating system or measure;</li>
+<li>subsidy rates, bonuses, eligible costs, calculations, and combinations;</li>
+<li>application timing, contracts, forms, document upload/storage, automated
+document-content or authenticity validation, or approval;</li>
+<li>automatic ingestion, interpretation, or monitoring of KfW documents;</li>
+<li>coverage of other KfW, BAFA, state, federal, or EU programs;</li>
+<li>legal, financial, or funding advice and any promise of approval;</li>
+<li>a conversational user interface or production deployment.</li>
+</ul>
+<h2 id="cloud-privileged-access-compliance-slice">Cloud Privileged-Access Compliance Slice</h2>
+<h3 id="decision-question-and-sources">Decision question and sources</h3>
+<p>For one supplied Cloud System profile, determine whether the two authored
+controls IA-2 and IA-2(1) from NIST SP 800-53 Rev. 5 are <code>satisfied</code>,
+<code>violated</code>, or <code>unknown</code> under the Rule Set Version selected by the explicit
+Decision Date.</p>
+<table>
+<thead>
+<tr>
+<th>Source Revision</th>
+<th>Use</th>
+<th>Immutable identity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NIST SP 800-53 Rev. 5, updates through 2020-12-10</td>
+<td>Rule Set Version, IA-2 unique-user Rule, and IA-2(1) privileged-account MFA Rule</td>
+<td>6,073,678 bytes; SHA-256 <code>fc63bcd61715d0181dd8e85998b1e6201ae3515fc6626102101cab1841e11ec6</code></td>
+</tr>
+<tr>
+<td>NIST SP 800-53A Rev. 5, published 2022-01-25</td>
+<td>Independent IA-2(1) authentication-mechanism Evidence Requirement</td>
+<td>7,469,808 bytes; SHA-256 <code>75665570048b969ad465a4f4f1db425ce505c374951c2c64e462949c6b21be47</code></td>
+</tr>
+</tbody>
+</table>
+<p>The authored citations point to IA-2 and IA-2(1) on PDF page 158 (printed page
+132) and to the IA-02(01) assessment objective and methods on PDF pages 255–256
+(printed pages 244–245). The compiler does not fetch or interpret these
+documents. It verifies the explicit revision identities and compiles the
+authored statements.</p>
+<p>The complete positive Question Flow Case starts without Rule Facts, asks only
+the currently decision-relevant questions, and reaches <code>satisfied</code> after the
+authored answers are submitted. Separate Cases prove <code>violated</code> and <code>unknown</code>,
+all three Evidence Requirement statuses, and all three Obligation statuses.
+The MFA Evidence Requirement remains independent: missing assessment evidence
+does not turn a satisfied policy Condition into a violation.</p>
+<h3 id="reuse-comparison">Reuse comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Concept family</th>
+<th>Funding use</th>
+<th>Cloud use</th>
+<th>Ownership decision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decision, Rule Set Version, Rule, Condition, Case, and Outcome</td>
+<td>KfW applicant eligibility</td>
+<td>Two-control privileged-access compliance</td>
+<td>Reuse <code>sdo:</code> unchanged; domain-specific Outcome individuals remain in <code>funding:</code> or <code>cloud:</code>.</td>
+</tr>
+<tr>
+<td>Source, Source Revision, Source Citation, and Validity Period</td>
+<td>Two pinned KfW leaflet revisions</td>
+<td>Pinned SP 800-53 policy and separate SP 800-53A assessment revision</td>
+<td>Reuse <code>sdo:</code> unchanged. Version, Rule, and Evidence citations may identify different revisions.</td>
+</tr>
+<tr>
+<td>Fact Gap, Fact Question, Next Question, and Question Flow Case</td>
+<td>Applicant and project Facts</td>
+<td>Cloud identity Facts</td>
+<td>Reuse <code>sdo:</code> and Question Selection Conventions v1 unchanged; question wording and Fact properties stay in Product resources or the Domain Ontology.</td>
+</tr>
+<tr>
+<td>Evidence Requirement, Evidence, Assessment, and evaluation statuses</td>
+<td>Land-register excerpt</td>
+<td>Authentication-mechanism test result</td>
+<td>Reuse <code>sdo:</code> and Evidence Evaluation Conventions v1 unchanged; evidence types remain domain-specific.</td>
+</tr>
+<tr>
+<td>Obligation and Obligation Evaluation</td>
+<td>No Rule-imposed Obligation is authored; results contain an empty list</td>
+<td>IA-2 and IA-2(1) Rules explicitly impose Obligations</td>
+<td>Activate the already accepted <code>sdo:</code> concept under Obligation Evaluation Conventions v1; do not recast funding eligibility criteria as duties.</td>
+</tr>
+<tr>
+<td>Domain subject and predicates</td>
+<td>Applicant, Project, ownership, building location, bonus claim</td>
+<td>Cloud System, unique-user identification, privileged accounts, MFA</td>
+<td>Keep in <code>funding:</code> and <code>cloud:</code> respectively; no promotion to the core.</td>
+</tr>
+</tbody>
+</table>
+<p>The comparison found no funding or cloud concept with equivalent semantics that
+needed promotion. The reusable concepts already belong to <code>sdo:</code>. The only Core
+Ontology additions materialize the previously accepted, domain-independent
+Obligation semantics and are recorded in ADR 0021.</p>
+<h3 id="explicitly-excluded-from-the-cloud-slice">Explicitly excluded from the cloud slice</h3>
+<ul>
+<li>complete NIST SP 800-53 coverage, control tailoring, baselines, overlays, or
+authorization decisions;</li>
+<li>cloud-provider inventory, configuration scanning, evidence collection,
+document validation, certification, or continuous monitoring;</li>
+<li>remediation workflow, deadlines, responsible parties, or enforcement;</li>
+<li>a security guarantee, legal advice, or production deployment.</li>
+</ul>
+</div></details></main></body></html>

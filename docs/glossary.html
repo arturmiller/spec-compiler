@@ -3,334 +3,83 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ubiquitous Language · Spec Compiler</title>
-<meta name="doc-route" content="glossary.html">
+<title>Glossar · Spec Compiler</title>
+<meta name="doc-route" content="reference/glossary.html"><meta name="doc-alias" content="glossary.html">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js" defer></script>
 </head>
 <body>
 <main id="content" class="doc-content">
-<h1 id="ubiquitous-language">Kanonische Fachsprache</h1><p>Englische Fachbegriffe und Elementnamen bleiben in Code, Specs und Architektur stabil. Die Referenz definiert ihre Bedeutung und zu vermeidende Aliase; die deutsche Bedienoberfläche führt keine konkurrierenden Namen ein.</p>
-<h2 id="compilation-and-evaluation">Compilation and evaluation</h2>
-<table>
-<thead>
-<tr>
-<th>Term</th>
-<th>Definition</th>
-<th>Aliases to avoid</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Decision and Obligation Compilation</strong></td>
-<td>The Spec Compiler capability that derives source-backed Decision Contracts, Obligation and Evidence Requirement Evaluations, and proofs from explicit specifications.</td>
-<td>Eligibility engine, rules bot</td>
-</tr>
-<tr>
-<td><strong>Explicit Decision and Obligation Model</strong></td>
-<td>The typed, immutable normalized model containing only explicit decision, obligation, evidence, temporal, interaction, and provenance semantics shared by deterministic renderers.</td>
-<td>Universal domain model, knowledge base</td>
-</tr>
-<tr>
-<td><strong>Decision Contract</strong></td>
-<td>The implementation-neutral contract that fixes the scoped question, candidate Rule Set Versions, outcomes, Rules, Conditions, Obligations, Evidence Requirements, provenance, and evaluation conventions for a Decision Product.</td>
-<td>Decision result, runtime protocol</td>
-</tr>
-<tr>
-<td><strong>Decision Product</strong></td>
-<td>A separately executed software product that implements a Decision Contract behind Decision Protocol v1.</td>
-<td>Spec Compiler, KfW approval service</td>
-</tr>
-<tr>
-<td><strong>Decision Request</strong></td>
-<td>One Decision Protocol v1 JSON input naming the Decision Contract, stable Rule Set, Decision Date, supplied Case Facts, and optional supplied Evidence with Assessments; it never selects a Rule Set Version.</td>
-<td>Application, questionnaire</td>
-</tr>
-<tr>
-<td><strong>Decision Result</strong></td>
-<td>One machine-readable Decision Protocol v1 output containing the selected Rule Set Version and Decision Date, Outcome, Condition and Obligation Evaluations, decisive Rules, Fact Gaps, at most one Next Question, Evidence Requirement Evaluations, Provenance, Explanation, and scope note.</td>
-<td>Approval, advice</td>
-</tr>
-<tr>
-<td><strong>Rule Set</strong></td>
-<td>A stable identity for a governed collection of related Rules across revisions.</td>
-<td>Policy document, latest rules</td>
-</tr>
-<tr>
-<td><strong>Rule Set Version</strong></td>
-<td>One immutable, explicitly identified revision of a Rule Set with declared applicability.</td>
-<td>Current version, latest version</td>
-</tr>
-<tr>
-<td><strong>Version Selection Case</strong></td>
-<td>A Conformance Case whose expected version is an oracle proving selection from its explicit Decision Date; paired Cases can keep all other inputs identical.</td>
-<td>Version selector, current case</td>
-</tr>
-<tr>
-<td><strong>Rule</strong></td>
-<td>A normative proposition in a Spec that relates one or more Conditions to an explicit conclusion or Obligation.</td>
-<td>Business logic, heuristic</td>
-</tr>
-<tr>
-<td><strong>Fact</strong></td>
-<td>An explicitly supplied assertion about the Case evaluated by a Decision.</td>
-<td>Assumption, answer</td>
-</tr>
-<tr>
-<td><strong>Fact Gap</strong></td>
-<td>The recorded absence of a Fact required to evaluate a Condition.</td>
-<td>Unknown Fact, false Fact</td>
-</tr>
-<tr>
-<td><strong>Fact Question</strong></td>
-<td>An authored prompt tied to exactly one Condition and its input Fact, with an explicit priority used by Question Selection Conventions v1.</td>
-<td>Generated wording, form field</td>
-</tr>
-<tr>
-<td><strong>Next Question</strong></td>
-<td>The single Fact Question selected from current Fact Gaps for an undetermined Decision Result; determinate results have none.</td>
-<td>Any missing field, questionnaire</td>
-</tr>
-<tr>
-<td><strong>Question Flow Case</strong></td>
-<td>A complete positive Conformance Case whose Facts provide authored answers for the generated multi-step question-flow proof.</td>
-<td>Session transcript, UI script</td>
-</tr>
-<tr>
-<td><strong>Condition</strong></td>
-<td>A truth-valued predicate referenced by a Rule and evaluated only from explicit Facts and named conventions.</td>
-<td>Check, requirement</td>
-</tr>
-<tr>
-<td><strong>Condition Evaluation</strong></td>
-<td>The result <code>satisfied</code>, <code>violated</code>, or <code>unknown</code> for one Condition within one Decision.</td>
-<td>Decision result</td>
-</tr>
-<tr>
-<td><strong>Decision</strong></td>
-<td>The act of evaluating one explicitly scoped question for one Case against exactly one applicable Rule Set Version; its serialized observation is a Decision Result.</td>
-<td>Recommendation, approval, result document</td>
-</tr>
-<tr>
-<td><strong>Decision Outcome</strong></td>
-<td>The uniquely entailed domain conclusion of a Decision, or <code>unknown</code> when a Fact Gap prevents a unique conclusion.</td>
-<td>Condition status, guarantee</td>
-</tr>
-<tr>
-<td><strong>Case</strong></td>
-<td>The explicitly bounded subject and supplied Facts considered by one Decision.</td>
-<td>User profile, application file</td>
-</tr>
-</tbody>
-</table>
-<h2 id="obligations-and-evidence">Obligations and evidence</h2>
-<table>
-<thead>
-<tr>
-<th>Term</th>
-<th>Definition</th>
-<th>Aliases to avoid</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Obligation</strong></td>
-<td>An explicitly sourced requirement that applies to a Case when its Rule applies.</td>
-<td>Evidence, task</td>
-</tr>
-<tr>
-<td><strong>Obligation Evaluation</strong></td>
-<td>The result <code>fulfilled</code>, <code>violated</code>, or <code>unknown</code> for one Rule-imposed Obligation; under Obligation Evaluation Conventions v1 it projects the Rule Condition state and inherits the Rule Source Citation.</td>
-<td>Decision Outcome, Evidence Requirement Evaluation</td>
-</tr>
-<tr>
-<td><strong>Evidence Requirement</strong></td>
-<td>An explicitly sourced requirement for information or an artifact that can support a Fact or an Obligation's fulfillment.</td>
-<td>Obligation, proof</td>
-</tr>
-<tr>
-<td><strong>Evidence</strong></td>
-<td>Supplied information or an artifact offered in support of a Fact or fulfillment claim without being treated as conclusive by mere presence.</td>
-<td>Guaranteed proof, requirement</td>
-</tr>
-<tr>
-<td><strong>Evidence Assessment</strong></td>
-<td>An explicit acceptance or rejection of one supplied Evidence item for one Evidence Requirement.</td>
-<td>Evidence presence, automatic validation</td>
-</tr>
-<tr>
-<td><strong>Evidence Requirement Evaluation</strong></td>
-<td>The result <code>fulfilled</code>, <code>missing</code>, or <code>not_applicable</code> for one Evidence Requirement, including applicability states, Evidence classifications, explanation, and independent provenance.</td>
-<td>Condition Evaluation, Decision Outcome</td>
-</tr>
-</tbody>
-</table>
-<h2 id="provenance-and-time">Provenance and time</h2>
-<table>
-<thead>
-<tr>
-<th>Term</th>
-<th>Definition</th>
-<th>Aliases to avoid</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Source</strong></td>
-<td>A stable identity for an external document or governed publication across revisions.</td>
-<td>Spec origin, URL</td>
-</tr>
-<tr>
-<td><strong>Source Revision</strong></td>
-<td>One immutable, identified edition of a Source whose content can be verified.</td>
-<td>Web page, current document</td>
-</tr>
-<tr>
-<td><strong>Source Citation</strong></td>
-<td>A precise locator from an authored Spec statement to a passage in one Source Revision.</td>
-<td>Source, provenance</td>
-</tr>
-<tr>
-<td><strong>Provenance</strong></td>
-<td>The navigable chain from a derived result through Rules and Spec statements to Source Citations or named, versioned conventions.</td>
-<td>Explanation text</td>
-</tr>
-<tr>
-<td><strong>Validity Period</strong></td>
-<td>A half-open interval from an inclusive <code>validFrom</code> instant to an exclusive optional <code>validUntil</code> instant.</td>
-<td>Publication date, current period</td>
-</tr>
-<tr>
-<td><strong>Decision Date</strong></td>
-<td>The explicitly supplied instant used to select an applicable Rule Set Version for a Decision.</td>
-<td>Run time, today's date</td>
-</tr>
-</tbody>
-</table>
-<h2 id="ontology-boundaries">Ontology boundaries</h2>
-<table>
-<thead>
-<tr>
-<th>Term</th>
-<th>Definition</th>
-<th>Aliases to avoid</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>SHACL Contract Ontology</strong></td>
-<td>The existing public <code>sco:</code> vocabulary for executable product and transformation contracts.</td>
-<td>Decision ontology</td>
-</tr>
-<tr>
-<td><strong>Decision and Obligation Core Ontology</strong></td>
-<td>The public <code>sdo:</code> vocabulary for domain-independent decision, rule, condition, case, obligation, evidence, provenance, interaction, and temporal concepts.</td>
-<td>Funding ontology, universal ontology</td>
-</tr>
-<tr>
-<td><strong>Domain Ontology</strong></td>
-<td>A vocabulary whose terms carry meaning specific to one problem domain and may use the core ontology without becoming part of it.</td>
-<td>Core extension by default</td>
-</tr>
-<tr>
-<td><strong>Funding Domain Ontology</strong></td>
-<td>The public <code>funding:</code> Domain Ontology for funding programs, applicants, projects, scoped eligibility facts, and funding-specific outcomes.</td>
-<td>KfW ontology, core ontology</td>
-</tr>
-<tr>
-<td><strong>Cloud Compliance Domain Ontology</strong></td>
-<td>The public <code>cloud:</code> Domain Ontology for cloud systems, cloud identity Facts, scoped compliance decisions, assessment Evidence types, and cloud-specific outcomes.</td>
-<td>NIST core ontology, decision core</td>
-</tr>
-<tr>
-<td><strong>KfW 458 Applicant Eligibility Pilot</strong></td>
-<td>The bounded first Case family that evaluates only natural-person applicant eligibility under the December 2025 or July 2026 KfW 458 source revision selected by Decision Date.</td>
-<td>KfW advisor, funding approval</td>
-</tr>
-<tr>
-<td><strong>Cloud Privileged-Access Compliance Slice</strong></td>
-<td>The bounded second Case family that evaluates only NIST SP 800-53 Rev. 5 controls IA-2 and IA-2(1) against supplied Cloud System profile Facts.</td>
-<td>NIST certification, security guarantee</td>
-</tr>
-</tbody>
-</table>
-<h2 id="relationships">Relationships</h2>
-<ul>
-<li>One <strong>Rule Set</strong> has one or more <strong>Rule Set Versions</strong>; a <strong>Decision</strong> uses
-exactly one version selected from authored half-open Validity Periods by its
-explicit <strong>Decision Date</strong>.</li>
-<li>A <strong>Decision Product</strong> receives a <strong>Decision Request</strong> and emits one
-<strong>Decision Result</strong> through Decision Protocol v1 while implementing the
-referenced <strong>Decision Contract</strong>.</li>
-<li>One <strong>Rule Set Version</strong> contains one or more <strong>Rules</strong> and has one
-<strong>Validity Period</strong>.</li>
-<li>A <strong>Rule</strong> references one or more <strong>Conditions</strong> and exactly identifies its
-conclusion or <strong>Obligation</strong>.</li>
-<li>Under Obligation Evaluation Conventions v1, a Rule Condition Evaluation maps
-<code>satisfied</code> to a <code>fulfilled</code> <strong>Obligation Evaluation</strong>, <code>violated</code> to
-<code>violated</code>, and <code>unknown</code> to <code>unknown</code>.</li>
-<li>A <strong>Condition</strong> has exactly one <strong>Condition Evaluation</strong> within a <strong>Decision</strong>.</li>
-<li>An unknown <strong>Condition Evaluation</strong> identifies at least one <strong>Fact Gap</strong>.</li>
-<li>One <strong>Fact Question</strong> elicits the Fact for exactly one <strong>Condition</strong>. An
-undetermined <strong>Decision Result</strong> selects at most one <strong>Next Question</strong> from
-its current <strong>Fact Gaps</strong> by the explicit priority convention.</li>
-<li>A client answers a <strong>Next Question</strong> by adding the Fact to the complete
-<strong>Case</strong> and submitting another <strong>Decision Request</strong>; the protocol retains no
-session state.</li>
-<li>A <strong>Source</strong> has one or more <strong>Source Revisions</strong>; a <strong>Source Citation</strong> points
-to exactly one revision.</li>
-<li>Every derived <strong>Decision Outcome</strong>, <strong>Obligation</strong>, and <strong>Evidence
-Requirement</strong> has <strong>Provenance</strong> to a Spec statement or named, versioned
-convention.</li>
-<li>An <strong>Evidence Requirement</strong> has its own Source Citation and applicability
-Conditions. A satisfied supported Condition does not fulfill it.</li>
-<li>Under Evidence Evaluation Conventions v1, only matching <strong>Evidence</strong> with an
-explicit accepted <strong>Evidence Assessment</strong> makes an applicable Evidence
-Requirement Evaluation <code>fulfilled</code>; otherwise it is <code>missing</code>.</li>
-<li>The <strong>Funding Domain Ontology</strong> may use the <strong>Decision and Obligation Core
-Ontology</strong>. The <strong>Cloud Compliance Domain Ontology</strong> uses the same core
-semantics; neither Domain Ontology is part of the <strong>SHACL Contract Ontology</strong>.</li>
-</ul>
-<h2 id="example-dialogue">Example dialogue</h2>
-<blockquote>
-<p><strong>Developer:</strong> &quot;The applicant did not tell us whether they own the building.
-Is the applicant therefore ineligible?&quot;</p>
-<p><strong>Domain expert:</strong> &quot;No. Ownership is a required <strong>Fact</strong>, so its absence is a
-<strong>Fact Gap</strong> and the ownership <strong>Condition Evaluation</strong> is <code>unknown</code>.&quot;</p>
-<p><strong>Developer:</strong> &quot;Then does the <strong>Decision Outcome</strong> become <code>unknown</code>?&quot;</p>
-<p><strong>Domain expert:</strong> &quot;Only if that gap prevents a unique outcome. A separate,
-satisfied exclusion Rule could already entail <code>ineligible</code>.&quot;</p>
-<p><strong>Developer:</strong> &quot;Which question should we ask next?&quot;</p>
-<p><strong>Domain expert:</strong> &quot;Only the <strong>Fact Question</strong> for a current <strong>Fact Gap</strong>.
-<strong>Question Selection Conventions v1</strong> choose the lowest authored priority,
-and a determinate result has no <strong>Next Question</strong>.&quot;</p>
-<p><strong>Developer:</strong> &quot;And <code>eligible</code> means KfW will approve the application?&quot;</p>
-<p><strong>Domain expert:</strong> &quot;No. In the <strong>KfW 458 Applicant Eligibility Pilot</strong> it
-means only that the modeled applicant-eligibility question is positive under
-the selected <strong>Rule Set Version</strong>.&quot;</p>
-</blockquote>
-<h2 id="flagged-ambiguities">Flagged ambiguities</h2>
-<ul>
-<li>&quot;Unknown Fact&quot; sounds like a third truth value stored as a Fact. Use <strong>Fact
-Gap</strong> for missing input and <code>unknown</code> only for a <strong>Condition Evaluation</strong> or
-serialized undetermined <strong>Decision Outcome</strong>.</li>
-<li>&quot;Eligible&quot; can mean applicant eligibility, measure eligibility, complete
-application readiness, or an actual funding decision. The pilot uses it only
-for the explicitly named applicant-eligibility question.</li>
-<li>&quot;Source&quot; previously meant the immediate origin of a generated requirement.
-Keep the compiler invariant precise: generated output originates in a Spec
-statement or convention; an external <strong>Source Revision</strong> is reached through a
-<strong>Source Citation</strong> in that Spec.</li>
-<li>&quot;Requirement&quot; can mean a Condition, an Obligation, or an Evidence
-Requirement. Use the specific canonical term.</li>
-<li>&quot;Decision and Obligation Compiler&quot; can sound like a second software system.
-The canonical capability is <strong>Decision and Obligation Compilation</strong> inside
-the existing <strong>Spec Compiler</strong>.</li>
-<li>A document publication date and a <strong>Validity Period</strong> are not interchangeable;
-applicability must be declared explicitly.</li>
-</ul>
-<h2 id="documentation-language">Dokumentationsbausteine</h2>
-<dl><dt>Documentation Website</dt><dd>Abgeleitetes statisches HTML-Portal mit Architektur, Abläufen, ADRs, Entwicklung und Ontologien. Es ist kein Product Runtime und begründet keine Produktanforderungen.</dd><dt>Documentation Site Builder</dt><dd>Build-Container, der HTML-Quellen, Archify-Artefakte, Ontologiereferenzen, Navigation und Suchindex komponiert. Die CLI ist <code>tools/build_documentation_site.py</code>.</dd><dt>Ontology Documentation Builder</dt><dd>Ontologiebaustein dieser Pipeline: RDFLib-/WIDOCO-Referenzen, Ressourcen und feste Cytoscape-Datensätze. Er gehört nicht zum Contract Verification Harness.</dd><dt>Documentation Preview Server</dt><dd>Lokaler Loopback-HTTP-Prozess mit Source Watch, Reload und Last-Good-Verhalten. Er benutzt denselben Site Builder, veröffentlicht aber nichts.</dd><dt>Archify Diagram Model</dt><dd>Kanonisches JSON unter <code>docs/diagrams/</code>. Archify rendert; C4 beschreibt Struktur; arc42 ordnet die Architekturansichten ein. Keine parallele Mermaid-Wahrheit.</dd><dt>Ontology Relationship Graph</dt><dd>Feste Visualisierung deklarierter RDF-Begriffe und Beziehungen. Vier Ontologien und das SQL API Example bleiben getrennte Datensätze; Auswahl verändert weder Positionen noch Viewport.</dd><dt>Verification Harness</dt><dd>Explizite Kurzform für Contract Verification Harness in schmalen Sequenzdiagrammköpfen; der volle Name bleibt im selben Knoten angegeben.</dd></dl>
-</main>
-</body>
-</html>
+<p class="eyebrow">Referenz · eine Definition pro Begriff</p><h1 id="ubiquitous-language">Glossar</h1><p class="lead">Im Einstieg reichen Spezifikation, Vertrag, Nachweis und Arbeitsauftrag. Weitere Begriffe werden erst in ihrem Kontext eingeführt. Deutsche Kurzformen ändern keine IRIs, Protokollfelder oder Codebezeichner.</p><nav class="section-navigation"><a href="#grundbegriffe">Compiler und Nachweise</a> <a href="#protokolle">Protokolle und Compiler-Selbstbeschreibung</a> <a href="#compilation-and-evaluation">Decision: Eingabe, Regeln und Ergebnis</a> <a href="#nachweise-und-quellen">Pflichten, Evidence und Herkunft</a> <a href="#ontology-boundaries">Ontologien</a> <a href="#documentation-language">Unterstützende Dokumentation</a></nav><h2 id="grundbegriffe">Compiler und Nachweise</h2><dl class="glossary-terms"><div><dt id="spec" data-term="Spec"><strong>Spec</strong><small>Spezifikation</small></dt><dd>Eine ausdrücklich verfasste Aussage darüber, was ein Produkt erfüllen soll. Ihre Anforderungen stammen nicht aus der Beispielimplementierung.</dd></div>
+<div><dt id="contract" data-term="Vertrag"><strong>Vertrag</strong><small>Beobachtbare Verpflichtungen</small></dt><dd>Eine implementationsneutrale Beschreibung geforderter Eingaben, Ausgaben und Verhaltensbedingungen. Kompilierte Vertragsdateien materialisieren ihren unterstützten Ausschnitt.</dd></div>
+<div><dt id="proof" data-term="Nachweis"><strong>Nachweis</strong><small>Black-Box-Proof</small></dt><dd>Eine ausführbare Prüfung einer expliziten Verpflichtung an der beobachtbaren Produktgrenze. Sie ersetzt keine unabhängige fachliche Oracle.</dd></div>
+<div><dt id="work-item" data-term="Work Item"><strong>Work Item</strong><small>Arbeitsauftrag</small></dt><dd>Ein begrenzter Auftrag mit Ziel, Verpflichtungen, Quellen, Abhängigkeiten, Ausschlüssen und einem benannten Nachweis.</dd></div>
+<div><dt id="work-graph" data-term="Work Graph"><strong>Work Graph</strong><small>Abhängigkeitsgraph</small></dt><dd>Ein gerichteter Graph der Arbeitsaufträge und ihrer vorausgesetzten Nachweise. Er ist eine Dateiübergabe, keine autonome Agentensteuerung.</dd></div>
+<div><dt id="spec-compiler" data-term="Spec Compiler"><strong>Spec Compiler</strong><small>Compiler und Prüfwerkzeug</small></dt><dd>Das Software System, das explizite Specs in Vertragsartefakte und Nachweise übersetzt und getrennte Produkte prüft.</dd></div>
+<div><dt id="product-bundle" data-term="Product Bundle"><strong>Product Bundle</strong><small>Produktverzeichnis</small></dt><dd>Die statische Dateigrenze eines Produkts mit Specs, Manifest, Implementierung und erzeugten Artefakten. Product Workspace ist der frühere gleichbedeutende C4-Name, kein eigener Begriff.</dd></div>
+<div><dt id="generated-product" data-term="Generated Product"><strong>Generated Product</strong><small>Produkt</small></dt><dd>Das getrennte Software System, dessen Implementierung die beschriebenen Verpflichtungen erfüllen soll.</dd></div>
+<div><dt id="product-runtime" data-term="Product Runtime"><strong>Product Runtime</strong><small>Laufendes Produkt</small></dt><dd>Ein gestarteter Produktprozess hinter dem deklarierten Protokoll. Manifest und Vertragsdateien sind keine laufenden Produkte.</dd></div>
+<div><dt id="shape" data-term="Shape"><strong>Shape</strong><small>Datenbedingungen</small></dt><dd>Eine SHACL-Beschreibung zulässiger Ressourcendaten. Das Produkt muss SHACL oder RDF nicht zur Laufzeit verwenden.</dd></div>
+<div><dt id="contract-graph" data-term="Contract Graph"><strong>Contract Graph</strong><small>Zusammengeführte Aussagen</small></dt><dd>Der RDF-Graph aus den sortiert eingelesenen Turtle-Dateien eines Produktverzeichnisses.</dd></div>
+<div><dt id="reader" data-term="Reader"><strong>Reader</strong><small>Einlese- und Prüfbaustein</small></dt><dd>Ein Compilerbaustein, der die Aussagen einer Spezifikation einliest, auf Eindeutigkeit und unterstützte Inhalte prüft und in ein gemeinsames internes Modell überführt. Er erfindet keine fehlenden Produktanforderungen.</dd></div>
+<div><dt id="renderer" data-term="Renderer"><strong>Renderer</strong><small>Ausgabebaustein</small></dt><dd>Ein Compilerbaustein, der das geprüfte interne Modell in konkrete Ausgaben übersetzt, etwa Vertragsdateien, Tests oder Arbeitsaufträge, ohne zusätzliche Produktanforderungen festzulegen. Im Dokumentationskontext bezeichnet „Diagrammrenderer“ dagegen ein Werkzeug, das aus einem Diagrammmodell eine grafische Darstellung erzeugt.</dd></div>
+<div><dt id="compiler-profile" data-term="Verarbeitungsprofil"><strong>Verarbeitungsprofil</strong><small>Compilerprofil · unterstützte Verarbeitungsart</small></dt><dd>Ein Verarbeitungsprofil, auch Compilerprofil genannt, ist der unterstützte Ausschnitt von Spezifikationsaussagen mit den dazugehörigen Prüf- und Ausgaberegeln. Es bestimmt, welche Anforderungen der Compiler versteht und welche Verträge und Nachweise er daraus erzeugt, nicht die Implementierungssprache des Produkts.</dd></div>
+<div><dt id="sql-openapi-profile" data-term="SQL/OpenAPI-Profil"><strong>SQL/OpenAPI-Profil</strong><small>Profil für eine HTTP-Schnittstelle mit SQL-Speicherung</small></dt><dd>Ein <a href="#compiler-profile">Verarbeitungsprofil</a> für einen beschriebenen GET-Endpunkt, seine Antwortdaten und ausdrücklich verlangte SQL-Speicherung. Seine Ausgaben beschreiben und prüfen die geforderte Schnittstelle und Speicherung.</dd></div>
+<div><dt id="decision-profile" data-term="Decision-Profil"><strong>Decision-Profil</strong><small>Entscheidungsprofil</small></dt><dd>Ein <a href="#compiler-profile">Verarbeitungsprofil</a> für ausdrücklich beschriebene Regeln, benötigte Fakten, mögliche Entscheidungsergebnisse und deren Herkunft. Der Compiler erzeugt den Regelvertrag und Nachweise; erst das laufende Produkt bewertet damit einen konkreten Fall.</dd></div>
+<div><dt id="compiler-product-profile" data-term="Profil für Compilerprodukte"><strong>Profil für Compilerprodukte</strong><small>Ein Compiler ist das geprüfte Produkt</small></dt><dd>Ein <a href="#compiler-profile">Verarbeitungsprofil</a>, dessen Spezifikation die akzeptierten Eingaben, erzeugten Ausgaben und das Fehlerverhalten eines Compilerprodukts beschreibt. Es ist ein spezielles Profil und wird nicht mit dem Oberbegriff „Compilerprofil“ gleichgesetzt.</dd></div>
+<div><dt id="explicit-obligation-model" data-term="Explicit Obligation Model"><strong>Explicit Obligation Model</strong><small>Internes Verpflichtungsmodell</small></dt><dd>Die normalisierte Darstellung expliziter beobachtbarer Verpflichtungen, die die Renderer des SQL-Profils gemeinsam verwenden.</dd></div>
+<div><dt id="explicit-decision-and-obligation-model" data-term="Explicit Decision and Obligation Model"><strong>Explicit Decision and Obligation Model</strong><small>Internes Decision-Modell</small></dt><dd>Die typisierte, unveränderliche Darstellung expliziter Decision-, Pflicht-, Evidence-, Zeit-, Frage- und Herkunftssemantik.</dd></div>
+<div><dt id="contract-verification-harness" data-term="Contract Verification Harness"><strong>Contract Verification Harness</strong><small>Prüfwerkzeug</small></dt><dd>Das Werkzeug, das generierte Black-Box-Nachweise über Produktprotokolle ausführt. Verification Harness ist kein zweites Werkzeug oder gesonderter Begriff.</dd></div>
+<div><dt id="compiler-convention" data-term="Compiler Convention"><strong>Compiler Convention</strong><small>Versionierte Abbildungsregel</small></dt><dd>Eine benannte, versionierte Interpretation, die nicht unmittelbar als Produktaussage vorliegt. Sie ist neben expliziten Specs die einzige erlaubte Herkunft generierter Verpflichtungen.</dd></div>
+<div><dt id="expected-openapi" data-term="Expected OpenAPI"><strong>Expected OpenAPI</strong><small>Erwartete Schnittstelle</small></dt><dd>Die aus ausdrücklichen Anforderungen abgeleitete OpenAPI-Beschreibung des geforderten HTTP-Vertrags.</dd></div>
+<div><dt id="published-openapi" data-term="Published OpenAPI"><strong>Published OpenAPI</strong><small>Veröffentlichte Schnittstelle</small></dt><dd>Die OpenAPI-Beschreibung des laufenden Produkts, die mit dem geforderten Vertragsausschnitt verglichen wird.</dd></div></dl><h2 id="protokolle">Protokolle und Compiler-Selbstbeschreibung</h2><dl class="glossary-terms"><div><dt id="runtime-protocol" data-term="Runtime Protocol"><strong>Runtime Protocol</strong><small>Produktstart und HTTP-Beobachtung</small></dt><dd>Die implementationsneutrale Start- und Beobachtungsvereinbarung für HTTP-Produkte.</dd></div>
+<div><dt id="decision-protocol" data-term="Decision Protocol"><strong>Decision Protocol</strong><small>Decision-Austausch</small></dt><dd>Die Vereinbarung für einen UTF-8-JSON-Request und ein JSON-Result über Standard-Ein-/Ausgabe sowie Prozessverhalten.</dd></div>
+<div><dt id="compiler-protocol" data-term="Compiler Protocol"><strong>Compiler Protocol</strong><small>Compileraufruf</small></dt><dd>Die Vereinbarung für einen Compilerprozess, seine Eingabeprodukte, Prozessausgabe, Fehler und erzeugten Dateien.</dd></div>
+<div><dt id="transformation-contract" data-term="Transformation Contract"><strong>Transformation Contract</strong><small>Transformationsvertrag</small></dt><dd>Der separat identifizierte Vertrag über akzeptierte Eingaben, Ausgaben, Ablehnung und Ergebnisgleichheit einer Transformation.</dd></div>
+<div><dt id="self-description-bundle" data-term="Spec Compiler Self-Description Bundle"><strong>Spec Compiler Self-Description Bundle</strong><small>Compiler-Selbstbeschreibung</small></dt><dd>Ein Product Bundle, dessen Specs den Spec Compiler als austauschbares Compilerprodukt beschreiben.</dd></div>
+<div><dt id="bootstrap-process" data-term="Bootstrap Process"><strong>Bootstrap Process</strong><small>Implementierungsherkunft</small></dt><dd>Die erklärte Ableitung einer nächsten Compilerimplementierung aus Seed und Strategie. Sie ist keine Verpflichtung des Transformationsvertrags.</dd></div>
+<div><dt id="g0" data-term="Bootstrap Compiler G0"><strong>Bootstrap Compiler G0</strong><small>Seed</small></dt><dd>Die vertrauenswürdige vorhandene Compilerimplementierung, die den ersten Ableitungsschritt ausführt.</dd></div>
+<div><dt id="g1" data-term="Compiler Product G1"><strong>Compiler Product G1</strong><small>Abgeleitete Implementierung</small></dt><dd>Die aus dem Seed materialisierte, eigenständig aufrufbare Compilerimplementierung. Gemeinsame Herkunft bedeutet keine unabhängige Oracle.</dd></div></dl><h2 id="compilation-and-evaluation">Decision: Eingabe, Regeln und Ergebnis</h2><dl class="glossary-terms"><div><dt id="decision-and-obligation-compilation" data-term="Decision and Obligation Compilation"><strong>Decision and Obligation Compilation</strong><small>Compilerfähigkeit</small></dt><dd>Die Fähigkeit des Spec Compiler, aus expliziten Regeln, Pflichten, Nachweisanforderungen und Quellen einen Decision-Vertrag abzuleiten. Sie ist kein zweites Software System.</dd></div>
+<div><dt id="decision-contract" data-term="Decision Contract"><strong>Decision Contract</strong><small>Entscheidungsvertrag</small></dt><dd>Der implementationsneutrale Vertrag einer begrenzten Entscheidungsfrage mit Regeln, Versionen, möglichen Ergebnissen und Herkunft.</dd></div>
+<div><dt id="decision-product" data-term="Decision Product"><strong>Decision Product</strong><small>Entscheidendes Produkt</small></dt><dd>Ein getrennt ausgeführtes Produkt, das einen Decision Contract hinter Decision Protocol v1 erfüllt.</dd></div>
+<div><dt id="decision-product-cli" data-term="Decision Product CLI"><strong>Decision Product CLI</strong><small>CLI-Schnittstelle</small></dt><dd>Die als CLI gestartete Referenzimplementierung eines Decision-Produkts. Sie ist nicht der Compiler.</dd></div>
+<div><dt id="decision-http-adapter" data-term="Decision HTTP Adapter"><strong>Decision HTTP Adapter</strong><small>HTTP-Schnittstelle</small></dt><dd>Ein separat gestarteter Adapter, der einen ausdrücklich spezifizierten HTTP-Vertrag auf dieselbe begrenzte Decision abbildet.</dd></div>
+<div><dt id="decision-request" data-term="Decision Request"><strong>Decision Request</strong><small>Anfrage</small></dt><dd>Die Eingabe mit Vertrag, stabiler Regelmenge, explizitem Datum, gelieferten Fakten und gegebenenfalls Evidence. Sie wählt keine Regelversion.</dd></div>
+<div><dt id="decision-result" data-term="Decision Result"><strong>Decision Result</strong><small>Vollständiges Ergebnis</small></dt><dd>Die Antwort mit Version, Datum, Outcome, Bewertungen, Lücken, Herkunft und höchstens einer nächsten Frage. Sie ist mehr als der Outcome allein.</dd></div>
+<div><dt id="decision" data-term="Decision"><strong>Decision</strong><small>Auswertung</small></dt><dd>Die Auswertung einer begrenzten Frage für einen Case anhand genau einer anwendbaren Regelversion.</dd></div>
+<div><dt id="decision-outcome" data-term="Decision Outcome"><strong>Decision Outcome</strong><small>Fachlicher Ausgang</small></dt><dd>Der eindeutig abgeleitete fachliche Ausgang oder unknown, wenn Faktenlücken eine eindeutige Entscheidung verhindern.</dd></div>
+<div><dt id="case" data-term="Case"><strong>Case</strong><small>Begrenzter Sachverhalt</small></dt><dd>Der ausdrücklich abgegrenzte Gegenstand und seine gelieferten Fakten, die für eine Decision betrachtet werden.</dd></div>
+<div><dt id="rule-set" data-term="Rule Set"><strong>Rule Set</strong><small>Stabile Regelmenge</small></dt><dd>Die stabile Identität einer zusammengehörigen Regelsammlung über mehrere Revisionen hinweg.</dd></div>
+<div><dt id="rule-set-version" data-term="Rule Set Version"><strong>Rule Set Version</strong><small>Regelversion</small></dt><dd>Eine ausdrücklich identifizierte, unveränderliche Revision der Regelmenge mit deklariertem Gültigkeitszeitraum.</dd></div>
+<div><dt id="rule" data-term="Rule"><strong>Rule</strong><small>Regel</small></dt><dd>Eine normative Aussage, die Bedingungen mit einer expliziten Schlussfolgerung oder Pflicht verbindet.</dd></div>
+<div><dt id="condition" data-term="Condition"><strong>Condition</strong><small>Bedingung</small></dt><dd>Eine Bedingung, die aus expliziten Fakten und benannten Konventionen bewertet wird.</dd></div>
+<div><dt id="condition-evaluation" data-term="Condition Evaluation"><strong>Condition Evaluation</strong><small>Bedingungsbewertung</small></dt><dd>Das Ergebnis satisfied, violated oder unknown für eine bestimmte Bedingung innerhalb einer Auswertung.</dd></div>
+<div><dt id="fact" data-term="Fact"><strong>Fact</strong><small>Gelieferter Fakt</small></dt><dd>Eine ausdrücklich gelieferte Aussage zum Sachverhalt. Ein fehlender Fakt ist kein explizit falscher Fakt.</dd></div>
+<div><dt id="fact-gap" data-term="Fact Gap"><strong>Fact Gap</strong><small>Fehlende Eingabe</small></dt><dd>Das festgehaltene Fehlen eines benötigten Fakts. Es ist keine als dritter Faktenwert gespeicherte Aussage.</dd></div>
+<div><dt id="fact-question" data-term="Fact Question"><strong>Fact Question</strong><small>Erklärte Frage</small></dt><dd>Ein expliziter Fragetext für einen Fakt einer Bedingung mit erklärter Priorität.</dd></div>
+<div><dt id="next-question" data-term="Next Question"><strong>Next Question</strong><small>Nächste Frage</small></dt><dd>Höchstens eine priorisierte Frage für eine aktuelle Faktenlücke, solange der Ausgang undeterminiert ist.</dd></div>
+<div><dt id="question-flow-case" data-term="Question Flow Case"><strong>Question Flow Case</strong><small>Frageablauf-Testfall</small></dt><dd>Ein vollständiger positiver Testfall mit autorisierten Antworten für den mehrstufigen Frageablaufnachweis.</dd></div>
+<div><dt id="conformance-case" data-term="Conformance Case"><strong>Conformance Case</strong><small>Autorisiertes Testbeispiel</small></dt><dd>Ein ausdrücklich beschriebener Fall mit Erwartungen, die aus den angegebenen Regeln folgen müssen.</dd></div>
+<div><dt id="version-selection-case" data-term="Version Selection Case"><strong>Version Selection Case</strong><small>Versions-Testfall</small></dt><dd>Ein Testfall, dessen erwartete Regelversion die Auswahl aus dem expliziten Datum prüft.</dd></div>
+<div><dt id="decision-date" data-term="Decision Date"><strong>Decision Date</strong><small>Entscheidungsdatum</small></dt><dd>Der explizite Zeitpunkt zur Auswahl der Regelversion. Er wird nicht durch das aktuelle Laufzeitdatum ersetzt.</dd></div>
+<div><dt id="validity-period" data-term="Validity Period"><strong>Validity Period</strong><small>Gültigkeitszeitraum</small></dt><dd>Das erklärte halboffene Intervall: validFrom ist einschließlich, validUntil ausschließlich.</dd></div></dl><h2 id="nachweise-und-quellen">Pflichten, Evidence und Herkunft</h2><dl class="glossary-terms"><div><dt id="obligation" data-term="Obligation"><strong>Obligation</strong><small>Pflicht</small></dt><dd>Eine explizit quellenbelegte Anforderung an den Sachverhalt, die durch eine deklarierte Regel auferlegt wird.</dd></div>
+<div><dt id="obligation-evaluation" data-term="Obligation Evaluation"><strong>Obligation Evaluation</strong><small>Pflichtenbewertung</small></dt><dd>Die Bewertung fulfilled, violated oder unknown für eine erklärte Pflicht mit Regel, Bedingung und Herkunft.</dd></div>
+<div><dt id="evidence-requirement" data-term="Evidence Requirement"><strong>Evidence Requirement</strong><small>Nachweisanforderung</small></dt><dd>Eine eigene Anforderung an Informationen, die einen Fakt oder eine Pflichterfüllung stützen können. Sie ist weder die Bedingung noch die Pflicht selbst.</dd></div>
+<div><dt id="evidence" data-term="Evidence"><strong>Evidence</strong><small>Gelieferter Beleg</small></dt><dd>Information, die als Stütze angeboten wird. Bloße Anwesenheit macht sie nicht automatisch akzeptiert oder schlüssig.</dd></div>
+<div><dt id="evidence-assessment" data-term="Evidence Assessment"><strong>Evidence Assessment</strong><small>Ausdrückliche Belegbewertung</small></dt><dd>Die explizite Annahme oder Ablehnung eines Belegs für eine bestimmte Nachweisanforderung.</dd></div>
+<div><dt id="evidence-requirement-evaluation" data-term="Evidence Requirement Evaluation"><strong>Evidence Requirement Evaluation</strong><small>Nachweisanforderungsbewertung</small></dt><dd>Die Bewertung fulfilled, missing oder not_applicable mit eigener Anwendbarkeit, Evidence-Klassifikation und Herkunft.</dd></div>
+<div><dt id="source" data-term="Source"><strong>Source</strong><small>Quelle</small></dt><dd>Die stabile Identität eines externen Dokuments oder einer Veröffentlichung über mehrere Revisionen hinweg.</dd></div>
+<div><dt id="source-revision" data-term="Source Revision"><strong>Source Revision</strong><small>Quellenrevision</small></dt><dd>Eine unveränderliche, identifizierte Ausgabe einer Quelle. Veröffentlichungsdatum und fachliche Gültigkeit sind nicht automatisch dasselbe.</dd></div>
+<div><dt id="source-citation" data-term="Source Citation"><strong>Source Citation</strong><small>Präziser Quellenverweis</small></dt><dd>Ein genauer Verweis von einer Spec-Aussage auf eine Passage in einer bestimmten Quellenrevision.</dd></div>
+<div><dt id="provenance" data-term="Provenance"><strong>Provenance</strong><small>Nachvollziehbare Herkunft</small></dt><dd>Die Verbindung eines Ergebnisses zu Regeln, Specs, Quellenverweisen oder benannten Konventionen.</dd></div></dl><h2 id="ontology-boundaries">Ontologien</h2><dl class="glossary-terms"><div><dt id="canonical-ontology" data-term="Canonical Ontology"><strong>Canonical Ontology</strong><small>Autoritatives Vokabular</small></dt><dd>Eine verfasste OWL-/RDFS-Vokabulardefinition, aus der Referenz und öffentliche Begriffsprüfung abgeleitet werden.</dd></div>
+<div><dt id="domain-ontology" data-term="Domain Ontology"><strong>Domain Ontology</strong><small>Fachvokabular</small></dt><dd>Ein Vokabular für eine bestimmte Problemdomäne. Seine Nutzung eines Kerns macht es nicht automatisch zum Teil dieses Kerns.</dd></div>
+<div><dt id="shacl-contract-ontology" data-term="SHACL Contract Ontology"><strong>SHACL Contract Ontology</strong><small>Vertragsvokabular</small></dt><dd>Das öffentliche sco:-Vokabular für Compiler-, Protokoll-, Schnittstellen- und Speicheraussagen.</dd></div>
+<div><dt id="decision-and-obligation-core-ontology" data-term="Decision and Obligation Core Ontology"><strong>Decision and Obligation Core Ontology</strong><small>Domänenunabhängiger Kern</small></dt><dd>Das sdo:-Vokabular für Decisions, Regeln, Pflichten, Evidence, Zeit und Herkunft unabhängig von einer konkreten Domäne.</dd></div>
+<div><dt id="funding-domain-ontology" data-term="Funding Domain Ontology"><strong>Funding Domain Ontology</strong><small>Fördervokabular</small></dt><dd>Das funding:-Fachvokabular für Förderprogramme, Antragsteller, Projekte und fachliche Ergebnisse.</dd></div>
+<div><dt id="cloud-compliance-domain-ontology" data-term="Cloud Compliance Domain Ontology"><strong>Cloud Compliance Domain Ontology</strong><small>Cloud-Fachvokabular</small></dt><dd>Das cloud:-Fachvokabular für Cloud-Systeme, Identitätsfakten, Evidence-Typen und Compliance-Ergebnisse.</dd></div></dl><h2 id="documentation-language">Unterstützende Dokumentation</h2><dl class="glossary-terms"><div><dt id="documentation-website" data-term="Documentation Website"><strong>Documentation Website</strong><small>Website</small></dt><dd>Die abgeleitete statische Darstellung von Compilererklärung, Referenz, Tutorials und Projektanleitungen. Sie begründet keine Produktanforderungen.</dd></div>
+<div><dt id="documentation-site-builder" data-term="Documentation Site Builder"><strong>Documentation Site Builder</strong><small>Website-Komposition</small></dt><dd>Das Build-Werkzeug, das redaktionelle Quellen, Diagramme, Ontologiereferenzen, Navigation und Suche zusammensetzt.</dd></div>
+<div><dt id="ontology-documentation-builder" data-term="Ontology Documentation Builder"><strong>Ontology Documentation Builder</strong><small>RDF-Publikation</small></dt><dd>Der Baustein, der aus Ontologien Referenzen, RDF-Downloads und feste Graphdaten erzeugt.</dd></div>
+<div><dt id="documentation-preview-server" data-term="Documentation Preview Server"><strong>Documentation Preview Server</strong><small>Lokale Vorschau</small></dt><dd>Der lokale Server, der nach Quellenänderungen die letzte gültige Website zeigt und Fehler sichtbar macht.</dd></div>
+<div><dt id="archify-diagram-model" data-term="Archify Diagram Model"><strong>Archify Diagram Model</strong><small>Diagrammquelle</small></dt><dd>Das einzige autoritative Modell einer redaktionellen Diagrammansicht mit Elementen, Beziehungen und Erklärungstexten.</dd></div>
+<div><dt id="ontology-relationship-graph" data-term="Ontology Relationship Graph"><strong>Ontology Relationship Graph</strong><small>Beziehungsgraph</small></dt><dd>Eine feste Visualisierung deklarierter RDF-Begriffe und Beziehungen. Sie ersetzt weder Specs noch ausführbare Constraints.</dd></div></dl><h2 id="relationships">Wichtige Unterschiede</h2><p>Ein Decision Result enthält einen Decision Outcome, ist aber nicht mit ihm identisch. Fact Gap bezeichnet fehlende Eingabe; unknown eine Bewertung. Evidence Requirements haben eigene Quellen und sind nicht dasselbe wie Obligations.</p><span id="example-dialogue"></span><span id="flagged-ambiguities"></span><p>Konkrete Beispiele stehen in den <a href="tutorials/index.html">Tutorials</a>. Begriffe werden beim ersten Auftreten pro Abschnitt verlinkt, nicht bei jeder Wiederholung.</p>
+</main></body></html>

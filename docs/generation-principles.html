@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Generierungsprinzipien · Spec Compiler</title>
-<meta name="doc-route" content="development/generation-principles.html">
+<meta name="doc-route" content="reference/conventions.html"><meta name="doc-alias" content="development/generation-principles.html">
 <link rel="stylesheet" href="assets/site.css">
 <script src="assets/site.js" defer></script>
 </head>
@@ -40,28 +40,7 @@ getrennten <code>resources/.../#</code>-Namespaces. Eine Produkt-Spec darf einen
 öffentlichen Vokabularbegriff verwenden, ohne ihn neu zu definieren; der
 Publikationsvalidator verlangt dafür eine Definition sowie deutsche und
 englische Labels in der zuständigen kanonischen Ontologie.</p>
-<p>WIDOCO-HTML, WebVOWL-Daten, der Ontologie-Beziehungsgraph und publizierte
-Beispielkopien sind abgeleitete Dokumentationsartefakte. Sie begründen keine
-Produktanforderungen und werden nicht als deterministische Vertragsartefakte
-behandelt.</p>
-<p>Jedes kanonische Vokabular erhält eine eigene WIDOCO-Referenz. Der primäre
-Ontologie-Beziehungsgraph unter <code>/ontologies/</code> hält die vier Vokabulare
-und das SQL-API-Beispiel als fünf getrennte, auswählbare Datensätze mit Links zu
-den jeweiligen zweisprachigen Referenzen und Turtle-Quellen. Die bisherigen WebVOWL-Dateien
-bleiben als abgeleitete Dokumentationsartefakte erreichbar. Fachliche Klassen
-und Properties müssen für die Darstellung explizit als OWL/RDFS-Terme mit
-deutschen und englischen Labels deklariert sein. Die Visualisierung ersetzt
-weder die Specs noch deren ausführbare Constraints.</p>
-<p>Für diesen zweiten Graphen projiziert der Dokumentationsbuilder ausgewählte
-Instanz- und SHACL-Beziehungen in ausschließlich visuelle OWL-Klassen und
-Object Properties. Dabei bleibt das Node Shape als eigener Knoten zwischen
-Endpunkt beziehungsweise Tabelle und fachlicher Zielklasse sichtbar. Die
-Projektion ist abgeleitet, nicht autoritativ und darf weder vom Compiler gelesen
-werden noch neue Testverpflichtungen begründen.</p>
-<p>Die Ontologie-IRI des abgeleiteten Graphen entspricht seinem
-<code>resources/sql-api/</code>-Basisnamespace. WebVOWL erkennt dadurch die projizierten
-Beispielknoten als interne Elemente. Eigene Visualisierungskanten behalten ihren
-getrennten <code>resources/sql-api/visualization/#</code>-Namespace.</p>
+<p>Referenzen, RDF-Exporte und Graphansichten sind abgeleitete Dokumentation und begründen keine Produktanforderungen. Ihre Pflege steht ausschließlich unter <a href="contributing/documentation.html">Dokumentation pflegen</a>; die vier kanonischen Ontologien bleiben die Vokabularquelle.</p>
 <p>Die RDF-/SHACL-Specs legen ausdrücklich fest:</p>
 <ul>
 <li>GET-Endpunkt, Pfad, Pfadparameter und dessen Datentyp,</li>
@@ -236,14 +215,7 @@ Vergleich aller autorisierten Decision Conformance Cases mit Decision Protocol
 v1. Fehlerfälle entstehen aus deklarierten Constraints und ungültigem JSON,
 nicht aus fest eingebauten KfW-Feldnamen oder Fehlermeldungen. Work Items nennen
 die Endpunkt- und Nachrichtenressourcen als Quellen.</p>
-<p>Die KfW-Spec wählt weiterhin <code>200</code>, <code>400</code>, <code>application/json</code>, ganze Request-
-und Result-Bodies sowie <code>&quot;/error&quot;</code> für Fehlertext. Ihre Body-Schemas beschreiben
-Case-Facts, Pflichtfelder, Outcomes und Evidence ausdrücklich. Änderungen am
-Decision Contract müssen deshalb auch auf Konsistenz mit der HTTP-Spec geprüft
-werden; der Compiler ergänzt diese Felder nicht automatisch. Das Produkt
-veröffentlicht OpenAPI über Runtime Protocol v1 und darf <code>[runtime]</code> neben
-<code>[decision]</code> deklarieren. Die HTTP-Abbildung schreibt keine Implementierungssprache,
-kein Server-Framework, keine UI und keine Session-Verwaltung vor.</p>
+<p>Eine verfasste HTTP-Spec beschreibt Case-Facts, Pflichtfelder, Outcomes und Evidence ausdrücklich. Änderungen am Decision Contract müssen deshalb auch auf Konsistenz mit der HTTP-Spec geprüft werden; der Compiler ergänzt diese Felder nicht automatisch. Das Produkt veröffentlicht OpenAPI über Runtime Protocol v1 und darf <code>[runtime]</code> neben <code>[decision]</code> deklarieren. Die HTTP-Abbildung schreibt keine Implementierungssprache, kein Server-Framework, keine UI und keine Session-Verwaltung vor. Eine konkrete Änderung von Status und Body-Abbildung zeigt das <a href="tutorials/kfw.html#http">KfW-Tutorial</a>.</p>
 <h3 id="compiler-protocol-v1">Compiler Protocol v1</h3>
 <p>Ein Compilerprodukt wird nicht künstlich als HTTP-Laufzeit modelliert. Sein
 <code>product.toml</code> deklariert stattdessen <code>compiler_protocol_version = 1</code> und eine
@@ -450,6 +422,4 @@ Anforderung?</p>
 </blockquote>
 <p>Gibt es darauf keine eindeutige Antwort, gehört die Assertion nicht in den
 Generator.</p>
-<h2 id="dokumentationsquellen">Dokumentationsquellen</h2><p>Redaktionelles HTML in <code>docs/</code> und Archify-JSON in <code>docs/diagrams/</code> sind die kanonischen Quellen. Generierte Website-Artefakte und Suchindex begründen keine Produktanforderungen. Archify rendert die Architekturansichten; C4 und arc42 definieren ihre Rolle. Redaktionelle Markdown-/Mermaid-Doppelquellen sind nicht zulässig. Generierte Issue-Texte bleiben unverändert Markdown-Vertragsausgaben.</p></main>
-</body>
-</html>
+<h2 id="dokumentationsquellen">Weiterführende Dokumentation</h2><p>Diese Seite definiert Compiler- und Produktkonventionen. Website-Quellen, Renderer, Vorschau und Veröffentlichung werden getrennt unter <a href="contributing/documentation.html">Mitwirken: Dokumentation pflegen</a> beschrieben. <a href="glossary.html">Das zentrale Glossar</a> ist die einzige Begriffsdefinition; konkrete Produktbeispiele stehen in den <a href="tutorials/index.html">Tutorials</a>.</p></main></body></html>

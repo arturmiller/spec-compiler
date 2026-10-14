@@ -25,7 +25,15 @@
       ],
       "size": [
         330,
-        80
+        124
+      ],
+      "summary": "Führt die Nachweise aus. Verwendet Protokolladapter.",
+      "description": "Die Test-Suite wird aus Specs und benannten Konventionen erzeugt. Sie ruft die passenden Adapter auf und vergleicht beobachtete Ergebnisse mit ausdrücklich begründeten Erwartungen. OpenAPI-, HTTP-, Storage-, Decision- oder Compilerprüfungen hängen vom Profil ab. Diese Datei ist eine Ausgabe und wird nicht von Hand verändert.",
+      "links": [
+        {
+          "label": "Zum Glossar: Nachweis",
+          "href": "../reference/glossary.html#proof"
+        }
       ]
     },
     {
@@ -39,7 +47,15 @@
       ],
       "size": [
         330,
-        80
+        124
+      ],
+      "summary": "Startet HTTP-Produkte. Wartet auf ihre Bereitschaft.",
+      "description": "Der Adapter liest Runtime Protocol v1 und ersetzt die zulässigen Manifest-Platzhalter. Er startet einen separaten Prozess, beobachtet dessen Bereitschaft und stellt dem Nachweis die vertragliche Grenze bereit. HTTP-/OpenAPI-Verhalten und gegebenenfalls deklarierte SQLite-Daten werden geprüft. Timeout und Abschluss führen zum Prozess-Cleanup.",
+      "links": [
+        {
+          "label": "Zum Glossar: Runtime Protocol",
+          "href": "../reference/glossary.html#runtime-protocol"
+        }
       ]
     },
     {
@@ -53,7 +69,15 @@
       ],
       "size": [
         330,
-        80
+        124
+      ],
+      "summary": "Sendet eine JSON-Anfrage. Prüft Antwort und Prozess.",
+      "description": "Der Adapter liest das Decision-Manifest und startet das Produkt unabhängig. Er überträgt einen UTF-8-JSON-Request über stdin und liest genau ein JSON-Result über stdout. Format, Exitstatus und Zeitgrenze werden geprüft. Es wird keine Session und kein importiertes Produktmodul vorausgesetzt.",
+      "links": [
+        {
+          "label": "Zum Glossar: Decision Protocol",
+          "href": "../reference/glossary.html#decision-protocol"
+        }
       ]
     },
     {
@@ -67,7 +91,15 @@
       ],
       "size": [
         330,
-        80
+        124
+      ],
+      "summary": "Ruft einen Compiler auf. Beobachtet seine Ausgaben.",
+      "description": "Der Adapter benutzt das Compiler-Manifest und übergibt ein Input Product Bundle an einen separaten Compilerprozess. Der Nachweis beobachtet Exitstatus, Prozessausgabe und deklarierte Artefakte. Wiederholte Aufrufe erlauben einen byteweisen Ergebnisvergleich. Die Compilerimplementierung wird nicht importiert.",
+      "links": [
+        {
+          "label": "Zum Glossar: Compiler Protocol",
+          "href": "../reference/glossary.html#compiler-protocol"
+        }
       ]
     },
     {
@@ -81,7 +113,15 @@
       ],
       "size": [
         330,
-        80
+        124
+      ],
+      "summary": "Beendet die Prozessgruppe. Entfernt auch Kindprozesse.",
+      "description": "Alle Runtime-Adapter verwenden den gemeinsamen Prozessabschluss. Unter Windows wird der Prozessbaum beendet, unter POSIX die dedizierte Prozessgruppe signalisiert. Dies gilt nach Erfolg, Fehler und Timeout. Das Cleanup ist keine Sandbox und ersetzt kein Vertrauen in Manifestbefehle.",
+      "links": [
+        {
+          "label": "Zum Glossar: Product Runtime",
+          "href": "../reference/glossary.html#product-runtime"
+        }
       ]
     }
   ],
@@ -92,13 +132,7 @@
       "to": "runtime",
       "label": "Runtime Protocol v1",
       "fromSide": "left",
-      "toSide": "top",
-      "via": [
-        [
-          205,
-          100
-        ]
-      ]
+      "toSide": "top"
     },
     {
       "id": "decision-proof",
@@ -113,13 +147,7 @@
       "to": "compiler",
       "label": "Compiler Protocol v1",
       "fromSide": "right",
-      "toSide": "top",
-      "via": [
-        [
-          1005,
-          100
-        ]
-      ]
+      "toSide": "top"
     },
     {
       "id": "cleanup",

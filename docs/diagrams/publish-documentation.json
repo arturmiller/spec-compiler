@@ -1,23 +1,120 @@
 {
-  "schema_version": 1, "diagram_type": "sequence",
-  "meta": {"title": "Eine gemeinsame Dokumentationswebsite veröffentlichen", "locale": "de", "quality_profile": "showcase", "column_fit": "spread", "viewBox": [1080, 650]},
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Eine gemeinsame Dokumentationswebsite veröffentlichen",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      726
+    ]
+  },
   "participants": [
-    {"id": "maintainer", "type": "external", "label": "Maintainer", "sublabel": "HTML, JSON und RDF"},
-    {"id": "actions", "type": "cloud", "label": "GitHub Actions", "sublabel": "Build und Veröffentlichung"},
-    {"id": "builder", "type": "backend", "label": "Documentation Site Builder", "sublabel": "Python + Node + Java"},
-    {"id": "pages", "type": "external", "label": "GitHub Pages", "sublabel": "statische HTTPS-Website"}
+    {
+      "id": "maintainer",
+      "type": "external",
+      "label": "Maintainer",
+      "sublabel": "HTML, JSON und RDF",
+      "summary": "Pflegt die Quellen. Veröffentlicht erst durch einen Push.",
+      "description": "Mitwirkende bearbeiten redaktionelles HTML, Diagrammmodelle und verfasste RDF-Quellen. Die lokale Vorschau zeigt den letzten gültigen Stand vor dem Deployment. Ein expliziter main-Push stößt CI an. Speichern und lokale Fehler veröffentlichen keine Website.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Website",
+          "href": "../reference/glossary.html#documentation-website"
+        }
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "cloud",
+      "label": "GitHub Actions",
+      "sublabel": "Build und Veröffentlichung",
+      "summary": "Prüft den Workflow. Baut das Website-Artefakt.",
+      "description": "Der CI-Runner führt den Repository-Workflow und den statischen Dokumentationsbuild aus. Dabei werden Specs, Links, Diagramme und Nachweise geprüft. Ein Pull Request baut ohne Deployment; main veröffentlicht das akzeptierte Artefakt. Das ist Website-Infrastruktur, keine Produktruntime.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Site Builder",
+          "href": "../reference/glossary.html#documentation-site-builder"
+        }
+      ]
+    },
+    {
+      "id": "builder",
+      "type": "backend",
+      "label": "Documentation Site Builder",
+      "sublabel": "Python + Node",
+      "summary": "Komponiert die Website. Prüft Links und Diagramme.",
+      "description": "Der unterstützende Builder verbindet redaktionelles HTML, Diagrammmodelle und RDF-Referenzen. Er ergänzt gemeinsame Navigation, Theme und Suchindex und veröffentlicht erst den geprüften Kandidaten. Archify, RDFLib und Graphviz sind Dokumentationswerkzeuge, keine Produktvertragsanforderungen. Canonical Sources werden nicht durch generiertes HTML ersetzt.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Site Builder",
+          "href": "../reference/glossary.html#documentation-site-builder"
+        }
+      ]
+    },
+    {
+      "id": "pages",
+      "type": "external",
+      "label": "GitHub Pages",
+      "sublabel": "statische HTTPS-Website",
+      "summary": "Liefert die statische Website. Betreibt kein Produktbackend.",
+      "description": "GitHub Pages stellt den geprüften HTML-/JavaScript-/RDF-Build per HTTPS bereit. Die Quelle bleibt im Repository und wird durch GitHub Actions gebaut. Hier laufen weder der Compiler noch die Beispielprodukte als Backend. RDF-Dateien haben ausdrückliche URLs; es gibt keine Inhaltsaushandlung oder SPARQL-Runtime.",
+      "links": [
+        {
+          "label": "Zum Glossar: Documentation Website",
+          "href": "../reference/glossary.html#documentation-website"
+        }
+      ]
+    }
   ],
   "messages": [
-    {"id": "push", "from": "maintainer", "to": "actions", "y": 170, "label": "main pushen oder Pull Request öffnen", "variant": "emphasis"},
-    {"id": "verify", "from": "actions", "to": "builder", "y": 240, "label": "Workflow und Quellen prüfen"},
-    {"id": "render", "from": "actions", "to": "builder", "y": 310, "label": "HTML, Diagramme und Ontologien bauen"},
-    {"id": "artifact", "from": "builder", "to": "actions", "y": 390, "label": "geprüftes statisches Site-Artefakt", "variant": "return"},
-    {"id": "deploy", "from": "actions", "to": "pages", "y": 470, "label": "bei main: Site-Artefakt veröffentlichen", "variant": "emphasis"},
-    {"id": "result", "from": "actions", "to": "maintainer", "y": 560, "label": "Build- und Deployment-Ergebnis", "variant": "return"}
-  ],
-  "cards": [
-    {"dot": "cyan", "title": "Verbindliche Quellen", "items": ["HTML enthält die Texte; JSON beschreibt die Diagramme.", "RDF/Turtle bleibt die Quelle der Ontologien und Produktspecs."]},
-    {"dot": "emerald", "title": "Ein Build", "items": ["Archify deliver prüft Diagramme, WIDOCO baut die Referenzen.", "Navigation und Suchindex werden deterministisch zusammengesetzt."]},
-    {"dot": "violet", "title": "Lokale Schleife", "items": ["HTML- und Modelländerungen aktualisieren die Vorschau automatisch.", "Pull Requests bauen die Website ohne Veröffentlichung."]}
+    {
+      "id": "push",
+      "from": "maintainer",
+      "to": "actions",
+      "y": 246,
+      "label": "main pushen oder Pull Request öffnen",
+      "variant": "emphasis"
+    },
+    {
+      "id": "verify",
+      "from": "actions",
+      "to": "builder",
+      "y": 316,
+      "label": "Workflow und Quellen prüfen"
+    },
+    {
+      "id": "render",
+      "from": "actions",
+      "to": "builder",
+      "y": 386,
+      "label": "HTML, Diagramme und Ontologien bauen"
+    },
+    {
+      "id": "artifact",
+      "from": "builder",
+      "to": "actions",
+      "y": 466,
+      "label": "geprüftes statisches Site-Artefakt",
+      "variant": "return"
+    },
+    {
+      "id": "deploy",
+      "from": "actions",
+      "to": "pages",
+      "y": 546,
+      "label": "bei main: Site-Artefakt veröffentlichen",
+      "variant": "emphasis"
+    },
+    {
+      "id": "result",
+      "from": "actions",
+      "to": "maintainer",
+      "y": 636,
+      "label": "Build- und Deployment-Ergebnis",
+      "variant": "return"
+    }
   ]
 }

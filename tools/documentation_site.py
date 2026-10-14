@@ -25,11 +25,11 @@ ARCHIFY = ROOT / "tools" / "vendor" / "archify"
 CACHE = ROOT / ".cache" / "documentation"
 NAVIGATION = (
     ("", "Überblick"),
-    ("architecture/", "Architektur"),
-    ("workflows/", "Abläufe"),
-    ("decisions/", "Entscheidungen"),
+    ("compiler/", "Compiler"),
+    ("tutorials/", "Tutorials"),
+    ("reference/", "Referenz"),
     ("ontologies/", "Ontologien"),
-    ("development/", "Entwicklung"),
+    ("contributors/", "Mitwirken"),
 )
 
 
@@ -102,6 +102,7 @@ class DocumentParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.route = ""
         self.redirect = ""
+        self.aliases: list[str] = []
         self.title = ""
         self.summary = ""
         self.ids: set[str] = set()
@@ -124,6 +125,8 @@ class DocumentParser(HTMLParser):
                 self.route = data.get("content") or ""
             elif data.get("name") == "doc-redirect":
                 self.redirect = data.get("content") or ""
+            elif data.get("name") == "doc-alias":
+                self.aliases.append(data.get("content") or "")
             elif data.get("name") == "description":
                 self.summary = data.get("content") or ""
         if tag == "title":
@@ -175,6 +178,101 @@ class DocumentParser(HTMLParser):
             self.sections[-1]["text"] += normalized + " "
 
 
+class GlossaryParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.entries = []
+        self.current = None
+        self.reading = False
+        self.definition = []
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "dt" and attributes.get("data-term"):
+            self.current = {"title": attributes["data-term"], "id": attributes["id"]}
+        if tag == "dd" and self.current:
+            self.reading = True
+            self.definition = []
+
+    def handle_data(self, data):
+        if self.reading:
+            self.definition.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "dd" and self.current:
+            self.entries.append({**self.current, "text": " ".join(" ".join(self.definition).split())})
+            self.current = None
+            self.reading = False
+
+
+def glossary_entries() -> list[dict]:
+    source = SOURCES / "glossary.html"
+    if not source.is_file():
+        return []
+    parser = GlossaryParser()
+    parser.feed(source.read_text(encoding="utf-8"))
+    return parser.entries
+
+
+class GlossaryLinker(HTMLParser):
+    """Link only the first prose occurrence per section; never code or ADRs."""
+    def __init__(self, entries, target):
+        super().__init__(convert_charrefs=False)
+        self.terms = {entry["title"]: entry["id"] for entry in entries}
+        self.pattern = re.compile(r"(?<![\w-])(?:" + "|".join(re.escape(term) for term in sorted(self.terms, key=len, reverse=True)) + r")(?![\w-])") if entries else None
+        self.target = target
+        self.seen = set()
+        self.parts = []
+        self.main = False
+        self.skipped = []
+
+    def handle_starttag(self, tag, attrs):
+        self.parts.append(self.get_starttag_text())
+        if tag == "main":
+            self.main = True
+        if tag == "h2":
+            self.seen.clear()
+        if tag in {"a", "code", "pre", "script", "style", "h1", "h2", "h3", "h4", "h5", "h6"}:
+            self.skipped.append(tag)
+        if tag == "a":
+            fragment = urlsplit(dict(attrs).get("href", "")).fragment
+            self.seen.update(term for term, identifier in self.terms.items() if identifier == fragment)
+
+    def handle_endtag(self, tag):
+        self.parts.append(f"</{tag}>")
+        if tag == "main":
+            self.main = False
+        if self.skipped and tag == self.skipped[-1]:
+            self.skipped.pop()
+
+    def handle_startendtag(self, tag, attrs):
+        self.parts.append(self.get_starttag_text())
+
+    def handle_data(self, data):
+        if self.main and not self.skipped and self.pattern:
+            def replace(match):
+                term = match.group()
+                if term in self.seen:
+                    return term
+                self.seen.add(term)
+                href = self.target + "#" + self.terms[term]
+                return f'<a class="glossary-link" href="{html.escape(href, quote=True)}">{html.escape(term)}</a>'
+            data = self.pattern.sub(replace, data)
+        self.parts.append(data)
+
+    def handle_entityref(self, name):
+        self.parts.append(f"&{name};")
+
+    def handle_charref(self, name):
+        self.parts.append(f"&#{name};")
+
+    def handle_decl(self, decl):
+        self.parts.append(f"<!{decl}>")
+
+    def handle_comment(self, data):
+        self.parts.append(f"<!--{data}-->")
+
+
 @dataclass
 class Document:
     source: Path
@@ -214,6 +312,13 @@ def read_documents() -> list[Document]:
             raise ValueError(f"Documentation has no readable main heading: {source}")
         routes.add(route)
         documents.append(Document(source, markup, parsed))
+    for document in documents:
+        for alias in document.parsed.aliases:
+            if not alias or alias.startswith("/") or ".." in Path(alias).parts or "\\" in alias:
+                raise ValueError(f"Unsafe documentation alias: {alias}")
+            if alias in routes:
+                raise ValueError(f"Duplicate documentation route or alias: {alias}")
+            routes.add(alias)
     return documents
 
 
@@ -236,9 +341,10 @@ def source_target(source: Path, value: str, document_map: dict[Path, Document]) 
     target = (source.parent / unquote(parsed.path)).resolve()
     if target in document_map:
         suffix = ("?" + parsed.query if parsed.query else "") + ("#" + parsed.fragment if parsed.fragment else "")
-        return document_map[target].route + suffix
+        return (document_map[target].parsed.redirect or document_map[target].route) + suffix
     if target == ROOT / "tools" / "ontology_relationship_graph.html":
-        return "ontologies/" + ("?" + parsed.query if parsed.query else "") + ("#" + parsed.fragment if parsed.fragment else "")
+        graph_route = "tutorials/sql-api/graph/" if "ontology=sql-api" in parsed.query else "ontologies/"
+        return graph_route + ("?" + parsed.query if parsed.query else "") + ("#" + parsed.fragment if parsed.fragment else "")
     if target.is_relative_to((SOURCES / "assets").resolve()):
         return "assets/" + target.relative_to(SOURCES / "assets").as_posix()
     if target.is_relative_to((SOURCES / "diagrams").resolve()) and target.suffix == ".json":
@@ -275,6 +381,19 @@ def validate_sources(*, render_diagrams: bool = True) -> None:
                 errors.append(f"Documentation target anchor is missing: {document.source}: {value}")
     if errors:
         raise ValueError("\n".join(errors))
+    targets = {document.target: document for document in documents}
+    for name, source in models.items():
+        model = json.loads(source.read_text(encoding="utf-8"))
+        for node in model.get("components", model.get("participants", model.get("states", []))):
+            for link in node.get("links", []):
+                url = urlsplit(link["href"])
+                route = posixpath.normpath(posixpath.join("diagrams", url.path))
+                if url.path.endswith("/"):
+                    route = (route + "/" if route != "." else "") + "index.html"
+                if url.scheme or url.netloc or route not in targets:
+                    raise ValueError(f"Invalid diagram documentation link: {name}/{node['id']}: {link['href']}")
+                if url.fragment and unquote(url.fragment) not in targets[route].parsed.ids:
+                    raise ValueError(f"Missing diagram documentation anchor: {name}/{node['id']}: {link['href']}")
     if render_diagrams:
         renderer_digest = _renderer_digest()
         for source in models.values():
@@ -324,6 +443,10 @@ def shell(route: str) -> str:
     links = []
     for target, label in NAVIGATION:
         active = route == target if not target else route.startswith(target)
+        if target == "ontologies/" and route.startswith(("ontology/", "resources/")):
+            active = True
+        if target == "tutorials/" and route.startswith("examples/"):
+            active = True
         current = ' aria-current="page"' if active else ""
         links.append(f'<a href="{relative_url(route, target)}"{current}>{label}</a>')
     return (
@@ -353,6 +476,10 @@ def decorate(markup: str, route: str, *, source: Path | None = None, lookup: dic
                 return match.group(0)
             return attribute + "=" + quote_char + html.escape(relative_url(route, target), quote=True) + quote_char
         markup = re.sub(r'\b(href|src)=(["\'])(.*?)\2', rewrite, markup)
+        if source.name != "glossary.html" and not route.startswith("reference/decisions/"):
+            linker = GlossaryLinker(glossary_entries(), relative_url(route, "reference/glossary.html"))
+            linker.feed(markup)
+            markup = "".join(linker.parts)
     css = relative_url(route, "assets/site.css")
     script = relative_url(route, "assets/site.js")
     markup = re.sub(r'<link\b[^>]*href=["\'][^"\']*site\.css["\'][^>]*>', "", markup)
@@ -395,14 +522,19 @@ def compile_documents(stage: Path) -> list[dict]:
         shutil.copyfile(source, directory / source.name)
         model = json.loads(source.read_text(encoding="utf-8"))
         locations = [document for document in documents if name in document.parsed.diagrams]
-        destination = locations[0].route if locations else "architecture/"
+        destination = locations[0].route if locations else "reference/architecture/"
         for node in model.get("components", model.get("nodes", model.get("participants", model.get("states", [])))):
             entries.append({"category": "Diagramm", "title": node.get("label", node.get("name", node["id"])),
-                            "text": model["meta"]["title"] + " " + node.get("sublabel", ""),
+                            "text": " ".join([model["meta"]["title"], node.get("sublabel", ""),
+                                              node.get("summary", ""), node.get("description", "")]),
                             "url": destination + "?diagram=" + quote(name) + "&node=" + quote(node["id"]) + "#diagram-" + name})
     for document in documents:
         target = stage / document.target
         target.parent.mkdir(parents=True, exist_ok=True)
+        for alias in document.parsed.aliases:
+            alias_target = stage / (alias + "index.html" if alias.endswith("/") else alias)
+            alias_target.parent.mkdir(parents=True, exist_ok=True)
+            alias_target.write_text(redirect_page(alias, document.route), encoding="utf-8")
         if document.parsed.redirect:
             target.write_text(redirect_page(document.route, document.parsed.redirect), encoding="utf-8")
             continue
@@ -417,14 +549,16 @@ def compile_documents(stage: Path) -> list[dict]:
             )
             markup = re.sub(r'<figure\b[^>]*data-diagram=["\']' + re.escape(name) + r'["\'][^>]*>[\s\S]*?</figure>', lambda _: figure, markup)
         target.write_text(decorate(markup, document.route, source=document.source, lookup=lookup), encoding="utf-8")
-        category = "Entscheidung" if document.route.startswith("decisions/") else "Dokumentation"
+        category = "Entscheidung" if document.route.startswith("reference/decisions/") else "Dokumentation"
         for section in document.parsed.sections:
             entries.append({"category": category, "title": section["title"],
                             "text": section["text"].strip(), "url": document.route + ("#" + section["id"] if section["id"] else "")})
+    entries.extend({"category": "Glossar", "title": entry["title"], "text": entry["text"],
+                    "url": "reference/glossary.html#" + entry["id"]} for entry in glossary_entries())
     return entries
 
 
-def ontology_entries(graph_page: Path | None = None) -> list[dict]:
+def ontology_entries(graph_page: Path | None = None, route: str = "ontologies/") -> list[dict]:
     graph_page = graph_page or OUTPUT / "ontologies" / "index.html"
     if not graph_page.is_file():
         raise ValueError("Build the ontology viewer before composing documentation")
@@ -436,11 +570,11 @@ def ontology_entries(graph_page: Path | None = None) -> list[dict]:
         for node in dataset["nodes"]:
             entries.append({"category": "Ontologie", "title": node["label"],
                             "text": dataset["title"] + " " + node["labelEn"] + " " + node["comment"] + " " + node["id"],
-                            "url": "ontologies/?ontology=" + dataset["key"] + "&term=" + quote(node["id"], safe="") + "&context=1"})
+                            "url": route + "?ontology=" + dataset["key"] + "&term=" + quote(node["id"], safe="") + "&context=1"})
         for prop in dataset["properties"]:
             entries.append({"category": "Property", "title": prop["label"],
                             "text": dataset["title"] + " " + prop["labelEn"] + " " + prop["iri"],
-                            "url": "ontologies/?ontology=" + dataset["key"] + "&q=" + quote(prop["name"], safe="")})
+                            "url": route + "?ontology=" + dataset["key"] + "&q=" + quote(prop["name"], safe="")})
     return entries
 
 
@@ -453,17 +587,20 @@ def compose_site(graph_directory: Path | None = None) -> None:
             shutil.copytree(graph_directory, stage, dirs_exist_ok=True)
         graph_file = (graph_directory or OUTPUT) / "ontologies" / "index.html"
         entries = compile_documents(stage) + ontology_entries(graph_file)
-        entries.sort(key=lambda entry: (entry["category"], entry["title"], entry["url"]))
-        (stage / "assets" / "search-index.json").write_text(
-            json.dumps(entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")), encoding="utf-8")
+        example_route = "tutorials/sql-api/graph/"
+        example_graph = (graph_directory or OUTPUT) / example_route / "index.html"
+        if example_graph.is_file():
+            entries += ontology_entries(example_graph, example_route)
+            candidate_example = stage / example_route / "index.html"
+            candidate_example.parent.mkdir(parents=True, exist_ok=True)
+            candidate_example.write_text(decorate(example_graph.read_text(encoding="utf-8"), example_route), encoding="utf-8")
         graph_markup = graph_file.read_text(encoding="utf-8")
         candidate_graph = stage / "ontologies" / "index.html"
         candidate_graph.parent.mkdir(parents=True, exist_ok=True)
         if 'class="site-header"' not in graph_markup:
             graph_markup = decorate(graph_markup, "ontologies/")
         candidate_graph.write_text(graph_markup, encoding="utf-8")
-        # Keep WIDOCO/RDF routes stable while giving reference and resource pages
-        # the same entry points. Fragment files and legacy WebVOWL stay untouched.
+        # Reference pages use the same shell, theme and search as authored docs.
         for reference in sorted(OUTPUT.rglob("index*.html")):
             relative = reference.relative_to(OUTPUT)
             if relative.parts[0] not in {"ontology", "resources", "examples"} or "webvowl" in relative.parts:
@@ -472,12 +609,21 @@ def compose_site(graph_directory: Path | None = None) -> None:
             if 'class="site-header"' in markup or not re.search(r"<body\b", markup, re.IGNORECASE):
                 continue
             route = relative.as_posix()
-            markup = re.sub(r'<script[^>]*src="resources/dark-mode-toggle.mjs"[^>]*></script>\s*<div class="darkmode">[\s\S]*?</div>', "", markup)
-            markup = re.sub(r'<link[^>]*href="resources/(dark|light).css"[^>]*>', "", markup)
-            markup = re.sub(r"<body\b([^>]*)>", r'<body\1 class="reference-page"><span id="content"></span>', markup, count=1, flags=re.IGNORECASE)
+            if 'id="content"' not in markup:
+                markup = re.sub(r"<body\b([^>]*)>", r'<body\1><main id="content" class="doc-content">', markup, count=1, flags=re.IGNORECASE)
+                markup = markup.replace("</body>", "</main></body>", 1)
             candidate = stage / relative
             candidate.parent.mkdir(parents=True, exist_ok=True)
             candidate.write_text(decorate(markup, route), encoding="utf-8")
+            if reference.name == "index-de.html":
+                parsed = DocumentParser()
+                parsed.feed(markup)
+                for section in parsed.sections:
+                    entries.append({"category": "Referenz", "title": section["title"],
+                                    "text": section["text"].strip(), "url": route + ("#" + section["id"] if section["id"] else "")})
+        entries.sort(key=lambda entry: (entry["category"], entry["title"], entry["url"]))
+        (stage / "assets" / "search-index.json").write_text(
+            json.dumps(entries, ensure_ascii=False, sort_keys=True, separators=(",", ":")), encoding="utf-8")
         validate_published_links(stage, fallback=OUTPUT)
         for source in sorted(stage.rglob("*")):
             if not source.is_file():
@@ -491,11 +637,20 @@ def validate_published_links(output: Path | None = None, *, fallback: Path | Non
     output = output or OUTPUT
     files = [output / document.target for document in read_documents()]
     files.append(output / "ontologies" / "index.html")
+    example = output / "tutorials/sql-api/graph/index.html"
+    if example.is_file():
+        files.append(example)
+    for base in ("ontology", "resources", "examples"):
+        files.extend(output.joinpath(base).rglob("index*.html"))
     entries = json.loads((output / "assets" / "search-index.json").read_text(encoding="utf-8"))
     checks = [(output / "index.html", entry["url"]) for entry in entries]
+    parsed_files = {}
     for path in files:
         parsed = DocumentParser()
         parsed.feed(path.read_text(encoding="utf-8"))
+        if parsed.duplicates:
+            raise ValueError(f"Duplicate published anchors: {path}: {sorted(parsed.duplicates)}")
+        parsed_files[path.resolve()] = parsed
         checks.extend((path, value) for _tag, value in parsed.links)
     for source, value in checks:
         url = urlsplit(html.unescape(value))
@@ -511,6 +666,9 @@ def validate_published_links(output: Path | None = None, *, fallback: Path | Non
         if not target.is_file():
             raise ValueError(f"Broken published link: {source}: {value}")
         if url.fragment and target.suffix == ".html":
-            markup = target.read_text(encoding="utf-8")
-            if not re.search(r'\bid=["\']' + re.escape(url.fragment) + r'["\']', markup):
+            if target not in parsed_files:
+                parsed = DocumentParser()
+                parsed.feed(target.read_text(encoding="utf-8"))
+                parsed_files[target] = parsed
+            if unquote(url.fragment) not in parsed_files[target].ids:
                 raise ValueError(f"Missing published anchor: {source}: {value}")

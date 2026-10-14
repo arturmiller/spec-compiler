@@ -1,21 +1,98 @@
 {
-  "schema_version": 1, "diagram_type": "sequence",
-  "meta": {"title": "Stateless Decision Request und Result", "locale": "de", "quality_profile": "showcase", "column_fit": "spread", "viewBox": [1080, 660]},
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Stateless Decision Request und Result",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1080,
+      736
+    ]
+  },
   "participants": [
-    {"id": "client", "type": "external", "label": "Client / Harness", "sublabel": "hält die Case Facts"},
-    {"id": "product", "type": "backend", "label": "Decision Product", "sublabel": "Decision Protocol v1"},
-    {"id": "contract", "type": "database", "label": "Decision Contract", "sublabel": "Rules und Provenance"}
+    {
+      "id": "client",
+      "type": "external",
+      "label": "Client / Harness",
+      "sublabel": "hält die Case Facts",
+      "summary": "Hält die gelieferten Fakten. Sendet vollständige Anfragen.",
+      "description": "Der Client trägt Vertrag, stabile Regelmenge, explizites Datum und gelieferte Fakten in den Request ein. Er ergänzt gegebenenfalls die Antwort auf eine nächste Frage im vollständigen Case und sendet ihn erneut. Das Produkt muss keine Sitzung halten. Evidence bleibt semantische Eingabe, nicht automatisch ein hochgeladenes Dokument.",
+      "links": [
+        {
+          "label": "Zum Glossar: Decision Request",
+          "href": "../reference/glossary.html#decision-request"
+        }
+      ]
+    },
+    {
+      "id": "product",
+      "type": "backend",
+      "label": "Decision Product",
+      "sublabel": "Decision Protocol v1",
+      "summary": "Wertet gelieferte Fakten aus. Liefert ein begrenztes Resultat.",
+      "description": "Das getrennte Decision-Produkt erhält einen vollständigen Request und wählt genau die erklärte anwendbare Regelversion. Es bewertet Bedingungen und liefert Outcome, Herkunft, Lücken und gegebenenfalls eine nächste Frage. Evidence und Pflichten werden getrennt bewertet. Der Vertrag fordert keine Sprache, UI, Session oder Dokumentenspeicherung.",
+      "links": [
+        {
+          "label": "Zum Glossar: Decision Product",
+          "href": "../reference/glossary.html#decision-product"
+        }
+      ]
+    },
+    {
+      "id": "contract",
+      "type": "database",
+      "label": "Decision Contract",
+      "sublabel": "Rules und Provenance",
+      "summary": "Benennt Regeln und Herkunft. Begrenzt die Entscheidung.",
+      "description": "Der Decision Contract fixiert die modellierte Frage, Versionen und mögliche Outcomes. Regeln, Bedingungen, Fragen, Pflichten, Evidence-Anforderungen und Quellen stammen aus ausdrücklich verfassten Specs. Die Referenzimplementierung liest die kompilierte Darstellung zur Laufzeit. Andere Implementierungen müssen das Protokoll erfüllen, aber nicht dieselbe Datei lesen.",
+      "links": [
+        {
+          "label": "Zum Glossar: Decision Contract",
+          "href": "../reference/glossary.html#decision-contract"
+        }
+      ]
+    }
   ],
   "messages": [
-    {"id": "request", "from": "client", "to": "product", "y": 170, "label": "vollständigen Decision Request senden", "variant": "emphasis"},
-    {"id": "version", "from": "product", "to": "contract", "y": 240, "label": "Version anhand Decision Date wählen"},
-    {"id": "rules", "from": "product", "to": "contract", "y": 310, "label": "Rules und getrennte Nachweise auswerten"},
-    {"id": "result", "from": "product", "to": "client", "y": 390, "label": "Result, ggf. mit einer Next Question", "variant": "return"},
-    {"id": "resubmit", "from": "client", "to": "product", "y": 550, "label": "ergänzten vollständigen Case erneut senden", "variant": "emphasis"}
-  ],
-  "cards": [
-    {"dot": "cyan", "title": "Explizite Zeit", "items": ["Der Request benennt das stabile Rule Set und Decision Date.", "Weder der Client noch die Systemuhr wählen eine neueste Version."]},
-    {"dot": "emerald", "title": "Fragen aus Fact Gaps", "items": ["Eine fehlende Eingabe ist kein false.", "Die optionale Next Question ist Teil desselben JSON Result, keine zweite Nachricht.", "Sie folgt nur bei unknown aus der expliziten Fragepriorität."]},
-    {"dot": "violet", "title": "Getrennte Ergebnisse", "items": ["Evidence Requirements und Obligations ändern den Outcome nicht.", "Das Referenzprodukt liest den Vertrag; das Protokoll schreibt dies nicht vor."]}
+    {
+      "id": "request",
+      "from": "client",
+      "to": "product",
+      "y": 246,
+      "label": "vollständigen Decision Request senden",
+      "variant": "emphasis"
+    },
+    {
+      "id": "version",
+      "from": "product",
+      "to": "contract",
+      "y": 316,
+      "label": "Version anhand Decision Date wählen"
+    },
+    {
+      "id": "rules",
+      "from": "product",
+      "to": "contract",
+      "y": 386,
+      "label": "Rules und getrennte Nachweise auswerten"
+    },
+    {
+      "id": "result",
+      "from": "product",
+      "to": "client",
+      "y": 466,
+      "label": "Result, ggf. mit einer Next Question",
+      "variant": "return"
+    },
+    {
+      "id": "resubmit",
+      "from": "client",
+      "to": "product",
+      "y": 626,
+      "label": "ergänzten vollständigen Case erneut senden",
+      "variant": "emphasis"
+    }
   ]
 }

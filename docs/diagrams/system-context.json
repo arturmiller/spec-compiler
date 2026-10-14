@@ -5,30 +5,195 @@
     "title": "Spec Compiler – Systemkontext",
     "quality_profile": "showcase",
     "views": [
-      {"id": "contract", "label": "Vertrag und Nachweis", "focus": ["author", "compiler", "product", "reviewer"], "note": "Explizite Specs werden zu Verträgen und beobachtbaren Nachweisen."},
-      {"id": "documentation", "label": "Dokumentation", "focus": ["compiler", "pages"], "note": "GitHub Actions veröffentlicht die erzeugte Dokumentationswebsite."}
+      {
+        "id": "contract",
+        "label": "Vertrag und Nachweis",
+        "focus": [
+          "author",
+          "compiler",
+          "product",
+          "reviewer"
+        ],
+        "note": "Explizite Specs werden zu Verträgen und beobachtbaren Nachweisen."
+      }
     ],
-    "legend": {"entries": {"backend": {"label": "Software System im Fokus"}, "external": {"label": "Person oder externes Software System"}}}
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "Software System im Fokus"
+        },
+        "external": {
+          "label": "Person oder externes Software System"
+        }
+      }
+    },
+    "locale": "de"
   },
   "components": [
-    {"id": "author", "type": "external", "label": "Spec Author", "sublabel": "Person · beschreibt Produktabsicht", "pos": [40, 330], "size": [220, 76]},
-    {"id": "compiler", "type": "backend", "label": "Spec Compiler", "sublabel": "Software System · kompiliert und prüft", "pos": [520, 330], "size": [240, 76]},
-    {"id": "product", "type": "external", "label": "Generated Product", "sublabel": "Software System · erfüllt den Vertrag", "pos": [1030, 330], "size": [240, 76]},
-    {"id": "reviewer", "type": "external", "label": "Reviewer / CI", "sublabel": "Person · startet Nachweise", "pos": [520, 80], "size": [240, 76]},
-    {"id": "pages", "type": "external", "label": "GitHub Pages", "sublabel": "Externes Software System · statische Website", "pos": [520, 640], "size": [240, 76]},
-    {"id": "agent", "type": "external", "label": "AI Coding Agent", "sublabel": "Optional · dateibasierte Übergabe", "pos": [1030, 640], "size": [240, 76]}
+    {
+      "id": "author",
+      "type": "external",
+      "label": "Spec Author",
+      "sublabel": "Person · beschreibt Produktabsicht",
+      "pos": [
+        40,
+        330
+      ],
+      "size": [
+        220,
+        124
+      ],
+      "summary": "Verfasst die Anforderungen. Legt beobachtbares Verhalten fest.",
+      "description": "Spec-Autoren formulieren die Produktabsicht als ausdrückliche Aussagen in Turtle-Dateien. Sie benennen Bedingungen und erlaubte Quellen, statt ein Beispielprogramm als Vertrag zu behandeln. Der Compiler erhält diese Specs und liefert Diagnosen oder abgeleitete Artefakte. Unvollständige Aussagen müssen fachlich geklärt werden.",
+      "links": [
+        {
+          "label": "Zum Glossar: Spec",
+          "href": "../reference/glossary.html#spec"
+        }
+      ]
+    },
+    {
+      "id": "compiler",
+      "type": "backend",
+      "label": "Spec Compiler",
+      "sublabel": "Software System · kompiliert und prüft",
+      "pos": [
+        520,
+        330
+      ],
+      "size": [
+        240,
+        124
+      ],
+      "summary": "Übersetzt Specs in Verträge. Prüft getrennte Produkte.",
+      "description": "Der Spec Compiler umfasst die deterministische Übersetzung von Specs und ihre Black-Box-Nachweise. Als Eingabe dienen explizite Aussagen und benannte Konventionen. Als Ausgabe entstehen Vertragsdateien, Tests und Arbeitsaufträge. Das Produkt läuft separat; die Toolchain implementiert keine allgemeine autonome Agentensteuerung.",
+      "links": [
+        {
+          "label": "Zum Glossar: Spec Compiler",
+          "href": "../reference/glossary.html#spec-compiler"
+        }
+      ]
+    },
+    {
+      "id": "product",
+      "type": "external",
+      "label": "Generated Product",
+      "sublabel": "Software System · erfüllt den Vertrag",
+      "pos": [
+        1030,
+        330
+      ],
+      "size": [
+        240,
+        124
+      ],
+      "summary": "Erfüllt den Vertrag. Wird nur von außen geprüft.",
+      "description": "Das Produkt ist ein getrenntes Software System mit selbst gewählter Implementierungstechnologie. Der Harness startet es über das Manifest und beobachtet ausschließlich das deklarierte Protokoll. Seine Eingaben und Ergebnisse müssen den ausdrücklich beschriebenen Verpflichtungen entsprechen. Interne Module werden nicht importiert.",
+      "links": [
+        {
+          "label": "Zum Glossar: Generated Product",
+          "href": "../reference/glossary.html#generated-product"
+        }
+      ]
+    },
+    {
+      "id": "reviewer",
+      "type": "external",
+      "label": "Reviewer / CI",
+      "sublabel": "Person · startet Nachweise",
+      "pos": [
+        520,
+        80
+      ],
+      "size": [
+        240,
+        124
+      ],
+      "summary": "Startet Kompilierung und Tests. Bewertet die Nachweise.",
+      "description": "Reviewer oder CI stoßen die Werkzeuge mit den verfassten Specs an und prüfen Diagnosen und Ergebnisse. Gleiche Eingaben werden wiederholt kompiliert, um reproduzierbare Artefakte nachzuweisen. Ein bestandener Test belegt den gedeckten Vertragsausschnitt, nicht automatisch fachliche Vollständigkeit. Die Entscheidung über Quellen und Modellierung bleibt nachvollziehbar.",
+      "links": [
+        {
+          "label": "Zum Glossar: Nachweis",
+          "href": "../reference/glossary.html#proof"
+        }
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "external",
+      "label": "AI Coding Agent",
+      "sublabel": "Optional · dateibasierte Übergabe",
+      "pos": [
+        1030,
+        620
+      ],
+      "size": [
+        240,
+        124
+      ],
+      "summary": "Liest Arbeitsaufträge. Kann Produktcode implementieren.",
+      "description": "Ein Coding Agent ist eine optionale Rolle neben menschlichen Produktentwicklern. Er kann Work Graph, Issue-Texte und benannte Nachweise lesen und Implementierungsdateien bearbeiten. Die aktuelle Toolchain ruft dafür keine Agenten-API auf. Specs und generierte Nachweise dürfen nicht durch unautorisierte Anforderungen erweitert werden.",
+      "links": [
+        {
+          "label": "Zum Glossar: Work Item",
+          "href": "../reference/glossary.html#work-item"
+        }
+      ]
+    }
   ],
   "connections": [
-    {"id": "author-specs", "from": "author", "to": "compiler", "label": "verfasst Specs", "variant": "emphasis"},
-    {"id": "reviewer-proofs", "from": "reviewer", "to": "compiler", "label": "startet Kompilierung und Tests", "labelDy": 24},
-    {"id": "product-verification", "from": "compiler", "to": "product", "label": "prüft über deklarierte Protokolle", "variant": "emphasis"},
-    {"id": "publish-docs", "from": "compiler", "to": "pages", "label": "veröffentlicht über GitHub Actions", "labelDy": 24},
-    {"id": "work-guidance", "from": "compiler", "to": "agent", "label": "liefert Work Graph und Nachweise", "variant": "dashed"},
-    {"id": "implement-product", "from": "agent", "to": "product", "label": "implementiert das Produkt", "variant": "dashed"}
+    {
+      "id": "author-specs",
+      "from": "author",
+      "to": "compiler",
+      "label": "verfasst Specs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "reviewer-proofs",
+      "from": "reviewer",
+      "to": "compiler",
+      "label": "startet Kompilierung und Tests",
+      "labelDy": 24
+    },
+    {
+      "id": "product-verification",
+      "from": "compiler",
+      "to": "product",
+      "label": "prüft über deklarierte Protokolle",
+      "variant": "emphasis"
+    },
+    {
+      "id": "work-guidance",
+      "from": "compiler",
+      "to": "agent",
+      "label": "liefert Work Graph und Nachweise",
+      "variant": "dashed"
+    },
+    {
+      "id": "implement-product",
+      "from": "agent",
+      "to": "product",
+      "label": "implementiert das Produkt",
+      "variant": "dashed"
+    }
   ],
   "cards": [
-    {"dot": "cyan", "title": "Explizite Quellen", "items": ["Specs und versionierte Konventionen begründen Anforderungen.", "Mehrdeutige Aussagen werden als Fehler zurückgewiesen."]},
-    {"dot": "emerald", "title": "Getrennte Verantwortung", "items": ["Compiler und Contract Verification Harness gehören zum Spec Compiler.", "Generated Products werden ausschließlich als Black Boxes geprüft."]},
-    {"dot": "violet", "title": "Statische Dokumentation", "items": ["GitHub Pages bleibt außerhalb der Toolchain-Grenze.", "Die Website begründet keine zusätzlichen Produktanforderungen."]}
+    {
+      "dot": "cyan",
+      "title": "Explizite Quellen",
+      "items": [
+        "Specs und versionierte Konventionen begründen Anforderungen.",
+        "Mehrdeutige Aussagen werden als Fehler zurückgewiesen."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Getrennte Verantwortung",
+      "items": [
+        "Compiler und Contract Verification Harness gehören zum Spec Compiler.",
+        "Das Produkt bleibt außerhalb der beobachtenden Compiler-Toolchain."
+      ]
+    }
   ]
 }
