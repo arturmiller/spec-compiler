@@ -78,6 +78,7 @@ def write_reference(
     graph: Graph, output: Path, *, title: str, namespace: str,
     graph_key: str, site_root_href: str, publications: dict[str, str],
     source_href: str = "ontology.ttl", derived: bool = False,
+    moved_terms: dict[str, str] | None = None,
 ) -> None:
     """Document every named local subject and every declared RDF statement.
 
@@ -123,6 +124,8 @@ def write_reference(
             if term in local_ids:
                 return _link("#" + quote(local_ids[term], safe=""), label(graph, term, language))
             for public_namespace, path in sorted(publications.items(), key=lambda item: -len(item[0])):
+                if str(term) == public_namespace.removesuffix("#"):
+                    return _link(site_root_href + path + "index-" + language + ".html#overview", label(graph, term, language))
                 if str(term).startswith(public_namespace):
                     fragment = str(term)[len(public_namespace):]
                     return _link(site_root_href + path + "index-" + language + ".html#" + quote(fragment, safe=""), label(graph, term, language))
@@ -184,12 +187,35 @@ def write_reference(
                   '<body><main id="content" class="doc-content ontology-reference"><p class="eyebrow">'
                   + ('Ontologiereferenz' if is_de else 'Ontology reference') + '</p><h1>' + html.escape(title) + '</h1>'
                   '<p class="lead">' + scope + '</p><nav class="section-navigation">' + _link(graph_href, "Beziehungsgraph" if is_de else "Relationship graph")
+                  + ' ' + _link(site_root_href + "ontologies/overview.html", "Ontologie-Abhängigkeiten" if is_de else "Ontology dependencies")
                   + ' ' + _link("index-" + ("en" if is_de else "de") + ".html", "English" if is_de else "Deutsch")
                   + '</nav><p class="reference-downloads">' + downloads + '</p>'
                   '<nav id="toc" class="reference-toc">' + navigation + '</nav>'
                   '<section id="overview">' + ('' if 'description' in local_ids.values() else '<span id="description"></span>')
                   + '<h2>' + ('Metadaten' if is_de else 'Metadata') + '</h2>' + metadata + '</section>'
                   '<span id="crossref"></span>' + ''.join(sections) + '</main></body></html>\n')
+        if moved_terms:
+            targets, links = {}, []
+            for old, new in sorted(moved_terms.items()):
+                old_id = old.rsplit('#', 1)[-1]
+                if old_id in local_ids.values():
+                    raise ValueError(f'Migration alias collides with current term: {old_id}')
+                public_namespace, path = next((ns, path) for ns, path in publications.items() if new.startswith(ns))
+                target = site_root_href + path + 'index-' + language + '.html#' + quote(new[len(public_namespace):], safe='')
+                targets[old_id] = targets[old] = target
+                links.append('<li id="' + html.escape(old_id, quote=True) + '"><span id="'
+                             + html.escape(old, quote=True) + '"></span>' + _link(target, old_id) + '</li>')
+            payload = json.dumps(targets, sort_keys=True).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
+            script = ('<script>(()=>{const targets=' + payload + ';let key;'
+                      'try{key=decodeURIComponent(location.hash.slice(1));}catch{return;}'
+                      'if(targets[key]){const target=new URL(targets[key],location.href);'
+                      'target.search=location.search;location.replace(target.href);}})();</script>')
+            migration = ('<aside class="callout" id="compiler-vocabulary-migration"><p>'
+                         + ('Compiler-, SQL- und Decision-Protokollbegriffe liegen in eigenen Ontologien. Alte Links führen zu ihrer neuen Referenz; alte RDF-Specs müssen ausdrücklich migriert werden.' if is_de else
+                            'Compiler, SQL and Decision protocol terms belong to separate ontologies. Old links open their new reference; old RDF specs require an explicit migration.')
+                         + '</p><details><summary>' + ('Frühere Begriffslinks' if is_de else 'Previous term links')
+                         + '</summary><ul>' + ''.join(links) + '</ul></details></aside>')
+            markup = markup.replace('</head>', script + '</head>').replace('<nav id="toc"', migration + '<nav id="toc"')
         (output / ("index-" + language + ".html")).write_text(markup, encoding="utf-8", newline="\n")
         if is_de:
             (output / "index.html").write_text(markup, encoding="utf-8", newline="\n")

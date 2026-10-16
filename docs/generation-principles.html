@@ -32,15 +32,9 @@ UTF-8-JSON über Standard-Ein-/Ausgabe im Decision-Profil. Ein Decision Product
 kann zusätzlich einen ausdrücklich spezifizierten HTTP-Adapter anbieten. Die Tests importieren
 keinen Produktcode.</p>
 <h2 id="quellen-der-aktuellen-anforderungen">Quellen der aktuellen Anforderungen</h2>
-<p>Die öffentlichen Vokabulare liegen autoritativ in
-<code>ontology/shacl-contract.ttl</code>, <code>ontology/decision-obligation.ttl</code> und
-<code>ontology/funding.ttl</code> sowie <code>ontology/cloud-compliance.ttl</code>. Sie verwenden die getrennten Namespaces <code>sco:</code>, <code>sdo:</code>
-und <code>funding:</code> sowie <code>cloud:</code>. Konkrete Toolchain-, SQL-API- und KfW-Ressourcen liegen in
-getrennten <code>resources/.../#</code>-Namespaces. Eine Produkt-Spec darf einen
-öffentlichen Vokabularbegriff verwenden, ohne ihn neu zu definieren; der
-Publikationsvalidator verlangt dafür eine Definition sowie deutsche und
-englische Labels in der zuständigen kanonischen Ontologie.</p>
-<p>Referenzen, RDF-Exporte und Graphansichten sind abgeleitete Dokumentation und begründen keine Produktanforderungen. Ihre Pflege steht ausschließlich unter <a href="contributing/documentation.html">Dokumentation pflegen</a>; die vier kanonischen Ontologien bleiben die Vokabularquelle.</p>
+<p>Sieben wiederverwendbare Ontologien liegen unter <code>ontology/</code>: HTTP API Ontology (<code>shacl-contract.ttl</code>, historischer Namespace <code>sco:</code>), SQL Storage Ontology (<code>sql-storage.ttl</code>, <code>sqlo:</code>), Decision Protocol Ontology (<code>decision-protocol.ttl</code>, <code>dpo:</code>), Compiler Contract Ontology (<code>cco:</code>), Decision-Kern (<code>sdo:</code>) sowie Funding und Cloud Compliance Domain Ontologies. Konkrete <a href="glossary.html#product-specification">Produktspezifikationen</a> besitzen eigene Ontologieidentitäten und Namespaces unter <code>resources/.../</code>.</p>
+<h3 id="ontology-module-conventions-v1">Ontology Module Conventions v1</h3><p>Jede Produktspezifikation erklärt genau einen benannten <code>owl:Ontology</code>-Header und ihre <code>vann:preferredNamespaceUri</code>. Alle Dateien unter <code>specs/</code> bilden gemeinsam dieses Modul. Jede Verwendung eines fremden Projektbegriffs benötigt einen direkten <code>owl:imports</code>-Eintrag auf dessen Ontologie. Imports werden ausschließlich gegen den lokalen Katalog aufgelöst. Unbekannte Ziele, fehlende Imports, undefinierte Begriffe, fremde Begriffsdefinitionen und direkte oder indirekte Zyklen sind Fehler. Externe Standardvokabulare sind keine zusätzlichen Projektmodule und werden nicht aus dem Netz geladen.</p><p>Produktspezifikationen sind abschließende Nutzer: Niemand darf sie importieren oder ihre produktspezifischen IRIs verwenden. Literale Compiler-Testeingabepfade sind Verarbeitung, keine Ontologie-Imports. Definitionen werden zur Prüfung von Eigentümerschaft und Importabschluss geladen, nicht als zusätzliche Anforderungen in den Vertragsgraphen gemischt. Es gibt keine OWL-Inferenz.</p><p>Compiler Conventions v3 paketiert den exakten lokalen Turtle-Katalog in die eigenständig ausführbare G1-Implementierung. G1 benötigt weder Quellrepository noch Netzwerkzugriff auf Ontologie-IRIs. Die gespeicherten RDF-Bytes legen die Katalogversion fest; ein neuer Katalog verlangt Regenerierung. <a href="architecture/decisions/0031-compose-terminal-product-ontologies.html">ADR 0031</a>.</p>
+<p>Referenzen, RDF-Exporte und Graphansichten sind abgeleitete Dokumentation und begründen keine Produktanforderungen. Ihre Pflege steht ausschließlich unter <a href="contributing/documentation.html">Dokumentation pflegen</a>; die sieben wiederverwendbaren Ontologien bleiben die Vokabularquelle.</p>
 <p>Die RDF-/SHACL-Specs legen ausdrücklich fest:</p>
 <ul>
 <li>GET-Endpunkt, Pfad, Pfadparameter und dessen Datentyp,</li>
@@ -156,6 +150,20 @@ ausgegebenen JSON Pointer und sendet den vollständigen akkumulierten Case in
 einem neuen Protokollaufruf. Protokoll und fachlicher Decision Contract bleiben
 getrennt versionierbar; Decision Protocol v1 schreibt weder Session State noch
 eine Benutzeroberfläche vor.</p>
+<h3 id="decision-result-model">Fachliches Ergebnismodell und JSON-Übertragung</h3>
+<p>Das <a href="glossary.html#decision-result">Entscheidungsergebnis</a> ist im Decision-Kern als wiederverwendbares Fachmodell beschrieben. Die folgenden Beziehungen benennen Inhalte der bestehenden JSON-Antwort; sie ändern weder Decision Protocol v1 noch dessen Felder oder die Auswertungskonventionen. Die Tabelle ist eine Zuordnung, kein neuer Serializer und keine zusätzliche Produktanforderung. <a href="architecture/decisions/0032-model-decision-result-relationships.html">ADR 0032</a>.</p>
+<table><thead><tr><th>Fachliche Beziehung im Namespace sdo:</th><th>Bestehende JSON-Darstellung</th></tr></thead><tbody>
+<tr><td><code>resultForContract</code></td><td><code>decision_contract</code>: Identität des angewandten Vertrags.</td></tr>
+<tr><td><code>resultRuleSetVersion</code></td><td><code>rule_set_version</code>: gewählte Regelwerkversion; ihre stabile Identität steht unter <code>rule_set</code>.</td></tr>
+<tr><td><code>resultOutcome</code></td><td><code>outcome_id</code>: Ausgangsidentität; <code>outcome</code> enthält deren Code.</td></tr>
+<tr><td><code>hasConditionEvaluation</code>, <code>evaluatedRule</code>, <code>evaluatesCondition</code>, <code>conditionEvaluationState</code></td><td><code>condition_evaluations</code> enthält Bewertungen mit <code>rule</code>, <code>condition</code> und <code>state</code>.</td></tr>
+<tr><td><code>hasFactGap</code>, <code>missingFactForCondition</code></td><td><code>fact_gaps</code> enthält Lücken mit der betroffenen <code>condition</code>. Fact Property und JSON Pointer bleiben vorhandene Zusatzangaben.</td></tr>
+<tr><td><code>hasObligationEvaluation</code>, <code>evaluatesObligation</code>, <code>obligationEvaluationStatus</code></td><td><code>obligation_evaluations</code> enthält <code>obligation</code> und <code>status</code>. Die Codes fulfilled, violated und unknown entsprechen den vorhandenen ObligationStatus-Individuen; JSON verlangt keine RDF-IRIs für diese Codes.</td></tr>
+<tr><td><code>decisiveRule</code></td><td><code>decisive_rules</code>: Identitäten der entscheidenden Regeln.</td></tr>
+<tr><td><code>nextQuestion</code></td><td><code>next_question.id</code>, sofern eine Frage ausgewählt wurde; andernfalls bleibt <code>next_question</code> null.</td></tr>
+</tbody></table>
+<p>Eine Bedingungsauswertung verweist auf die bewertete Bedingung und Regel; eine Sachverhaltslücke auf die Bedingung mit fehlender Eingabe; eine Verpflichtungsauswertung auf die bewertete Verpflichtung und ihren ermittelten Status. Diese Ergebnisse sind keine Regeldefinitionen oder Testerwartungen. Leere Listen und eine fehlende nächste Frage bleiben zulässig, soweit die bestehenden Konventionen dies vorsehen. Eine Faktenlücke kann auch neben einem bereits negativen Ausgang bestehen. Das Fachmodell ersetzt weder JSON-Schema-Validierung noch Black-Box-Nachweise und bildet nicht automatisch alle Protokollfelder in RDF ab.</p>
+<p>Regelwerkversion → Regelwerk und Quellenrevision → Quelle verwenden weiterhin <code>dcterms:isVersionOf</code>. Explizite klassenlokale Zieltyp-Beschränkungen beschreiben diese Zusammenhänge im Vokabular; der Compiler prüft die vorhandenen Produktaussagen weiterhin ohne OWL-Inferenz.</p>
 <h3 id="http-contract-conventions-v1">HTTP Contract Conventions v1</h3>
 <p>Die allgemeine Ontologie beschreibt <code>sco:PostEndpoint</code>, <code>sco:HttpRequest</code> und
 <code>sco:HttpResponse</code>. Die konkreten Nachrichten gehören in die Produkt-Spec.
@@ -216,7 +224,7 @@ v1. Fehlerfälle entstehen aus deklarierten Constraints und ungültigem JSON,
 nicht aus fest eingebauten KfW-Feldnamen oder Fehlermeldungen. Work Items nennen
 die Endpunkt- und Nachrichtenressourcen als Quellen.</p>
 <p>Eine verfasste HTTP-Spec beschreibt Case-Facts, Pflichtfelder, Outcomes und Evidence ausdrücklich. Änderungen am Decision Contract müssen deshalb auch auf Konsistenz mit der HTTP-Spec geprüft werden; der Compiler ergänzt diese Felder nicht automatisch. Das Produkt veröffentlicht OpenAPI über Runtime Protocol v1 und darf <code>[runtime]</code> neben <code>[decision]</code> deklarieren. Die HTTP-Abbildung schreibt keine Implementierungssprache, kein Server-Framework, keine UI und keine Session-Verwaltung vor. Eine konkrete Änderung von Status und Body-Abbildung zeigt das <a href="tutorials/kfw.html#http">KfW-Tutorial</a>.</p>
-<h3 id="compiler-protocol-v1">Compiler Protocol v1</h3>
+<h3 id="vocabulary-module-migration-v1">Vocabulary Module Migration v1</h3><p>Elf SQL-Begriffe wechseln von <code>sco:</code> nach <code>sqlo:</code>; <code>DecisionProtocolV1</code>, <code>implementsDecisionContract</code> und <code>inputJsonPointer</code> wechseln nach <code>dpo:</code>. HTTP-Begriffe behalten ihre IRIs. <code>sqlo:readsFrom</code> beschreibt transportneutral das Lesen aus einer SQL-Tabelle. Konkrete Produktverpflichtungen bleiben unverändert. Alte IRIs werden abgelehnt; Dokumentationslinks werden weitergeleitet.</p><h3 id="compiler-vocabulary-migration-v1">Compiler Vocabulary Migration v1</h3><p>Die 19 Compilerbegriffe sind in die eigene Compiler Contract Ontology unter <code>cco:</code> migriert. Alte <code>sco:</code>-Compiler-IRIs oder gemischte Compilerbegriffe werden mit Migrationsdiagnose abgelehnt, nicht implizit gleichgesetzt. Namen, fachliche Verpflichtungen und Compiler Protocol v1 bleiben unverändert. Alte Referenz- und Graphlinks werden nur für die Navigation umgeleitet. <a href="architecture/decisions/0031-compose-terminal-product-ontologies.html#migration">Namespace-Migration</a> · <a href="architecture/decisions/0030-separate-compiler-contract-ontology.html">ADR 0030</a>.</p><h3 id="compiler-protocol-v1">Compiler Protocol v1</h3>
 <p>Ein Compilerprodukt wird nicht künstlich als HTTP-Laufzeit modelliert. Sein
 <code>product.toml</code> deklariert stattdessen <code>compiler_protocol_version = 1</code> und eine
 Tabelle <code>[compiler]</code> mit:</p>
@@ -231,27 +239,29 @@ Tabelle <code>[compiler]</code> mit:</p>
 beobachtet ausschließlich Exitstatus, zusammengeführte Standardausgabe und die
 im Input Product Bundle erzeugten Dateien.</p>
 <p>Das Produkt ist allgemein als <code>schema:SoftwareApplication</code> klassifiziert.
-<code>dcterms:conformsTo sco:CompilerProtocolV1</code> wählt das ausführbare Protokoll;
-<code>sco:implementsContract</code> verweist auf einen separat versionierbaren
-<code>sco:TransformationContract</code>. Dieser benennt ein oder mehrere
-<code>sco:CompilerConformanceFixture</code>-Ressourcen mit Product Bundle und jeweils
+<code>dcterms:conformsTo cco:CompilerProtocolV1</code> wählt das ausführbare Protokoll;
+<code>cco:implementsContract</code> verweist auf einen separat versionierbaren
+<code>cco:TransformationContract</code>. Dieser benennt ein oder mehrere
+<code>cco:CompilerConformanceFixture</code>-Ressourcen mit Product Bundle und jeweils
 erwarteten Ausgabepfaden oder Glob-Mustern sowie die Suche nach Eingabespecs,
 Fehlerfälle und die Ergebnisgleichheit. Beim
 Determinismusnachweis werden zwei Läufe derselben Compilerimplementierung mit
 demselben Input verglichen. Das ist ein Fixpunkt- und Reproduzierbarkeitsnachweis,
 aber kein unabhängiger Beweis für die korrekte Interpretation der Spec.</p>
-<p>Ein optionaler <code>sco:BootstrapProcess</code> beschreibt getrennt davon, wie eine
+<p>Ein optionaler <code>cco:BootstrapProcess</code> beschreibt getrennt davon, wie eine
 zukünftige Compilerimplementierung abgeleitet werden soll. Er verweist über
-<code>sco:seedImplementation</code> auf eine explizite Ausgangsimplementierung und über
-<code>sco:evolutionStrategy</code> auf die Ableitungsstrategie. Für den Spec Compiler ist
-G0 der Seed und <code>sco:ModifyExistingImplementation</code> die Strategie. Diese
+<code>cco:seedImplementation</code> auf eine explizite Ausgangsimplementierung und über
+<code>cco:evolutionStrategy</code> auf die Ableitungsstrategie. Für den Spec Compiler ist
+G0 der Seed und <code>cco:ModifyExistingImplementation</code> die Strategie. Diese
 Provenienz wird validiert und in den Work Graph übernommen. Für
-<code>sco:ModifyExistingImplementation</code> materialisiert G0 seinen Quellstand am durch
-<code>sco:generatesImplementationArtifact</code> deklarierten Ziel und erhöht den
+<code>cco:ModifyExistingImplementation</code> materialisiert G0 seinen Quellstand am durch
+<code>cco:generatesImplementationArtifact</code> deklarierten Ziel und erhöht den
 eindeutigen Generationsmarker. Sprache und Bibliotheken von G0 werden dadurch
 in G1 weiterverwendet, sind jedoch nicht Teil des Transformationsvertrags. G1
 besitzt ein eigenes Manifest, Projektmetadaten und Lockfile und wird anschließend
 als Black box ausgeführt.</p>
+<h3 id="compiler-vocabulary-retirement-v1">Compiler Vocabulary Retirement v1</h3><p><code>cco:validFixtureProduct</code> und <code>cco:generatesArtifact</code> hatten keine implementierte Auswertung und werden als <code>owl:deprecated true</code> dokumentiert. Produktaussagen mit diesen IRIs werden ausdrücklich abgelehnt, statt stillschweigend ignoriert zu werden. Testeingaben und erwartete Ausgaben werden über <code>cco:conformanceFixture</code>, <code>cco:fixtureProduct</code> und <code>cco:expectsArtifact</code> beschrieben. Die alten Begriffsanker und Migrationslinks bleiben als Referenz mit Ersatzhinweis erhalten. Compiler Protocol v1 und die Ausgaben gültiger bestehender Specs ändern sich nicht. <a href="architecture/decisions/0033-show-direct-vocabulary-context.html">ADR 0033</a>.</p>
+<h3 id="case-subject-relations">Fachliche Gegenstände eines Falls</h3><p>Die Funding Domain Ontology verbindet den <a href="glossary.html#case">Case</a> über <code>funding:hasApplicant</code> mit der <a href="glossary.html#funding-applicant">antragstellenden Person</a> und über <code>funding:hasProject</code> mit dem <a href="glossary.html#funding-project">Vorhaben</a>. Die Cloud Compliance Domain Ontology verbindet ihn über <code>cloud:hasSystem</code> mit dem <a href="glossary.html#cloud-system">betrachteten Cloud-System</a>. Die Vertragsdefinition wird nicht an einen konkreten Prüfgegenstand gebunden. Im vorhandenen JSON-Austausch entsprechen diese Rollen den bereits beschriebenen Daten unter <code>/case/applicant</code>, <code>/case/project</code> und <code>/case/system</code>; daraus entstehen keine neuen Felder, RDF-Instanzpflichten oder automatischen Typprüfungen. Die bestehenden Fakten und ihre JSON Pointer bleiben die expliziten Verarbeitungseingaben.</p><p><code>funding:fundingProgram</code> ordnet den Antragsberechtigungsvertrag seinem Förderprogramm zu. HTTP beschreibt einen Pfadparameter und eine zurückgegebene SHACL Node Shape; SQL beschreibt die ausdrücklich gewählte Datenbank-Engine, gespeicherte Node Shape und den ID-Datentyp. Offene Beziehungstypen bleiben offen: <code>sco:invokesContract</code> wird nicht auf Decision-Verträge eingeschränkt, <code>sqlo:readsFrom</code> nicht auf HTTP-Ressourcen. Definitionen sind weiterhin keine zusätzlichen Produktverpflichtungen und aktivieren keine OWL-Inferenz.</p>
 <h2 id="compilerkonventionen-v1">Compilerkonventionen v1</h2>
 <p>Der Prototyp verwendet folgende explizite Abbildungsregeln:</p>
 <ul>
@@ -265,23 +275,23 @@ Er muss deshalb ein sicherer SQL-Bezeichner sein.</li>
 <li><code>sh:minCount 0</code> wird zu einem optionalen JSON-Feld und einer nullable Spalte.</li>
 <li>Nur skalare Properties mit <code>sh:maxCount 1</code> und <code>sh:minCount 0</code> oder <code>1</code>
 werden unterstützt.</li>
-<li><code>dcterms:conformsTo sco:CompilerProtocolV1</code> wählt das Compilerprodukt-Profil
+<li><code>dcterms:conformsTo cco:CompilerProtocolV1</code> wählt das Compilerprodukt-Profil
 statt des HTTP-/SQLite-Profils; eine fachliche Produktklasse steuert niemals
 die ausführbare Testsemantik.</li>
-<li><code>sco:implementsContract</code> muss auf genau einen <code>sco:TransformationContract</code>
+<li><code>cco:implementsContract</code> muss auf genau einen <code>cco:TransformationContract</code>
 zeigen, aus dem die generierten Verpflichtungen stammen.</li>
-<li>Die Aussagen <code>sco:conformanceFixture</code>, <code>sco:fixtureProduct</code>,
-<code>sco:expectsArtifact</code>, <code>sco:rejectsMissingSpecs</code> und
-<code>sco:deterministicOutput</code> werden direkt in fokussierte Black-box-Proofs für
+<li>Die Aussagen <code>cco:conformanceFixture</code>, <code>cco:fixtureProduct</code>,
+<code>cco:expectsArtifact</code>, <code>cco:rejectsMissingSpecs</code> und
+<code>cco:deterministicOutput</code> werden direkt in fokussierte Black-box-Proofs für
 jedes deklarierte Compilerprofil übersetzt.</li>
 <li>Ein deklarierter Bootstrap-Prozess muss genau einen als
 <code>schema:SoftwareApplication</code> typisierten Seed und die unterstützte Strategie
-<code>sco:ModifyExistingImplementation</code> sowie einen sicheren relativen Pfad über
-<code>sco:generatesImplementationArtifact</code> nennen. Compiler Conventions v2
+<code>cco:ModifyExistingImplementation</code> sowie einen sicheren relativen Pfad über
+<code>cco:generatesImplementationArtifact</code> nennen. Compiler Conventions v3
 materialisiert dort den Seed-Quellstand mit um eins erhöhtem, eindeutigem
 Generationsmarker. Der generierte Beweis startet den resultierenden Compiler
 über dessen eigenes Compiler-Protocol-Manifest.</li>
-<li>Compiler Conventions v2 leitet Decision-Work-Item-IDs aus dem validierten
+<li>Compiler Conventions v3 leitet Decision-Work-Item-IDs aus dem validierten
 Product-Bundle-Verzeichnis ab und entfernt veraltete Markdown-Ausgaben nur
 direkt unter dessen <code>generated/issues/</code>; fachliche Begriffe werden nicht als
 Compilerpräfix vorausgesetzt.</li>
@@ -297,7 +307,7 @@ nicht geraten, sondern als nicht unterstützte Eingabe abgelehnt.</p>
 <code>sdo:requiresAllRules true</code>:</p>
 <ul>
 <li>Jede Rule verweist auf genau eine Condition, ein eindeutiges
-<code>sco:inputJsonPointer</code>, einen booleschen Sollwert und genau eine Source
+<code>dpo:inputJsonPointer</code>, einen booleschen Sollwert und genau eine Source
 Citation.</li>
 <li>Eine Condition ist <code>satisfied</code>, wenn ein boolescher Case Fact ihrem Sollwert
 entspricht, <code>violated</code>, wenn er ihm widerspricht, und <code>unknown</code>, wenn der Fact

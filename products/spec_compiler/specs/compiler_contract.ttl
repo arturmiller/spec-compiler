@@ -1,49 +1,49 @@
-@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
+@prefix cco: <https://arturmiller.github.io/spec-compiler/ontology/compiler/#> .
 @prefix tool: <https://arturmiller.github.io/spec-compiler/resources/toolchain/#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix schema: <https://schema.org/> .
 
 tool:SpecCompiler a schema:SoftwareApplication ;
-    dcterms:conformsTo sco:CompilerProtocolV1 ;
-    sco:implementsContract tool:SpecCompilationV1 .
+    dcterms:conformsTo cco:CompilerProtocolV1 ;
+    cco:implementsContract tool:SpecCompilationV1 .
 
 tool:SpecCompilerG0 a schema:SoftwareApplication ;
     dcterms:isVersionOf tool:SpecCompiler .
 
-tool:SpecCompilerBootstrapV1 a sco:BootstrapProcess ;
-    sco:bootstrapsProduct tool:SpecCompiler ;
-    sco:seedImplementation tool:SpecCompilerG0 ;
-    sco:evolutionStrategy sco:ModifyExistingImplementation ;
-    sco:generatesImplementationArtifact "src/spec_compiler.py" .
+tool:SpecCompilerBootstrapV1 a cco:BootstrapProcess ;
+    cco:bootstrapsProduct tool:SpecCompiler ;
+    cco:seedImplementation tool:SpecCompilerG0 ;
+    cco:evolutionStrategy cco:ModifyExistingImplementation ;
+    cco:generatesImplementationArtifact "src/spec_compiler.py" .
 
-tool:SpecCompilationV1 a sco:TransformationContract ;
-    sco:inputSpecPattern "specs/*.ttl" ;
-    sco:conformanceFixture
+tool:SpecCompilationV1 a cco:TransformationContract ;
+    cco:inputSpecPattern "specs/*.ttl" ;
+    cco:conformanceFixture
         tool:SqlApiFixture,
         tool:Kfw458Fixture,
         tool:CloudAccessComplianceFixture ;
-    sco:rejectsMissingSpecs true ;
-    sco:deterministicOutput true .
+    cco:rejectsMissingSpecs true ;
+    cco:deterministicOutput true .
 
-tool:SqlApiFixture a sco:CompilerConformanceFixture ;
-    sco:fixtureProduct "../sql_api_example" ;
-    sco:expectsArtifact "tests/test_contract.py" ,
+tool:SqlApiFixture a cco:CompilerConformanceFixture ;
+    cco:fixtureProduct "../sql_api_example" ;
+    cco:expectsArtifact "tests/test_contract.py" ,
         "generated/expected-openapi.json" ,
         "generated/work-graph.json" ,
         "generated/issues/*.md" .
 
-tool:Kfw458Fixture a sco:CompilerConformanceFixture ;
-    sco:fixtureProduct "../kfw_458_eligibility" ;
-    sco:expectsArtifact "tests/test_contract.py" ,
+tool:Kfw458Fixture a cco:CompilerConformanceFixture ;
+    cco:fixtureProduct "../kfw_458_eligibility" ;
+    cco:expectsArtifact "tests/test_contract.py" ,
         "tests/test_http_contract.py" ,
         "generated/decision-contract.json" ,
         "generated/expected-openapi.json" ,
         "generated/work-graph.json" ,
         "generated/issues/*.md" .
 
-tool:CloudAccessComplianceFixture a sco:CompilerConformanceFixture ;
-    sco:fixtureProduct "../cloud_access_compliance" ;
-    sco:expectsArtifact "tests/test_contract.py" ,
+tool:CloudAccessComplianceFixture a cco:CompilerConformanceFixture ;
+    cco:fixtureProduct "../cloud_access_compliance" ;
+    cco:expectsArtifact "tests/test_contract.py" ,
         "generated/decision-contract.json" ,
         "generated/work-graph.json" ,
         "generated/issues/*.md" .

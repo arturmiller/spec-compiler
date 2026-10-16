@@ -16,11 +16,18 @@
     dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "cloud" ;
     vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/cloud/#" ;
-    owl:versionInfo "0.1.0-experimental" .
+    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;
+    owl:versionInfo "0.2.0-experimental" .
 
 cloud:CloudSystem a owl:Class ;
     rdfs:label "Cloud system"@en ;
-    rdfs:label "Cloud-System"@de .
+    rdfs:label "Cloud-System"@de ;
+    rdfs:comment "Das im konkreten Fall betrachtete Cloud-System mit den gelieferten Angaben zu Identifikation und privilegierten Zugriffen. Es ist nicht die Prüfsoftware und seine Angaben sind keine automatische Konfigurationsprüfung."@de .
+
+cloud:hasSystem a owl:ObjectProperty ;
+    rdfs:label "has assessed cloud system"@en, "hat betrachtetes Cloud-System"@de ;
+    rdfs:comment "Relates the Case to the Cloud System whose supplied profile is assessed; the reusable Decision Contract does not identify one concrete deployed system."@en ;
+    rdfs:domain sdo:Case ; rdfs:range cloud:CloudSystem .
 
 cloud:PrivilegedAccessComplianceDecision a owl:Class ;
     rdfs:subClassOf sdo:DecisionContract ;

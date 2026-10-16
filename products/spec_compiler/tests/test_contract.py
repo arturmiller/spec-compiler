@@ -9,7 +9,7 @@ from tools.compiler_runtime import run_compiler
 COMPILER_ROOT = Path(__file__).parents[1]
 CONTRACT = {'name': 'SpecCompiler',
  'contract': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilationV1',
- 'protocol': 'https://arturmiller.github.io/spec-compiler/ontology/#CompilerProtocolV1',
+ 'protocol': 'https://arturmiller.github.io/spec-compiler/ontology/compiler/#CompilerProtocolV1',
  'input_spec_pattern': 'specs/*.ttl',
  'conformance_fixtures': [{'name': 'CloudAccessComplianceFixture',
                            'fixture': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#CloudAccessComplianceFixture',
@@ -38,7 +38,7 @@ CONTRACT = {'name': 'SpecCompiler',
  'deterministic_output': True,
  'bootstrap': {'process': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerBootstrapV1',
                'seed_implementation': 'https://arturmiller.github.io/spec-compiler/resources/toolchain/#SpecCompilerG0',
-               'evolution_strategy': 'https://arturmiller.github.io/spec-compiler/ontology/#ModifyExistingImplementation',
+               'evolution_strategy': 'https://arturmiller.github.io/spec-compiler/ontology/compiler/#ModifyExistingImplementation',
                'implementation_artifact': 'src/spec_compiler.py',
                'implementation_generation': 1}}
 

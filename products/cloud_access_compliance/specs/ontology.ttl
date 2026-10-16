@@ -1,0 +1,14 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+
+<https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/>
+    a owl:Ontology ;
+    dcterms:title "Cloud access specification"@en, "Cloud-Zugriffs-Produktspezifikation"@de ;
+    dcterms:description "Terminal product specification. Other ontologies must not import or reuse this module."@en ;
+    dcterms:description "Abschließende Produktspezifikation. Andere Ontologien dürfen dieses Modul weder importieren noch wiederverwenden."@de ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#" ;
+    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/cloud/>,
+        <https://arturmiller.github.io/spec-compiler/ontology/decision/>,
+        <https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/> ;
+    owl:versionInfo "1.0.0" .

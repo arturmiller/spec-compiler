@@ -13,11 +13,11 @@ import re
 
 from jsonschema import Draft202012Validator, SchemaError
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
-from rdflib.namespace import DCTERMS, OWL, SH, XSD
+from rdflib.namespace import DCTERMS, OWL, RDFS, SH, VANN, XSD
 
 ROOT = Path(__file__).parents[1]
 BOOTSTRAP_GENERATION = 1
-COMPILER_CONVENTIONS_VERSION = 2
+COMPILER_CONVENTIONS_VERSION = 3
 RUNTIME_PROTOCOL_VERSION = 1
 DECISION_CONVENTIONS_VERSION = 1
 DECISION_PROTOCOL_VERSION = 1
@@ -26,7 +26,13 @@ EVIDENCE_EVALUATION_CONVENTIONS_VERSION = 1
 VERSION_SELECTION_CONVENTIONS_VERSION = 1
 OBLIGATION_EVALUATION_CONVENTIONS_VERSION = 1
 HTTP_CONTRACT_CONVENTIONS_VERSION = 1
+ONTOLOGY_MODULE_CONVENTIONS_VERSION = 1
+# G1 receives an exact local RDF catalog snapshot, not a network resolver.
+PACKAGED_ONTOLOGIES = {'cloud-compliance.ttl': '@prefix cloud: <https://arturmiller.github.io/spec-compiler/ontology/cloud/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/cloud/>\n    a owl:Ontology ;\n    dcterms:title "Cloud Compliance Domain Ontology"@en ;\n    dcterms:title "Domänenontologie für Cloud-Compliance"@de ;\n    dcterms:description "Domain vocabulary for bounded cloud-system compliance decisions."@en ;\n    dcterms:description "Domänenvokabular für abgegrenzte Compliance-Entscheidungen über Cloud-Systeme."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "cloud" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/cloud/#" ;\n    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;\n    owl:versionInfo "0.2.0-experimental" .\n\ncloud:CloudSystem a owl:Class ;\n    rdfs:label "Cloud system"@en ;\n    rdfs:label "Cloud-System"@de ;\n    rdfs:comment "Das im konkreten Fall betrachtete Cloud-System mit den gelieferten Angaben zu Identifikation und privilegierten Zugriffen. Es ist nicht die Prüfsoftware und seine Angaben sind keine automatische Konfigurationsprüfung."@de .\n\ncloud:hasSystem a owl:ObjectProperty ;\n    rdfs:label "has assessed cloud system"@en, "hat betrachtetes Cloud-System"@de ;\n    rdfs:comment "Relates the Case to the Cloud System whose supplied profile is assessed; the reusable Decision Contract does not identify one concrete deployed system."@en ;\n    rdfs:domain sdo:Case ; rdfs:range cloud:CloudSystem .\n\ncloud:PrivilegedAccessComplianceDecision a owl:Class ;\n    rdfs:subClassOf sdo:DecisionContract ;\n    rdfs:label "Privileged-access compliance decision"@en ;\n    rdfs:label "Compliance-Entscheidung für privilegierte Zugriffe"@de .\n\ncloud:AuthenticationMechanismTestResult a owl:Class ;\n    rdfs:subClassOf sdo:Evidence ;\n    rdfs:label "Authentication-mechanism test result"@en ;\n    rdfs:label "Testergebnis des Authentisierungsmechanismus"@de .\n\ncloud:Satisfied a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "satisfied"@en ;\n    rdfs:label "erfüllt"@de ;\n    sdo:outcomeCode "satisfied" .\n\ncloud:Violated a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "violated"@en ;\n    rdfs:label "verletzt"@de ;\n    sdo:outcomeCode "violated" .\n\ncloud:Unknown a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "unknown"@en ;\n    rdfs:label "unbestimmt"@de ;\n    sdo:outcomeCode "unknown" .\n\ncloud:organizationalUsersUniquelyIdentified a owl:DatatypeProperty ;\n    rdfs:label "organizational users are uniquely identified"@en ;\n    rdfs:label "Organisationsbenutzende werden eindeutig identifiziert"@de ;\n    rdfs:domain cloud:CloudSystem ;\n    rdfs:range xsd:boolean .\n\ncloud:privilegedAccessUsesMfa a owl:DatatypeProperty ;\n    rdfs:label "privileged access uses multi-factor authentication"@en ;\n    rdfs:label "privilegierter Zugriff nutzt Mehrfaktorauthentisierung"@de ;\n    rdfs:domain cloud:CloudSystem ;\n    rdfs:range xsd:boolean .\n\ncloud:hasPrivilegedAccounts a owl:DatatypeProperty ;\n    rdfs:label "has privileged accounts"@en ;\n    rdfs:label "hat privilegierte Konten"@de ;\n    rdfs:domain cloud:CloudSystem ;\n    rdfs:range xsd:boolean .\n', 'compiler-contract.ttl': '@prefix cco: <https://arturmiller.github.io/spec-compiler/ontology/compiler/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/compiler/>\n    a owl:Ontology ;\n    dcterms:title "Compiler Contract Ontology"@en ;\n    dcterms:title "Compiler-Vertragsontologie"@de ;\n    dcterms:description "Vocabulary for compiler products, transformation contracts, conformance fixtures, and separately described bootstrap provenance."@en ;\n    dcterms:description "Vokabular für Compilerprodukte, Transformationsverträge, Konformitätstestfälle und getrennt beschriebene Bootstrap-Herkunft."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "cco" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/compiler/#" ;\n    owl:versionInfo "0.2.0-experimental" .\n\ncco:TransformationContract\n    a owl:Class ;\n    rdfs:label "Transformation contract"@en ;\n    rdfs:label "Transformationsvertrag"@de ;\n    rdfs:comment "Versioned description of accepted inputs, emitted outputs, rejection behavior, and result equivalence."@en ;\n    rdfs:comment "Versionierter Vertrag über akzeptierte Eingaben, erzeugte Ausgaben, Ablehnungsfälle und Ergebnisgleichheit eines Compilerprodukts."@de .\n\ncco:BootstrapProcess\n    a owl:Class ;\n    rdfs:label "Bootstrap process"@en ;\n    rdfs:label "Bootstrap-Prozess"@de ;\n    rdfs:comment "Provenance for deriving a candidate implementation from an explicitly identified seed implementation."@en ;\n    rdfs:comment "Herkunft einer abgeleiteten Implementierung aus einer ausdrücklich benannten Ausgangsimplementierung; getrennt vom Transformationsvertrag."@de .\n\ncco:EvolutionStrategy\n    a owl:Class ;\n    rdfs:label "Evolution strategy"@en ;\n    rdfs:label "Evolutionsstrategie"@de .\n\ncco:ModifyExistingImplementation\n    a owl:NamedIndividual, cco:EvolutionStrategy ;\n    rdfs:label "Modify existing implementation"@en ;\n    rdfs:label "Bestehende Implementierung verändern"@de .\n\ncco:CompilerProtocolV1\n    a owl:NamedIndividual, dcterms:Standard ;\n    rdfs:label "Compiler Protocol v1"@en ;\n    rdfs:label "Compilerprotokoll v1"@de ;\n    rdfs:comment "Manifest-driven command-line protocol for invoking a compiler on a Product Bundle."@en .\n\ncco:implementsContract\n    a owl:ObjectProperty ;\n    rdfs:label "implements contract"@en ;\n    rdfs:label "implementiert Vertrag"@de ;\n    rdfs:domain schema:SoftwareApplication ;\n    rdfs:range cco:TransformationContract .\n\ncco:bootstrapsProduct\n    a owl:ObjectProperty ;\n    rdfs:label "bootstraps product"@en ;\n    rdfs:label "führt Bootstrap für Produkt durch"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range schema:SoftwareApplication .\n\ncco:seedImplementation\n    a owl:ObjectProperty ;\n    rdfs:label "seed implementation"@en ;\n    rdfs:label "Ausgangsimplementierung"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range schema:SoftwareApplication .\n\ncco:evolutionStrategy\n    a owl:ObjectProperty ;\n    rdfs:label "evolution strategy"@en ;\n    rdfs:label "Evolutionsstrategie"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range cco:EvolutionStrategy .\n\ncco:inputSpecPattern\n    a owl:DatatypeProperty ;\n    rdfs:label "input specification pattern"@en ;\n    rdfs:label "Eingabespezifikationsmuster"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:string .\n\ncco:CompilerConformanceFixture\n    a owl:Class ;\n    rdfs:label "compiler conformance fixture"@en ;\n    rdfs:label "Compiler-Konformitäts-Fixture"@de .\n\ncco:conformanceFixture\n    a owl:ObjectProperty ;\n    rdfs:label "has conformance fixture"@en ;\n    rdfs:label "hat Konformitäts-Fixture"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range cco:CompilerConformanceFixture .\n\ncco:fixtureProduct\n    a owl:DatatypeProperty ;\n    rdfs:label "fixture product"@en ;\n    rdfs:label "Fixture-Produkt"@de ;\n    rdfs:domain cco:CompilerConformanceFixture ;\n    rdfs:range xsd:string .\n\ncco:expectsArtifact\n    a owl:DatatypeProperty ;\n    rdfs:label "expects artifact"@en ;\n    rdfs:label "erwartet Artefakt"@de ;\n    rdfs:domain cco:CompilerConformanceFixture ;\n    rdfs:range xsd:string .\n\ncco:validFixtureProduct\n    a owl:DatatypeProperty ;\n    owl:deprecated true ;\n    rdfs:comment "Retired: unused by the compiler. Use conformanceFixture with fixtureProduct and expectsArtifact; authored uses are rejected by Compiler Vocabulary Retirement v1."@en ;\n    rdfs:comment "Veraltet und ohne Verarbeitung: Stattdessen conformanceFixture mit fixtureProduct und expectsArtifact verwenden. Compiler Vocabulary Retirement v1 lehnt Produktaussagen mit diesem Begriff ab."@de ;\n    rdfs:label "valid fixture product"@en ;\n    rdfs:label "gültiges Fixture-Produkt"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:string .\n\ncco:generatesArtifact\n    a owl:DatatypeProperty ;\n    owl:deprecated true ;\n    rdfs:comment "Retired: unused by the compiler. State expectsArtifact on an explicit conformanceFixture; authored uses are rejected by Compiler Vocabulary Retirement v1."@en ;\n    rdfs:comment "Veraltet und ohne Verarbeitung: Erwartete Ausgaben über expectsArtifact an einer expliziten conformanceFixture angeben. Compiler Vocabulary Retirement v1 lehnt Produktaussagen mit diesem Begriff ab."@de ;\n    rdfs:label "generates artifact"@en ;\n    rdfs:label "generiert Artefakt"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:string .\n\ncco:rejectsMissingSpecs\n    a owl:DatatypeProperty ;\n    rdfs:label "rejects missing specifications"@en ;\n    rdfs:label "lehnt fehlende Spezifikationen ab"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:boolean .\n\ncco:deterministicOutput\n    a owl:DatatypeProperty ;\n    rdfs:label "has deterministic output"@en ;\n    rdfs:label "hat deterministische Ausgabe"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:boolean .\n\ncco:generatesImplementationArtifact\n    a owl:DatatypeProperty ;\n    rdfs:label "generates implementation artifact"@en ;\n    rdfs:label "generiert Implementierungsartefakt"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range xsd:string .\n', 'decision-obligation.ttl': '@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/decision/>\n    a owl:Ontology ;\n    dcterms:title "Decision and Obligation Core Ontology"@en ;\n    dcterms:title "Kernontologie für Entscheidungen und Verpflichtungen"@de ;\n    dcterms:description "Domain-independent vocabulary for source-backed decisions and obligations."@en ;\n    dcterms:description "Domänenunabhängiges Vokabular für quellengestützte Entscheidungen und Verpflichtungen."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "sdo" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision/#" ;\n    owl:versionInfo "0.5.0-experimental" .\n\nsdo:DecisionContract a owl:Class ;\n    rdfs:label "Decision contract"@en ;\n    rdfs:label "Entscheidungsvertrag"@de ;\n    rdfs:comment "Versioned specification of a decision question, accepted Case facts, candidate Rule Set Versions, outcomes, and observable result obligations."@en .\n\nsdo:RuleSet a owl:Class ;\n    rdfs:label "Rule set"@en ;\n    rdfs:label "Regelwerk"@de .\n\nsdo:RuleSetVersion a owl:Class ;\n    rdfs:subClassOf [ a owl:Restriction ;\n        owl:onProperty dcterms:isVersionOf ; owl:allValuesFrom sdo:RuleSet ] ;\n    rdfs:label "Rule set version"@en ;\n    rdfs:label "Regelwerkversion"@de .\n\nsdo:Rule a owl:Class ;\n    rdfs:label "Rule"@en ;\n    rdfs:label "Regel"@de .\n\nsdo:Condition a owl:Class ;\n    rdfs:label "Condition"@en ;\n    rdfs:label "Bedingung"@de .\n\nsdo:Case a owl:Class ;\n    rdfs:label "Case"@en ;\n    rdfs:label "Fall"@de .\n\nsdo:Fact a owl:Class ;\n    rdfs:label "Fact"@en ;\n    rdfs:label "Fallsachverhalt"@de .\n\nsdo:CaseFact a owl:Class ;\n    rdfs:subClassOf sdo:Fact ;\n    rdfs:label "Case fact"@en ;\n    rdfs:label "Fallsachverhalt"@de .\n\nsdo:FactGap a owl:Class ;\n    rdfs:label "Fact gap"@en ;\n    rdfs:label "Sachverhaltslücke"@de ;\n    rdfs:comment "Absence of a Fact required to evaluate a Condition; it is not a false Fact."@en ;\n    rdfs:comment "Im Entscheidungsergebnis festgehaltene fehlende Eingabe für eine bestimmte Bedingung. Eine Lücke ist kein falscher Sachverhalt und kann auch neben einem bereits negativen Ausgang bestehen."@de .\n\nsdo:FactQuestion a owl:Class ;\n    rdfs:label "Fact question"@en ;\n    rdfs:label "Sachverhaltsfrage"@de ;\n    rdfs:comment "An authored prompt that can elicit one Fact required to evaluate a Condition."@en .\n\nsdo:DecisionResult a owl:Class ;\n    rdfs:label "Decision result"@en ;\n    rdfs:label "Entscheidungsergebnis"@de ;\n    rdfs:comment "The result of evaluating one request: identifies the contract, selected rule set version and outcome, and contains condition evaluations, fact gaps and obligation evaluations. It is not merely the outcome code and does not prescribe a serialization."@en ;\n    rdfs:comment "Ergebnis einer konkreten Anfrage mit Entscheidungsvertrag, gewählter Regelwerkversion und Ausgang sowie Bedingungsauswertungen, Sachverhaltslücken und Verpflichtungsauswertungen. Es ist mehr als der Ausgang allein und legt kein Übertragungsformat fest."@de .\n\nsdo:DecisionOutcome a owl:Class ;\n    rdfs:label "Decision outcome"@en ;\n    rdfs:label "Entscheidungsausgang"@de .\n\nsdo:ConditionEvaluation a owl:Class ;\n    rdfs:label "Condition evaluation"@en ;\n    rdfs:label "Bedingungsauswertung"@de ;\n    rdfs:comment "The satisfied, violated or unknown evaluation of a condition in the context of one rule and one decision result; not a change to the condition definition."@en ;\n    rdfs:comment "Bewertung einer Bedingung im Zusammenhang mit einer bestimmten Regel und einem konkreten Entscheidungsergebnis: erfüllt, verletzt oder unbestimmt. Die Bedingungsdefinition selbst bleibt unverändert."@de .\n\nsdo:Obligation a owl:Class ;\n    rdfs:label "Obligation"@en ;\n    rdfs:label "Verpflichtung"@de ;\n    rdfs:comment "A normative requirement explicitly imposed by a Rule; its evaluation inherits that Rule\'s Condition and Source Citation."@en .\n\nsdo:ObligationEvaluation a owl:Class ;\n    rdfs:label "Obligation evaluation"@en ;\n    rdfs:label "Verpflichtungsauswertung"@de ;\n    rdfs:comment "The fulfilled, violated, or unknown status of one Obligation for one Case."@en ;\n    rdfs:comment "Bewertung einer konkreten Verpflichtung innerhalb eines Entscheidungsergebnisses mit dem Status erfüllt, verletzt oder unbestimmt. Die Verpflichtung bleibt von ihrer Bewertung und von einer Testerwartung getrennt."@de .\n\nsdo:ObligationExpectation a owl:Class ;\n    rdfs:label "Obligation expectation"@en ;\n    rdfs:label "Verpflichtungserwartung"@de ;\n    rdfs:comment "The expected Obligation status in a Conformance Case."@en .\n\nsdo:ObligationStatus a owl:Class ;\n    rdfs:label "Obligation status"@en ;\n    rdfs:label "Verpflichtungsstatus"@de .\n\nsdo:ObligationFulfilled a owl:NamedIndividual, sdo:ObligationStatus ;\n    rdfs:label "fulfilled"@en ;\n    rdfs:label "erfüllt"@de .\n\nsdo:ObligationViolated a owl:NamedIndividual, sdo:ObligationStatus ;\n    rdfs:label "violated"@en ;\n    rdfs:label "verletzt"@de .\n\nsdo:ObligationUnknown a owl:NamedIndividual, sdo:ObligationStatus ;\n    rdfs:label "unknown"@en ;\n    rdfs:label "unbestimmt"@de .\n\nsdo:ConformanceCase a owl:Class ;\n    rdfs:subClassOf sdo:Case ;\n    rdfs:label "Conformance case"@en ;\n    rdfs:label "Konformitätsfall"@de .\n\nsdo:QuestionFlowCase a owl:Class ;\n    rdfs:subClassOf sdo:ConformanceCase ;\n    rdfs:label "question flow case"@en ;\n    rdfs:label "Frageablauf-Konformitätsfall"@de ;\n    rdfs:comment "A complete positive Conformance Case whose Facts are supplied as answers in the generated multi-step question-flow proof."@en .\n\nsdo:VersionSelectionCase a owl:Class ;\n    rdfs:subClassOf sdo:ConformanceCase ;\n    rdfs:label "version selection case"@en ;\n    rdfs:label "Versionsauswahl-Konformitätsfall"@de ;\n    rdfs:comment "A Conformance Case that proves temporal Rule Set Version selection from its explicit Decision Date."@en .\n\nsdo:EvidenceRequirement a owl:Class ;\n    rdfs:label "Evidence requirement"@en ;\n    rdfs:label "Nachweisanforderung"@de ;\n    rdfs:comment "An independently sourced requirement for Evidence that supports a Condition without determining that Condition\'s truth."@en .\n\nsdo:Evidence a owl:Class ;\n    rdfs:label "Evidence"@en ;\n    rdfs:label "Nachweis"@de ;\n    rdfs:comment "Supplied information or an artifact offered for an Evidence Requirement; presence alone does not establish fulfillment."@en .\n\nsdo:EvidenceAssessment a owl:Class ;\n    rdfs:label "Evidence assessment"@en ;\n    rdfs:label "Nachweisbewertung"@de ;\n    rdfs:comment "An explicit acceptance or rejection of one supplied Evidence item for one Evidence Requirement."@en .\n\nsdo:EvidenceExpectation a owl:Class ;\n    rdfs:label "Evidence expectation"@en ;\n    rdfs:label "Nachweiserwartung"@de ;\n    rdfs:comment "The expected Evidence Requirement status in a Conformance Case."@en .\n\nsdo:EvidenceRequirementStatus a owl:Class ;\n    rdfs:label "Evidence requirement status"@en ;\n    rdfs:label "Status der Nachweisanforderung"@de .\n\nsdo:EvidenceRequirementFulfilled a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;\n    rdfs:label "fulfilled"@en ;\n    rdfs:label "erfüllt"@de .\n\nsdo:EvidenceRequirementMissing a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;\n    rdfs:label "missing"@en ;\n    rdfs:label "fehlend"@de .\n\nsdo:EvidenceRequirementNotApplicable a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;\n    rdfs:label "not applicable"@en ;\n    rdfs:label "nicht anwendbar"@de .\n\nsdo:Source a owl:Class ;\n    rdfs:label "Source"@en ;\n    rdfs:label "Quelle"@de .\n\nsdo:SourceRevision a owl:Class ;\n    rdfs:subClassOf [ a owl:Restriction ;\n        owl:onProperty dcterms:isVersionOf ; owl:allValuesFrom sdo:Source ] ;\n    rdfs:label "Source revision"@en ;\n    rdfs:label "Quellenrevision"@de .\n\nsdo:SourceCitation a owl:Class ;\n    rdfs:label "Source citation"@en ;\n    rdfs:label "Quellenfundstelle"@de .\n\n# Class-local restrictions describe the existing standard version relation.\n# They do not assert existence or assign conflicting global domains/ranges.\ndcterms:isVersionOf rdfs:label "is version of"@en, "ist Version von"@de .\n\n# Domain model for results; JSON field names remain a separate protocol concern.\nsdo:resultForContract a owl:ObjectProperty ;\n    rdfs:label "result for contract"@en, "Ergebnis für Vertrag"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:DecisionContract .\n\nsdo:resultRuleSetVersion a owl:ObjectProperty ;\n    rdfs:label "evaluated rule set version"@en, "ausgewertete Regelwerkversion"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:RuleSetVersion .\n\nsdo:resultOutcome a owl:ObjectProperty ;\n    rdfs:label "has outcome"@en, "hat Entscheidungsausgang"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:DecisionOutcome .\n\nsdo:hasConditionEvaluation a owl:ObjectProperty ;\n    rdfs:label "has condition evaluation"@en, "enthält Bedingungsauswertung"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:ConditionEvaluation .\n\nsdo:hasFactGap a owl:ObjectProperty ;\n    rdfs:label "has fact gap"@en, "enthält Sachverhaltslücke"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:FactGap .\n\nsdo:hasObligationEvaluation a owl:ObjectProperty ;\n    rdfs:label "has obligation evaluation"@en, "enthält Verpflichtungsauswertung"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:ObligationEvaluation .\n\nsdo:nextQuestion a owl:ObjectProperty ;\n    rdfs:label "next fact question"@en, "nächste Sachverhaltsfrage"@de ;\n    rdfs:comment "A selected question, if any; the relation does not require a question to exist. Selection follows the versioned question selection conventions."@en ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:FactQuestion .\n\nsdo:decisiveRule a owl:ObjectProperty ;\n    rdfs:label "decisive rule"@en, "entscheidende Regel"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:Rule .\n\nsdo:evaluatesCondition a owl:ObjectProperty ;\n    rdfs:label "evaluates condition"@en, "bewertet Bedingung"@de ;\n    rdfs:domain sdo:ConditionEvaluation ; rdfs:range sdo:Condition .\n\nsdo:evaluatedRule a owl:ObjectProperty ;\n    rdfs:label "evaluated rule"@en, "ausgewertete Regel"@de ;\n    rdfs:domain sdo:ConditionEvaluation ; rdfs:range sdo:Rule .\n\nsdo:conditionEvaluationState a owl:DatatypeProperty ;\n    rdfs:label "condition evaluation state"@en, "Zustand der Bedingungsauswertung"@de ;\n    rdfs:comment "Decision Conventions v1 uses satisfied, violated or unknown. The literal is an evaluation state, not a Fact value."@en ;\n    rdfs:domain sdo:ConditionEvaluation ; rdfs:range xsd:string .\n\nsdo:missingFactForCondition a owl:ObjectProperty ;\n    rdfs:label "missing fact for condition"@en, "fehlender Sachverhalt für Bedingung"@de ;\n    rdfs:domain sdo:FactGap ; rdfs:range sdo:Condition .\n\nsdo:evaluatesObligation a owl:ObjectProperty ;\n    rdfs:label "evaluates obligation"@en, "bewertet Verpflichtung"@de ;\n    rdfs:domain sdo:ObligationEvaluation ; rdfs:range sdo:Obligation .\n\nsdo:obligationEvaluationStatus a owl:ObjectProperty ;\n    rdfs:label "obligation evaluation status"@en, "ermittelter Verpflichtungsstatus"@de ;\n    rdfs:domain sdo:ObligationEvaluation ; rdfs:range sdo:ObligationStatus .\n\nsdo:usesRuleSetVersion a owl:ObjectProperty ;\n    rdfs:label "uses rule set version"@en ;\n    rdfs:label "verwendet Regelwerkversion"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:RuleSetVersion .\n\nsdo:hasRule a owl:ObjectProperty ;\n    rdfs:label "has rule"@en ;\n    rdfs:label "hat Regel"@de ;\n    rdfs:domain sdo:RuleSetVersion ;\n    rdfs:range sdo:Rule .\n\nsdo:condition a owl:ObjectProperty ;\n    rdfs:label "condition"@en ;\n    rdfs:label "Bedingung"@de ;\n    rdfs:domain sdo:Rule ;\n    rdfs:range sdo:Condition .\n\nsdo:imposesObligation a owl:ObjectProperty ;\n    rdfs:label "imposes obligation"@en ;\n    rdfs:label "begründet Verpflichtung"@de ;\n    rdfs:domain sdo:Rule ;\n    rdfs:range sdo:Obligation .\n\nsdo:factProperty a owl:ObjectProperty ;\n    rdfs:label "fact property"@en ;\n    rdfs:label "Sachverhaltsproperty"@de ;\n    rdfs:domain sdo:Condition ;\n    rdfs:range rdf:Property .\n\nsdo:sourceCitation a owl:ObjectProperty ;\n    rdfs:label "source citation"@en ;\n    rdfs:label "Quellenfundstelle"@de ;\n    rdfs:domain sdo:Rule ;\n    rdfs:range sdo:SourceCitation .\n\nsdo:hasEvidenceRequirement a owl:ObjectProperty ;\n    rdfs:label "has evidence requirement"@en ;\n    rdfs:label "hat Nachweisanforderung"@de ;\n    rdfs:domain sdo:RuleSetVersion ;\n    rdfs:range sdo:EvidenceRequirement .\n\nsdo:versionSourceCitation a owl:ObjectProperty ;\n    rdfs:label "version source citation"@en ;\n    rdfs:label "Quellenfundstelle der Version"@de ;\n    rdfs:domain sdo:RuleSetVersion ;\n    rdfs:range sdo:SourceCitation .\n\nsdo:supportsCondition a owl:ObjectProperty ;\n    rdfs:label "supports condition"@en ;\n    rdfs:label "stützt Bedingung"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range sdo:Condition .\n\nsdo:applicabilityCondition a owl:ObjectProperty ;\n    rdfs:label "applicability condition"@en ;\n    rdfs:label "Anwendbarkeitsbedingung"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range sdo:Condition .\n\nsdo:requiredEvidenceType a owl:ObjectProperty ;\n    rdfs:label "required evidence type"@en ;\n    rdfs:label "erforderlicher Nachweistyp"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range owl:Class .\n\nsdo:evidenceSourceCitation a owl:ObjectProperty ;\n    rdfs:label "evidence source citation"@en ;\n    rdfs:label "Quellenfundstelle der Nachweisanforderung"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range sdo:SourceCitation .\n\nsdo:hasEvidence a owl:ObjectProperty ;\n    rdfs:label "has evidence"@en ;\n    rdfs:label "hat Nachweis"@de ;\n    rdfs:domain sdo:Case ;\n    rdfs:range sdo:Evidence .\n\nsdo:evidenceType a owl:ObjectProperty ;\n    rdfs:label "evidence type"@en ;\n    rdfs:label "Nachweistyp"@de ;\n    rdfs:domain sdo:Evidence ;\n    rdfs:range owl:Class .\n\nsdo:hasEvidenceAssessment a owl:ObjectProperty ;\n    rdfs:label "has evidence assessment"@en ;\n    rdfs:label "hat Nachweisbewertung"@de ;\n    rdfs:domain sdo:Evidence ;\n    rdfs:range sdo:EvidenceAssessment .\n\nsdo:assessesEvidenceRequirement a owl:ObjectProperty ;\n    rdfs:label "assesses evidence requirement"@en ;\n    rdfs:label "bewertet Nachweisanforderung"@de ;\n    rdfs:domain sdo:EvidenceAssessment ;\n    rdfs:range sdo:EvidenceRequirement .\n\nsdo:hasEvidenceExpectation a owl:ObjectProperty ;\n    rdfs:label "has evidence expectation"@en ;\n    rdfs:label "hat Nachweiserwartung"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:EvidenceExpectation .\n\nsdo:expectsEvidenceRequirement a owl:ObjectProperty ;\n    rdfs:label "expects evidence requirement"@en ;\n    rdfs:label "erwartet Nachweisanforderung"@de ;\n    rdfs:domain sdo:EvidenceExpectation ;\n    rdfs:range sdo:EvidenceRequirement .\n\nsdo:expectedEvidenceStatus a owl:ObjectProperty ;\n    rdfs:label "expected evidence status"@en ;\n    rdfs:label "erwartet Nachweisstatus"@de ;\n    rdfs:domain sdo:EvidenceExpectation ;\n    rdfs:range sdo:EvidenceRequirementStatus .\n\nsdo:hasObligationExpectation a owl:ObjectProperty ;\n    rdfs:label "has obligation expectation"@en ;\n    rdfs:label "hat Verpflichtungserwartung"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:ObligationExpectation .\n\nsdo:expectsObligation a owl:ObjectProperty ;\n    rdfs:label "expects obligation"@en ;\n    rdfs:label "erwartet Verpflichtung"@de ;\n    rdfs:domain sdo:ObligationExpectation ;\n    rdfs:range sdo:Obligation .\n\nsdo:expectedObligationStatus a owl:ObjectProperty ;\n    rdfs:label "expected obligation status"@en ;\n    rdfs:label "erwartet Verpflichtungsstatus"@de ;\n    rdfs:domain sdo:ObligationExpectation ;\n    rdfs:range sdo:ObligationStatus .\n\nsdo:citesSourceRevision a owl:ObjectProperty ;\n    rdfs:label "cites source revision"@en ;\n    rdfs:label "zitiert Quellenrevision"@de ;\n    rdfs:domain sdo:SourceCitation ;\n    rdfs:range sdo:SourceRevision .\n\nsdo:positiveOutcome a owl:ObjectProperty ;\n    rdfs:label "positive outcome"@en ;\n    rdfs:label "positiver Ausgang"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:negativeOutcome a owl:ObjectProperty ;\n    rdfs:label "negative outcome"@en ;\n    rdfs:label "negativer Ausgang"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:unknownOutcome a owl:ObjectProperty ;\n    rdfs:label "unknown outcome"@en ;\n    rdfs:label "unbestimmter Ausgang"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:hasConformanceCase a owl:ObjectProperty ;\n    rdfs:label "has conformance case"@en ;\n    rdfs:label "hat Konformitätsfall"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:ConformanceCase .\n\nsdo:forDecisionContract a owl:ObjectProperty ;\n    rdfs:label "for decision contract"@en ;\n    rdfs:label "für Entscheidungsvertrag"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:DecisionContract .\n\nsdo:expectsOutcome a owl:ObjectProperty ;\n    rdfs:label "expects outcome"@en ;\n    rdfs:label "erwartet Ausgang"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:expectsRuleSetVersion a owl:ObjectProperty ;\n    rdfs:label "expects rule set version"@en ;\n    rdfs:label "erwartet Regelwerkversion"@de ;\n    rdfs:comment "A conformance oracle for the version derived from the Decision Date; it is not a selection input."@en ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:RuleSetVersion .\n\nsdo:hasFact a owl:ObjectProperty ;\n    rdfs:label "has fact"@en ;\n    rdfs:label "hat Fallsachverhalt"@de ;\n    rdfs:domain sdo:Case ;\n    rdfs:range sdo:CaseFact .\n\nsdo:forCondition a owl:ObjectProperty ;\n    rdfs:label "for condition"@en ;\n    rdfs:label "für Bedingung"@de ;\n    rdfs:domain sdo:CaseFact ;\n    rdfs:range sdo:Condition .\n\nsdo:elicitsCondition a owl:ObjectProperty ;\n    rdfs:label "elicits condition fact for"@en ;\n    rdfs:label "erfragt Sachverhalt für Bedingung"@de ;\n    rdfs:domain sdo:FactQuestion ;\n    rdfs:range sdo:Condition .\n\nsdo:requiresAllRules a owl:DatatypeProperty ;\n    rdfs:label "requires all rules"@en ;\n    rdfs:label "erfordert alle Regeln"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range xsd:boolean .\n\nsdo:expectedBoolean a owl:DatatypeProperty ;\n    rdfs:label "expected boolean"@en ;\n    rdfs:label "erwarteter boolescher Wert"@de ;\n    rdfs:domain sdo:Condition ;\n    rdfs:range xsd:boolean .\n\nsdo:booleanValue a owl:DatatypeProperty ;\n    rdfs:label "boolean value"@en ;\n    rdfs:label "boolescher Wert"@de ;\n    rdfs:domain sdo:CaseFact ;\n    rdfs:range xsd:boolean .\n\nsdo:accepted a owl:DatatypeProperty ;\n    rdfs:label "accepted"@en ;\n    rdfs:label "akzeptiert"@de ;\n    rdfs:domain sdo:EvidenceAssessment ;\n    rdfs:range xsd:boolean .\n\nsdo:questionText a owl:DatatypeProperty ;\n    rdfs:label "question text"@en ;\n    rdfs:label "Fragetext"@de ;\n    rdfs:domain sdo:FactQuestion ;\n    rdfs:range xsd:string .\n\nsdo:obligationText a owl:DatatypeProperty ;\n    rdfs:label "obligation text"@en ;\n    rdfs:label "Verpflichtungstext"@de ;\n    rdfs:domain sdo:Obligation ;\n    rdfs:range xsd:string .\n\nsdo:questionPriority a owl:DatatypeProperty ;\n    rdfs:label "question priority"@en ;\n    rdfs:label "Fragepriorität"@de ;\n    rdfs:comment "A positive integer; lower values are selected before higher values when their Conditions both have Fact Gaps."@en ;\n    rdfs:domain sdo:FactQuestion ;\n    rdfs:range xsd:positiveInteger .\n\nsdo:outcomeCode a owl:DatatypeProperty ;\n    rdfs:label "outcome code"@en ;\n    rdfs:label "Ausgangscode"@de ;\n    rdfs:domain sdo:DecisionOutcome ;\n    rdfs:range xsd:string .\n\nsdo:scopeNote a owl:DatatypeProperty ;\n    rdfs:label "scope note"@en ;\n    rdfs:label "Geltungsbereichshinweis"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range xsd:string .\n\nsdo:validFrom a owl:DatatypeProperty ;\n    rdfs:label "valid from"@en ;\n    rdfs:label "gültig ab"@de ;\n    rdfs:range xsd:date .\n\nsdo:validUntil a owl:DatatypeProperty ;\n    rdfs:label "valid until"@en ;\n    rdfs:label "gültig bis"@de ;\n    rdfs:range xsd:date .\n\nsdo:decisionDate a owl:DatatypeProperty ;\n    rdfs:label "decision date"@en ;\n    rdfs:label "Entscheidungsdatum"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range xsd:date .\n\nsdo:sourceLocator a owl:DatatypeProperty ;\n    rdfs:label "source locator"@en ;\n    rdfs:label "Quellenfundort"@de ;\n    rdfs:domain sdo:SourceCitation ;\n    rdfs:range xsd:string .\n\nsdo:sourceStatement a owl:DatatypeProperty ;\n    rdfs:label "source statement"@en ;\n    rdfs:label "Quellenaussage"@de ;\n    rdfs:domain sdo:SourceCitation ;\n    rdfs:range xsd:string .\n\nsdo:contentSha256 a owl:DatatypeProperty ;\n    rdfs:label "content SHA-256"@en ;\n    rdfs:label "Inhalts-SHA-256"@de ;\n    rdfs:domain sdo:SourceRevision ;\n    rdfs:range xsd:string .\n\nsdo:byteSize a owl:DatatypeProperty ;\n    rdfs:label "byte size"@en ;\n    rdfs:label "Byte-Größe"@de ;\n    rdfs:domain sdo:SourceRevision ;\n    rdfs:range xsd:integer .\n', 'decision-protocol.ttl': '@prefix dpo: <https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/>\n    a owl:Ontology ;\n    dcterms:title "Decision Protocol Ontology"@en, "Decision-Protokollontologie"@de ;\n    dcterms:description "Decision invocation protocol and bindings, independent of HTTP and SQL."@en ;\n    dcterms:description "Decision-Protokollontologie: wiederverwendbare Definitionen, keine konkrete Produktspezifikation."@de ;\n    vann:preferredNamespacePrefix "dpo" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#" ;\n    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;\n    owl:versionInfo "0.2.0-experimental" .\n\ndpo:DecisionProtocolV1\n    a owl:NamedIndividual, dcterms:Standard ;\n    rdfs:label "Decision Protocol v1"@en ;\n    rdfs:label "Entscheidungsprotokoll v1"@de ;\n    rdfs:comment "Manifest-driven protocol that sends one JSON Decision Request to a product process and observes one JSON Decision Result."@en .\n\ndpo:implementsDecisionContract\n    a owl:ObjectProperty ;\n    rdfs:label "implements decision contract"@en ;\n    rdfs:label "implementiert Entscheidungsvertrag"@de ;\n    rdfs:domain schema:SoftwareApplication ;\n    rdfs:range sdo:DecisionContract .\n\ndpo:inputJsonPointer\n    a owl:DatatypeProperty ;\n    rdfs:label "input JSON pointer"@en ;\n    rdfs:label "Eingabe-JSON-Pointer"@de ;\n    rdfs:comment "RFC 6901 pointer identifying a Condition\'s Fact in the Decision Protocol v1 request."@en ;\n    rdfs:domain sdo:Condition ;\n    rdfs:range xsd:string .\n', 'funding.ttl': '@prefix funding: <https://arturmiller.github.io/spec-compiler/ontology/funding/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/funding/>\n    a owl:Ontology ;\n    dcterms:title "Funding Domain Ontology"@en ;\n    dcterms:title "Förderdomänenontologie"@de ;\n    dcterms:description "Domain vocabulary for funding programs and scoped eligibility decisions."@en ;\n    dcterms:description "Domänenvokabular für Förderprogramme und abgegrenzte Förderfähigkeitsentscheidungen."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "funding" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/funding/#" ;\n    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;\n    owl:versionInfo "0.3.0-experimental" .\n\nfunding:FundingProgram a owl:Class ;\n    rdfs:label "Funding program"@en ;\n    rdfs:label "Förderprogramm"@de .\n\nfunding:Applicant a owl:Class ;\n    rdfs:label "Applicant"@en ;\n    rdfs:label "Antragstellende Person"@de ;\n    rdfs:comment "Die im Fall betrachtete antragstellende Person. Ihre Eigenschaften werden von den Regeln geprüft; sie ist weder der Entscheidungsvertrag noch eine Zusage des Fördergebers."@de .\n\nfunding:Project a owl:Class ;\n    rdfs:label "Project"@en ;\n    rdfs:label "Vorhaben"@de ;\n    rdfs:comment "Das im Fall betrachtete Vorhaben mit seinen ausdrücklich angegebenen Eigenschaften, etwa Standort und Gebäudebestand. Es ist von der antragstellenden Person getrennt."@de .\n\nfunding:LandRegisterExcerpt a owl:Class ;\n    rdfs:subClassOf sdo:Evidence ;\n    rdfs:label "Land-register excerpt"@en ;\n    rdfs:label "Grundbuchauszug"@de .\n\nfunding:ApplicantEligibilityDecision a owl:Class ;\n    rdfs:subClassOf sdo:DecisionContract ;\n    rdfs:label "Applicant eligibility decision"@en ;\n    rdfs:label "Entscheidung über Antragsberechtigung"@de .\n\nfunding:Eligible a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "eligible"@en ;\n    rdfs:label "antragsberechtigt"@de ;\n    sdo:outcomeCode "eligible" .\n\nfunding:Ineligible a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "ineligible"@en ;\n    rdfs:label "nicht antragsberechtigt"@de ;\n    sdo:outcomeCode "ineligible" .\n\nfunding:Unknown a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "unknown"@en ;\n    rdfs:label "unbestimmt"@de ;\n    sdo:outcomeCode "unknown" .\n\nfunding:fundingProgram a owl:ObjectProperty ;\n    rdfs:label "funding program"@en ;\n    rdfs:label "Förderprogramm"@de ;\n    rdfs:domain funding:ApplicantEligibilityDecision ;\n    rdfs:range funding:FundingProgram .\n\nfunding:hasApplicant a owl:ObjectProperty ;\n    rdfs:label "has applicant"@en, "hat antragstellende Person"@de ;\n    rdfs:comment "Relates a concrete Case to its Applicant; does not bind a reusable Decision Contract to one person or require an RDF representation in JSON products."@en ;\n    rdfs:domain sdo:Case ; rdfs:range funding:Applicant .\n\nfunding:hasProject a owl:ObjectProperty ;\n    rdfs:label "has project"@en, "hat Vorhaben"@de ;\n    rdfs:comment "Relates a concrete Case to its Project. It does not assert that the Applicant owns the Project or that funding has been approved."@en ;\n    rdfs:domain sdo:Case ; rdfs:range funding:Project .\n\nfunding:naturalPerson a owl:DatatypeProperty ;\n    rdfs:label "is a natural person"@en ;\n    rdfs:label "ist eine natürliche Person"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:owner a owl:DatatypeProperty ;\n    rdfs:label "is an owner"@en ;\n    rdfs:label "ist Eigentümerin oder Eigentümer"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:ownershipViaGbR a owl:DatatypeProperty ;\n    rdfs:label "holds ownership through a GbR"@en ;\n    rdfs:label "hält Eigentum über eine GbR"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:hasUsufructRight a owl:DatatypeProperty ;\n    rdfs:label "has a usufruct right"@en ;\n    rdfs:label "hat ein Nießbrauchrecht"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:selfUsesResidentialProperty a owl:DatatypeProperty ;\n    rdfs:label "self-uses the residential property"@en ;\n    rdfs:label "nutzt die Wohnimmobilie selbst"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:claimsClimateOrIncomeBonus a owl:DatatypeProperty ;\n    rdfs:label "claims a climate-speed or income bonus"@en ;\n    rdfs:label "beansprucht Klimageschwindigkeits- oder Einkommensbonus"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:existingResidentialBuilding a owl:DatatypeProperty ;\n    rdfs:label "concerns an existing residential building"@en ;\n    rdfs:label "betrifft ein bestehendes Wohngebäude"@de ;\n    rdfs:domain funding:Project ;\n    rdfs:range xsd:boolean .\n\nfunding:buildingInGermany a owl:DatatypeProperty ;\n    rdfs:label "building is in Germany"@en ;\n    rdfs:label "Gebäude liegt in Deutschland"@de ;\n    rdfs:domain funding:Project ;\n    rdfs:range xsd:boolean .\n', 'shacl-contract.ttl': '@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix sh: <http://www.w3.org/ns/shacl#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/>\n    a owl:Ontology ;\n    dcterms:title "HTTP API Ontology"@en ;\n    dcterms:title "HTTP-API-Ontologie"@de ;\n    dcterms:description "Reusable vocabulary for HTTP endpoints, requests and responses, independent of storage and decision semantics."@en ;\n    dcterms:description "Wiederverwendbare Definitionen für HTTP-Endpunkte, Anfragen und Antworten, unabhängig von Speicherung und Decision-Semantik."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "sco" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/#" ;\n    owl:versionInfo "0.4.0-experimental" .\n\n\nsco:HttpEndpoint\n    a owl:Class ;\n    rdfs:label "HTTP endpoint"@en ;\n    rdfs:label "HTTP-Endpunkt"@de .\n\nsco:GetEndpoint\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpEndpoint ;\n    rdfs:label "GET endpoint"@en ;\n    rdfs:label "GET-Endpunkt"@de ;\n    rdfs:comment "HTTP GET endpoint that returns resources described by a SHACL shape."@en .\n\nsco:PostEndpoint\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpEndpoint ;\n    rdfs:label "POST endpoint"@en ;\n    rdfs:label "POST-Endpunkt"@de ;\n    rdfs:comment "HTTP endpoint invoked with the POST method."@en .\n\nsco:HttpMessage\n    a owl:Class ;\n    rdfs:label "HTTP message"@en ;\n    rdfs:label "HTTP-Nachricht"@de .\n\nsco:HttpRequest\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpMessage ;\n    rdfs:label "HTTP request"@en ;\n    rdfs:label "HTTP-Anfrage"@de .\n\nsco:HttpResponse\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpMessage ;\n    rdfs:label "HTTP response"@en ;\n    rdfs:label "HTTP-Antwort"@de .\n\nsco:PathParameter a owl:Class ;\n    rdfs:label "Path parameter"@en, "Pfadparameter"@de ;\n    rdfs:comment "An explicitly named value in a GET path with a declared datatype; independent of a concrete storage mapping."@en ;\n    rdfs:comment "Ein ausdrücklich benannter Wert im GET-Pfad mit deklariertem Datentyp. Eine optionale Zuordnung zu einer Speicherspalte gehört zur SQL-Ontologie, nicht zur HTTP-Definition."@de .\n\nsco:request\n    a owl:ObjectProperty ;\n    rdfs:label "request"@en ;\n    rdfs:label "Anfrage"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range sco:HttpRequest .\n\nsco:successResponse\n    a owl:ObjectProperty ;\n    rdfs:label "successful response"@en ;\n    rdfs:label "Erfolgsantwort"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range sco:HttpResponse .\n\nsco:invalidRequestResponse\n    a owl:ObjectProperty ;\n    rdfs:label "response to an invalid request"@en ;\n    rdfs:label "Antwort auf eine ungültige Anfrage"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range sco:HttpResponse .\n\nsco:invokesContract\n    a owl:ObjectProperty ;\n    rdfs:label "invokes contract"@en ;\n    rdfs:label "ruft Vertrag auf"@de ;\n    rdfs:domain sco:HttpEndpoint .\n\nsco:bodySchema\n    a owl:DatatypeProperty ;\n    rdfs:label "body schema"@en ;\n    rdfs:label "Body-Schema"@de ;\n    rdfs:domain sco:HttpMessage ;\n    rdfs:range rdf:JSON ;\n    rdfs:comment "An authored JSON Schema describing the HTTP message body."@en .\n\nsco:bodyPointer\n    a owl:DatatypeProperty ;\n    rdfs:label "body pointer"@en ;\n    rdfs:label "Body-Pointer"@de ;\n    rdfs:domain sco:HttpMessage ;\n    rdfs:range xsd:string ;\n    rdfs:comment "JSON Pointer locating the invoked contract input, result, or error text in the corresponding HTTP message body; the empty string denotes the whole body."@en .\n\nsco:bodyRequired\n    a owl:DatatypeProperty ;\n    rdfs:label "body required"@en ;\n    rdfs:label "Body erforderlich"@de ;\n    rdfs:domain sco:HttpRequest ;\n    rdfs:range xsd:boolean .\n\nsco:statusCode\n    a owl:DatatypeProperty ;\n    rdfs:label "HTTP status code"@en ;\n    rdfs:label "HTTP-Statuscode"@de ;\n    rdfs:domain sco:HttpResponse ;\n    rdfs:range xsd:integer .\n\nsco:returns\n    a owl:ObjectProperty ;\n    rdfs:label "returns shape"@en ;\n    rdfs:label "liefert Shape"@de ;\n    rdfs:domain sco:GetEndpoint ;\n    rdfs:range sh:NodeShape .\n\nsco:pathParameter\n    a owl:ObjectProperty ;\n    rdfs:label "path parameter"@en ;\n    rdfs:label "Pfadparameter"@de ;\n    rdfs:domain sco:GetEndpoint ;\n    rdfs:range sco:PathParameter .\n\nsco:path\n    a owl:DatatypeProperty ;\n    rdfs:label "HTTP path"@en ;\n    rdfs:label "HTTP-Pfad"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range xsd:string .\n\nsco:name\n    a owl:DatatypeProperty ;\n    rdfs:label "name"@en ;\n    rdfs:label "Name"@de ;\n    rdfs:range xsd:string .\n\nsco:successStatus\n    a owl:DatatypeProperty ;\n    rdfs:label "success status"@en ;\n    rdfs:label "Erfolgsstatus"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range xsd:integer .\n\nsco:mediaType\n    a owl:DatatypeProperty ;\n    rdfs:label "media type"@en ;\n    rdfs:label "Medientyp"@de ;\n    rdfs:range xsd:string .\n', 'sql-storage.ttl': '@prefix sqlo: <https://arturmiller.github.io/spec-compiler/ontology/sql/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix sh: <http://www.w3.org/ns/shacl#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/sql/>\n    a owl:Ontology ;\n    dcterms:title "SQL Storage Ontology"@en, "SQL-Speicherontologie"@de ;\n    dcterms:description "Transport-independent vocabulary for SQL tables, storage and reads."@en ;\n    dcterms:description "SQL-Speicherontologie: wiederverwendbare Definitionen, keine konkrete Produktspezifikation."@de ;\n    vann:preferredNamespacePrefix "sqlo" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/sql/#" ;\n    owl:versionInfo "0.2.0-experimental" .\n\nsqlo:SqlTable\n    a owl:Class ;\n    rdfs:label "SQL table"@en ;\n    rdfs:label "SQL-Tabelle"@de ;\n    rdfs:comment "Relational table that stores resources described by a SHACL shape."@en .\n\nsqlo:DatabaseEngine a owl:Class ;\n    rdfs:label "Database engine"@en, "Datenbank-Engine"@de ;\n    rdfs:comment "A named database engine selected explicitly by a storage specification; not an inferred runtime technology."@en ;\n    rdfs:comment "Die in einer Speicherspezifikation ausdrücklich gewählte Datenbank-Engine. SQLite ist ein konkreter Wert dieses Typs, keine Tabellenklasse und keine automatisch gewählte Technologie."@de .\n\nsqlo:SQLite\n    a owl:NamedIndividual, sqlo:DatabaseEngine ;\n    rdfs:label "SQLite"@en ;\n    rdfs:label "SQLite"@de .\n\nsqlo:readsFrom\n    a owl:ObjectProperty ;\n    rdfs:comment "A resource reads from the specified SQL table; independent of its transport."@en ;\n    rdfs:comment "Eine Ressource liest aus der angegebenen SQL-Tabelle; unabhängig von ihrem Transport."@de ;\n    rdfs:label "reads from"@en ;\n    rdfs:label "liest aus"@de ;\n    rdfs:range sqlo:SqlTable .\n\nsqlo:stores\n    a owl:ObjectProperty ;\n    rdfs:label "stores shape"@en ;\n    rdfs:label "speichert Shape"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range sh:NodeShape .\n\nsqlo:databaseEngine\n    a owl:ObjectProperty ;\n    rdfs:label "database engine"@en ;\n    rdfs:label "Datenbank-Engine"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range sqlo:DatabaseEngine .\n\nsqlo:idDatatype\n    a owl:ObjectProperty ;\n    rdfs:label "identifier datatype"@en ;\n    rdfs:label "Bezeichner-Datentyp"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range rdfs:Datatype .\n\nsqlo:mapsToColumn\n    a owl:DatatypeProperty ;\n    rdfs:label "maps to column"@en ;\n    rdfs:label "bildet auf Spalte ab"@de ;\n    rdfs:range xsd:string .\n\nsqlo:tableName\n    a owl:DatatypeProperty ;\n    rdfs:label "table name"@en ;\n    rdfs:label "Tabellenname"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:string .\n\nsqlo:idColumn\n    a owl:DatatypeProperty ;\n    rdfs:label "identifier column"@en ;\n    rdfs:label "Bezeichnerspalte"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:string .\n\nsqlo:idPrimaryKey\n    a owl:DatatypeProperty ;\n    rdfs:label "identifier is primary key"@en ;\n    rdfs:label "Bezeichner ist Primärschlüssel"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:boolean .\n\nsqlo:idGenerated\n    a owl:DatatypeProperty ;\n    rdfs:label "identifier is generated"@en ;\n    rdfs:label "Bezeichner wird generiert"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:boolean .\n'}
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
+SQLO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/sql/#")
+DPO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#")
+CCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/compiler/#")
 SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
 SQL_TYPES = {
@@ -217,6 +223,116 @@ def sql_identifier(value: str) -> str:
     return value
 
 
+def ontology_sources() -> dict[str, str]:
+    if PACKAGED_ONTOLOGIES is not None:
+        return dict(PACKAGED_ONTOLOGIES)
+    return {path.name: path.read_text(encoding="utf-8")
+            for path in sorted((ROOT / "ontology").glob("*.ttl"))}
+
+
+def ontology_module(graph: Graph, *, role: str, source: str) -> dict:
+    identities = sorted(set(graph.subjects(RDF.type, OWL.Ontology)), key=str)
+    if len(identities) != 1 or not isinstance(identities[0], URIRef):
+        raise ValueError(f"{source}: expected exactly one named owl:Ontology")
+    identity = identities[0]
+    namespace = str(one(graph, identity, VANN.preferredNamespaceUri))
+    project = "https://arturmiller.github.io/spec-compiler/"
+    expected = project + ("resources/" if role == "product" else "ontology/")
+    if not str(identity).startswith(expected) or namespace != str(identity) + "#":
+        raise ValueError(f"{source}: ontology identity and namespace do not match its {role} boundary")
+    return {"graph": graph, "iri": str(identity), "namespace": namespace,
+            "role": role, "source": source}
+
+
+def reusable_ontology_modules() -> list[dict]:
+    sources = ontology_sources()
+    if not sources:
+        raise ValueError("No local reusable ontology catalog available")
+    return [ontology_module(Graph().parse(data=text, format="turtle"), role="reusable", source=name)
+            for name, text in sorted(sources.items())]
+
+
+def validate_ontology_modules(modules: list[dict]) -> None:
+    """Ontology Module Conventions v1: explicit imports, closed local DAG, terminal product specs.
+
+    Load definitions for ownership/import checking, never as additional authored
+    product requirements. No import IRI is fetched and no OWL inference is run.
+    """
+    by_iri = {module["iri"]: module for module in modules}
+    if len(by_iri) != len(modules):
+        raise ValueError("Duplicate ontology identity")
+    namespaces = [module["namespace"] for module in modules]
+    if len(set(namespaces)) != len(namespaces):
+        raise ValueError("Duplicate ontology namespace ownership")
+    project = "https://arturmiller.github.io/spec-compiler/"
+    project_roots = (project + "ontology/", project + "resources/")
+    defined = {module["iri"]: set(module["graph"].subjects()) for module in modules}
+    outgoing = {}
+    for module in sorted(modules, key=lambda item: item["iri"]):
+        graph, identity = module["graph"], module["iri"]
+        imports = set()
+        for subject, value in graph.subject_objects(OWL.imports):
+            if str(subject) != identity or not isinstance(value, URIRef):
+                raise ValueError(f"{identity}: owl:imports must belong to its ontology header and name an IRI")
+            target = str(value)
+            if target not in by_iri:
+                raise ValueError(f"Unknown ontology import: {identity} -> {target}; only the local catalog is allowed")
+            if by_iri[target]["role"] == "product":
+                raise ValueError(f"Terminal product specification cannot be imported: {identity} -> {target}")
+            imports.add(target)
+        outgoing[identity] = imports
+        used = set()
+        for triple in graph:
+            for value in triple:
+                if not isinstance(value, URIRef):
+                    continue
+                owner = next((candidate for candidate in modules
+                              if str(value).startswith(candidate["namespace"])), None)
+                if owner is None:
+                    if str(value).startswith(project_roots) and str(value) not in by_iri:
+                        raise ValueError(f"Unknown or foreign product/ontology resource: {value}")
+                    if str(value) in by_iri and str(value) != identity:
+                        owner = by_iri[str(value)]
+                    else:
+                        continue
+                if owner["iri"] == identity:
+                    continue
+                if owner["role"] == "product":
+                    raise ValueError(f"Terminal product specification cannot be reused: {identity} -> {value}")
+                if value not in defined[owner["iri"]]:
+                    raise ValueError(f"Undefined ontology term: {value}")
+                defining = triple[1] in (RDFS.label, RDFS.subClassOf, RDFS.domain, RDFS.range)
+                defining = defining or (triple[1] == RDF.type and triple[2] in
+                                         (OWL.Class, OWL.ObjectProperty, OWL.DatatypeProperty))
+                if value == triple[0] and defining:
+                    raise ValueError(f"Foreign ontology term cannot be defined or amended here: {value}")
+                used.add(owner["iri"])
+        missing = sorted(used - imports)
+        if missing:
+            raise ValueError(f"Missing explicit owl:imports on {identity}: {', '.join(missing)}")
+    complete, active = set(), []
+    def visit(identity):
+        if identity in active:
+            cycle = active[active.index(identity):] + [identity]
+            raise ValueError("Cyclic ontology imports: " + " -> ".join(cycle))
+        if identity in complete:
+            return
+        active.append(identity)
+        for target in sorted(outgoing[identity]):
+            visit(target)
+        active.pop()
+        complete.add(identity)
+    for identity in sorted(by_iri):
+        visit(identity)
+
+
+def validate_product_ontology(graph: Graph, source: str = "product specs") -> None:
+    reject_legacy_compiler_terms(graph)
+    modules = reusable_ontology_modules()
+    modules.append(ontology_module(graph, role="product", source=source))
+    validate_ontology_modules(modules)
+
+
 def load_contract_graph(product_root: Path) -> Graph:
     specs_root = product_root / "specs"
     spec_files = sorted(specs_root.glob("*.ttl"))
@@ -225,6 +341,7 @@ def load_contract_graph(product_root: Path) -> Graph:
     contract_graph = Graph()
     for spec_file in spec_files:
         contract_graph.parse(spec_file, format="turtle")
+    validate_product_ontology(contract_graph, str(specs_root))
     return contract_graph
 
 
@@ -234,17 +351,17 @@ def read_obligation_model(
     contract_graph = contract_graph or load_contract_graph(product_root)
     shapes = system = contract_graph
     endpoints = list(system.subjects(RDF.type, SCO.GetEndpoint))
-    tables = list(system.subjects(RDF.type, SCO.SqlTable))
+    tables = list(system.subjects(RDF.type, SQLO.SqlTable))
     if len(endpoints) != 1 or len(tables) != 1:
         raise ValueError("Prototype expects exactly one GET endpoint and one SQL table")
     endpoint, table = endpoints[0], tables[0]
     shape = one(system, endpoint, SCO.returns)
-    if one(system, table, SCO.stores) != shape:
+    if one(system, table, SQLO.stores) != shape:
         raise ValueError("Endpoint and table must reference the same shape")
-    if one(system, endpoint, SCO.readsFrom) != table:
+    if one(system, endpoint, SQLO.readsFrom) != table:
         raise ValueError("GET endpoint must explicitly identify the table it reads")
-    if one(system, table, SCO.databaseEngine) != SCO.SQLite:
-        raise ValueError("Prototype only has a declared mapping for sco:SQLite")
+    if one(system, table, SQLO.databaseEngine) != SQLO.SQLite:
+        raise ValueError("Prototype only has a declared mapping for sqlo:SQLite")
     rdf_class = one(shapes, shape, SH.targetClass)
 
     api_path = str(one(system, endpoint, SCO.path))
@@ -256,12 +373,12 @@ def read_obligation_model(
     if f"{{{parameter_name}}}" not in api_path:
         raise ValueError(f"Path does not contain declared parameter {parameter_name!r}")
 
-    table_name = sql_identifier(str(one(system, table, SCO.tableName)))
-    id_column = sql_identifier(str(one(system, table, SCO.idColumn)))
-    id_datatype = one(system, table, SCO.idDatatype)
+    table_name = sql_identifier(str(one(system, table, SQLO.tableName)))
+    id_column = sql_identifier(str(one(system, table, SQLO.idColumn)))
+    id_datatype = one(system, table, SQLO.idDatatype)
     if id_datatype not in SQL_TYPES:
         raise ValueError(f"No SQL type mapping for identifier {id_datatype}")
-    if str(one(system, path_parameter, SCO.mapsToColumn)) != id_column:
+    if str(one(system, path_parameter, SQLO.mapsToColumn)) != id_column:
         raise ValueError("Path parameter must explicitly map to the identifier column")
 
     fields = []
@@ -306,12 +423,12 @@ def read_obligation_model(
             "openapi_type": OPENAPI_TYPES[parameter_datatype],
             "column": id_column,
         },
-        "database_engine": local_name(one(system, table, SCO.databaseEngine)),
+        "database_engine": local_name(one(system, table, SQLO.databaseEngine)),
         "table_name": table_name,
         "id_column": id_column,
         "id_sql_type": SQL_TYPES[id_datatype],
-        "id_primary_key": bool(one(system, table, SCO.idPrimaryKey).toPython()),
-        "id_generated": bool(one(system, table, SCO.idGenerated).toPython()),
+        "id_primary_key": bool(one(system, table, SQLO.idPrimaryKey).toPython()),
+        "id_generated": bool(one(system, table, SQLO.idGenerated).toPython()),
         "rdf_class": str(rdf_class),
         "resource_name": local_name(rdf_class),
         "shape_name": local_name(shape),
@@ -320,39 +437,104 @@ def read_obligation_model(
     }
 
 
+LEGACY_COMPILER_TERMS = (
+    "BootstrapProcess",
+    "CompilerConformanceFixture",
+    "CompilerProtocolV1",
+    "EvolutionStrategy",
+    "ModifyExistingImplementation",
+    "TransformationContract",
+    "bootstrapsProduct",
+    "conformanceFixture",
+    "deterministicOutput",
+    "evolutionStrategy",
+    "expectsArtifact",
+    "fixtureProduct",
+    "generatesArtifact",
+    "generatesImplementationArtifact",
+    "implementsContract",
+    "inputSpecPattern",
+    "rejectsMissingSpecs",
+    "seedImplementation",
+    "validFixtureProduct"
+)
+
+
+LEGACY_SEPARATED_TERMS = {
+    "SqlTable": SQLO,
+    "SQLite": SQLO,
+    "readsFrom": SQLO,
+    "stores": SQLO,
+    "databaseEngine": SQLO,
+    "idDatatype": SQLO,
+    "mapsToColumn": SQLO,
+    "tableName": SQLO,
+    "idColumn": SQLO,
+    "idPrimaryKey": SQLO,
+    "idGenerated": SQLO,
+    "DecisionProtocolV1": DPO,
+    "implementsDecisionContract": DPO,
+    "inputJsonPointer": DPO,
+}
+
+
+def reject_legacy_compiler_terms(graph: Graph) -> None:
+    """Explicit compiler/module vocabulary migrations reject old IRIs, never infer aliases."""
+    used = {value for triple in graph for value in triple if isinstance(value, URIRef)}
+    retired = sorted(term for term in ('validFixtureProduct', 'generatesArtifact') if CCO[term] in used)
+    if retired:
+        raise ValueError(
+            'Compiler Vocabulary Retirement v1: retired, unimplemented terms: '
+            + ', '.join('cco:' + term for term in retired)
+            + '; use cco:conformanceFixture with cco:fixtureProduct and cco:expectsArtifact'
+        )
+    separated = sorted(term for term in LEGACY_SEPARATED_TERMS if SCO[term] in used)
+    if separated:
+        replacements = ', '.join(f'sco:{term} -> {LEGACY_SEPARATED_TERMS[term][term]}' for term in separated)
+        raise ValueError('Ontology Module Conventions v1: migrate separated vocabulary terms: ' + replacements)
+    old = sorted((term for term in LEGACY_COMPILER_TERMS if SCO[term] in used))
+    if old:
+        replacements = ", ".join(f"sco:{term} -> cco:{term}" for term in old)
+        raise ValueError(
+            "Compiler vocabulary moved to " + str(CCO)
+            + "; update the explicit spec IRIs: " + replacements
+        )
+
+
 def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
-    products = list(graph.subjects(DCTERMS.conformsTo, SCO.CompilerProtocolV1))
+    reject_legacy_compiler_terms(graph)
+    products = list(graph.subjects(DCTERMS.conformsTo, CCO.CompilerProtocolV1))
     if len(products) != 1:
         raise ValueError(
             "Compiler profile expects exactly one product conforming to "
-            "sco:CompilerProtocolV1"
+            "cco:CompilerProtocolV1"
         )
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
         raise ValueError(
             "Compiler Protocol product must be a schema:SoftwareApplication"
         )
-    contract = one(graph, product, SCO.implementsContract)
-    if (contract, RDF.type, SCO.TransformationContract) not in graph:
+    contract = one(graph, product, CCO.implementsContract)
+    if (contract, RDF.type, CCO.TransformationContract) not in graph:
         raise ValueError(
-            "Compiler product contract must be a sco:TransformationContract"
+            "Compiler product contract must be a cco:TransformationContract"
         )
     fixture_nodes = sorted(
-        graph.objects(contract, SCO.conformanceFixture), key=str
+        graph.objects(contract, CCO.conformanceFixture), key=str
     )
     if not fixture_nodes:
         raise ValueError(
             "Spec compiler must declare at least one "
-            "sco:CompilerConformanceFixture"
+            "cco:CompilerConformanceFixture"
         )
     conformance_fixtures = []
     for fixture_node in fixture_nodes:
-        if (fixture_node, RDF.type, SCO.CompilerConformanceFixture) not in graph:
+        if (fixture_node, RDF.type, CCO.CompilerConformanceFixture) not in graph:
             raise ValueError(
                 f"Compiler conformance fixture {fixture_node} must be a "
-                "sco:CompilerConformanceFixture"
+                "cco:CompilerConformanceFixture"
             )
-        fixture_product = str(one(graph, fixture_node, SCO.fixtureProduct))
+        fixture_product = str(one(graph, fixture_node, CCO.fixtureProduct))
         fixture_path = (product_root / fixture_product).resolve()
         if not fixture_path.is_dir():
             raise ValueError(
@@ -360,7 +542,7 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
             )
         artifacts = sorted(
             str(value)
-            for value in graph.objects(fixture_node, SCO.expectsArtifact)
+            for value in graph.objects(fixture_node, CCO.expectsArtifact)
         )
         if not artifacts:
             raise ValueError(
@@ -382,31 +564,31 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
                 "generated_artifacts": artifacts,
             }
         )
-    bootstrap_processes = list(graph.subjects(SCO.bootstrapsProduct, product))
+    bootstrap_processes = list(graph.subjects(CCO.bootstrapsProduct, product))
     if len(bootstrap_processes) > 1:
         raise ValueError(
-            "Compiler product may declare at most one sco:BootstrapProcess"
+            "Compiler product may declare at most one cco:BootstrapProcess"
         )
     bootstrap = None
     if bootstrap_processes:
         process = bootstrap_processes[0]
-        if (process, RDF.type, SCO.BootstrapProcess) not in graph:
+        if (process, RDF.type, CCO.BootstrapProcess) not in graph:
             raise ValueError(
-                "Compiler bootstrap provenance must be a sco:BootstrapProcess"
+                "Compiler bootstrap provenance must be a cco:BootstrapProcess"
             )
-        seed = one(graph, process, SCO.seedImplementation)
+        seed = one(graph, process, CCO.seedImplementation)
         if (seed, RDF.type, SCHEMA.SoftwareApplication) not in graph:
             raise ValueError(
                 "Bootstrap seed must be a schema:SoftwareApplication"
             )
-        strategy = one(graph, process, SCO.evolutionStrategy)
-        if strategy != SCO.ModifyExistingImplementation:
+        strategy = one(graph, process, CCO.evolutionStrategy)
+        if strategy != CCO.ModifyExistingImplementation:
             raise ValueError(
                 "Bootstrap evolution strategy must be "
-                "sco:ModifyExistingImplementation"
+                "cco:ModifyExistingImplementation"
             )
         implementation_artifact = str(
-            one(graph, process, SCO.generatesImplementationArtifact)
+            one(graph, process, CCO.generatesImplementationArtifact)
         )
         implementation_path = Path(implementation_artifact)
         if implementation_path.is_absolute() or ".." in implementation_path.parts:
@@ -424,14 +606,14 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
     return {
         "name": local_name(product),
         "contract": str(contract),
-        "protocol": str(SCO.CompilerProtocolV1),
-        "input_spec_pattern": str(one(graph, contract, SCO.inputSpecPattern)),
+        "protocol": str(CCO.CompilerProtocolV1),
+        "input_spec_pattern": str(one(graph, contract, CCO.inputSpecPattern)),
         "conformance_fixtures": conformance_fixtures,
         "rejects_missing_specs": bool(
-            one(graph, contract, SCO.rejectsMissingSpecs).toPython()
+            one(graph, contract, CCO.rejectsMissingSpecs).toPython()
         ),
         "deterministic_output": bool(
-            one(graph, contract, SCO.deterministicOutput).toPython()
+            one(graph, contract, CCO.deterministicOutput).toPython()
         ),
         "bootstrap": bootstrap,
     }
@@ -739,16 +921,17 @@ def read_decision_model(
 ) -> ExplicitDecisionAndObligationModel:
     if graph is None:
         graph = load_contract_graph(product_root)
-    products = list(graph.subjects(DCTERMS.conformsTo, SCO.DecisionProtocolV1))
+    reject_legacy_compiler_terms(graph)
+    products = list(graph.subjects(DCTERMS.conformsTo, DPO.DecisionProtocolV1))
     if len(products) != 1:
         raise ValueError(
             "Decision profile expects exactly one product conforming to "
-            "sco:DecisionProtocolV1"
+            "dpo:DecisionProtocolV1"
         )
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
         raise ValueError("Decision Protocol product must be a schema:SoftwareApplication")
-    contract = one(graph, product, SCO.implementsDecisionContract)
+    contract = one(graph, product, DPO.implementsDecisionContract)
     if (contract, RDF.type, SDO.DecisionContract) not in graph:
         raise ValueError("Decision product contract must be an sdo:DecisionContract")
     http_endpoint = read_http_endpoint(graph)
@@ -811,7 +994,7 @@ def read_decision_model(
             raise ValueError(
                 f"Decision Rule Condition {condition_node} must be an sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, SCO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Decision Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
@@ -872,7 +1055,7 @@ def read_decision_model(
                 f"Evidence applicability member {condition_node} must be an "
                 "sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, SCO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
@@ -3423,7 +3606,11 @@ def materialize_bootstrap_implementation(
         raise ValueError("Bootstrap seed has no unique generation marker")
     output = product_root / bootstrap["implementation_artifact"]
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(source.replace(current, successor), encoding="utf-8")
+    source = source.replace(current, successor)
+    source = re.sub(r"^PACKAGED_ONTOLOGIES = .*?$",
+                    lambda _match: "PACKAGED_ONTOLOGIES = " + repr(ontology_sources()),
+                    source, count=1, flags=re.MULTILINE)
+    output.write_text(source, encoding="utf-8")
     return output
 
 
@@ -3596,10 +3783,10 @@ def main() -> None:
     )
     graph = load_contract_graph(product_root)
     compiler_products = list(
-        graph.subjects(DCTERMS.conformsTo, SCO.CompilerProtocolV1)
+        graph.subjects(DCTERMS.conformsTo, CCO.CompilerProtocolV1)
     )
     decision_products = list(
-        graph.subjects(DCTERMS.conformsTo, SCO.DecisionProtocolV1)
+        graph.subjects(DCTERMS.conformsTo, DPO.DecisionProtocolV1)
     )
     post_endpoint_candidates = set(graph.subjects(RDF.type, SCO.PostEndpoint)) | set(
         graph.subjects(SCO.invokesContract, None)
@@ -3611,7 +3798,7 @@ def main() -> None:
         )
     http_contract = bool(
         list(graph.subjects(RDF.type, SCO.GetEndpoint))
-        or list(graph.subjects(RDF.type, SCO.SqlTable))
+        or list(graph.subjects(RDF.type, SQLO.SqlTable))
     )
     profiles = [
         name

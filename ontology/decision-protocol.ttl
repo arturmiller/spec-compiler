@@ -1,0 +1,40 @@
+@prefix dpo: <https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/>
+    a owl:Ontology ;
+    dcterms:title "Decision Protocol Ontology"@en, "Decision-Protokollontologie"@de ;
+    dcterms:description "Decision invocation protocol and bindings, independent of HTTP and SQL."@en ;
+    dcterms:description "Decision-Protokollontologie: wiederverwendbare Definitionen, keine konkrete Produktspezifikation."@de ;
+    vann:preferredNamespacePrefix "dpo" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#" ;
+    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;
+    owl:versionInfo "0.2.0-experimental" .
+
+dpo:DecisionProtocolV1
+    a owl:NamedIndividual, dcterms:Standard ;
+    rdfs:label "Decision Protocol v1"@en ;
+    rdfs:label "Entscheidungsprotokoll v1"@de ;
+    rdfs:comment "Manifest-driven protocol that sends one JSON Decision Request to a product process and observes one JSON Decision Result."@en .
+
+dpo:implementsDecisionContract
+    a owl:ObjectProperty ;
+    rdfs:label "implements decision contract"@en ;
+    rdfs:label "implementiert Entscheidungsvertrag"@de ;
+    rdfs:domain schema:SoftwareApplication ;
+    rdfs:range sdo:DecisionContract .
+
+dpo:inputJsonPointer
+    a owl:DatatypeProperty ;
+    rdfs:label "input JSON pointer"@en ;
+    rdfs:label "Eingabe-JSON-Pointer"@de ;
+    rdfs:comment "RFC 6901 pointer identifying a Condition's Fact in the Decision Protocol v1 request."@en ;
+    rdfs:domain sdo:Condition ;
+    rdfs:range xsd:string .

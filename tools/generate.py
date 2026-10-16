@@ -13,11 +13,11 @@ import re
 
 from jsonschema import Draft202012Validator, SchemaError
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
-from rdflib.namespace import DCTERMS, OWL, SH, XSD
+from rdflib.namespace import DCTERMS, OWL, RDFS, SH, VANN, XSD
 
 ROOT = Path(__file__).parents[1]
 BOOTSTRAP_GENERATION = 0
-COMPILER_CONVENTIONS_VERSION = 2
+COMPILER_CONVENTIONS_VERSION = 3
 RUNTIME_PROTOCOL_VERSION = 1
 DECISION_CONVENTIONS_VERSION = 1
 DECISION_PROTOCOL_VERSION = 1
@@ -26,7 +26,13 @@ EVIDENCE_EVALUATION_CONVENTIONS_VERSION = 1
 VERSION_SELECTION_CONVENTIONS_VERSION = 1
 OBLIGATION_EVALUATION_CONVENTIONS_VERSION = 1
 HTTP_CONTRACT_CONVENTIONS_VERSION = 1
+ONTOLOGY_MODULE_CONVENTIONS_VERSION = 1
+# G1 receives an exact local RDF catalog snapshot, not a network resolver.
+PACKAGED_ONTOLOGIES = None
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
+SQLO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/sql/#")
+DPO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#")
+CCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/compiler/#")
 SDO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/decision/#")
 SCHEMA = Namespace("https://schema.org/")
 SQL_TYPES = {
@@ -217,6 +223,116 @@ def sql_identifier(value: str) -> str:
     return value
 
 
+def ontology_sources() -> dict[str, str]:
+    if PACKAGED_ONTOLOGIES is not None:
+        return dict(PACKAGED_ONTOLOGIES)
+    return {path.name: path.read_text(encoding="utf-8")
+            for path in sorted((ROOT / "ontology").glob("*.ttl"))}
+
+
+def ontology_module(graph: Graph, *, role: str, source: str) -> dict:
+    identities = sorted(set(graph.subjects(RDF.type, OWL.Ontology)), key=str)
+    if len(identities) != 1 or not isinstance(identities[0], URIRef):
+        raise ValueError(f"{source}: expected exactly one named owl:Ontology")
+    identity = identities[0]
+    namespace = str(one(graph, identity, VANN.preferredNamespaceUri))
+    project = "https://arturmiller.github.io/spec-compiler/"
+    expected = project + ("resources/" if role == "product" else "ontology/")
+    if not str(identity).startswith(expected) or namespace != str(identity) + "#":
+        raise ValueError(f"{source}: ontology identity and namespace do not match its {role} boundary")
+    return {"graph": graph, "iri": str(identity), "namespace": namespace,
+            "role": role, "source": source}
+
+
+def reusable_ontology_modules() -> list[dict]:
+    sources = ontology_sources()
+    if not sources:
+        raise ValueError("No local reusable ontology catalog available")
+    return [ontology_module(Graph().parse(data=text, format="turtle"), role="reusable", source=name)
+            for name, text in sorted(sources.items())]
+
+
+def validate_ontology_modules(modules: list[dict]) -> None:
+    """Ontology Module Conventions v1: explicit imports, closed local DAG, terminal product specs.
+
+    Load definitions for ownership/import checking, never as additional authored
+    product requirements. No import IRI is fetched and no OWL inference is run.
+    """
+    by_iri = {module["iri"]: module for module in modules}
+    if len(by_iri) != len(modules):
+        raise ValueError("Duplicate ontology identity")
+    namespaces = [module["namespace"] for module in modules]
+    if len(set(namespaces)) != len(namespaces):
+        raise ValueError("Duplicate ontology namespace ownership")
+    project = "https://arturmiller.github.io/spec-compiler/"
+    project_roots = (project + "ontology/", project + "resources/")
+    defined = {module["iri"]: set(module["graph"].subjects()) for module in modules}
+    outgoing = {}
+    for module in sorted(modules, key=lambda item: item["iri"]):
+        graph, identity = module["graph"], module["iri"]
+        imports = set()
+        for subject, value in graph.subject_objects(OWL.imports):
+            if str(subject) != identity or not isinstance(value, URIRef):
+                raise ValueError(f"{identity}: owl:imports must belong to its ontology header and name an IRI")
+            target = str(value)
+            if target not in by_iri:
+                raise ValueError(f"Unknown ontology import: {identity} -> {target}; only the local catalog is allowed")
+            if by_iri[target]["role"] == "product":
+                raise ValueError(f"Terminal product specification cannot be imported: {identity} -> {target}")
+            imports.add(target)
+        outgoing[identity] = imports
+        used = set()
+        for triple in graph:
+            for value in triple:
+                if not isinstance(value, URIRef):
+                    continue
+                owner = next((candidate for candidate in modules
+                              if str(value).startswith(candidate["namespace"])), None)
+                if owner is None:
+                    if str(value).startswith(project_roots) and str(value) not in by_iri:
+                        raise ValueError(f"Unknown or foreign product/ontology resource: {value}")
+                    if str(value) in by_iri and str(value) != identity:
+                        owner = by_iri[str(value)]
+                    else:
+                        continue
+                if owner["iri"] == identity:
+                    continue
+                if owner["role"] == "product":
+                    raise ValueError(f"Terminal product specification cannot be reused: {identity} -> {value}")
+                if value not in defined[owner["iri"]]:
+                    raise ValueError(f"Undefined ontology term: {value}")
+                defining = triple[1] in (RDFS.label, RDFS.subClassOf, RDFS.domain, RDFS.range)
+                defining = defining or (triple[1] == RDF.type and triple[2] in
+                                         (OWL.Class, OWL.ObjectProperty, OWL.DatatypeProperty))
+                if value == triple[0] and defining:
+                    raise ValueError(f"Foreign ontology term cannot be defined or amended here: {value}")
+                used.add(owner["iri"])
+        missing = sorted(used - imports)
+        if missing:
+            raise ValueError(f"Missing explicit owl:imports on {identity}: {', '.join(missing)}")
+    complete, active = set(), []
+    def visit(identity):
+        if identity in active:
+            cycle = active[active.index(identity):] + [identity]
+            raise ValueError("Cyclic ontology imports: " + " -> ".join(cycle))
+        if identity in complete:
+            return
+        active.append(identity)
+        for target in sorted(outgoing[identity]):
+            visit(target)
+        active.pop()
+        complete.add(identity)
+    for identity in sorted(by_iri):
+        visit(identity)
+
+
+def validate_product_ontology(graph: Graph, source: str = "product specs") -> None:
+    reject_legacy_compiler_terms(graph)
+    modules = reusable_ontology_modules()
+    modules.append(ontology_module(graph, role="product", source=source))
+    validate_ontology_modules(modules)
+
+
 def load_contract_graph(product_root: Path) -> Graph:
     specs_root = product_root / "specs"
     spec_files = sorted(specs_root.glob("*.ttl"))
@@ -225,6 +341,7 @@ def load_contract_graph(product_root: Path) -> Graph:
     contract_graph = Graph()
     for spec_file in spec_files:
         contract_graph.parse(spec_file, format="turtle")
+    validate_product_ontology(contract_graph, str(specs_root))
     return contract_graph
 
 
@@ -234,17 +351,17 @@ def read_obligation_model(
     contract_graph = contract_graph or load_contract_graph(product_root)
     shapes = system = contract_graph
     endpoints = list(system.subjects(RDF.type, SCO.GetEndpoint))
-    tables = list(system.subjects(RDF.type, SCO.SqlTable))
+    tables = list(system.subjects(RDF.type, SQLO.SqlTable))
     if len(endpoints) != 1 or len(tables) != 1:
         raise ValueError("Prototype expects exactly one GET endpoint and one SQL table")
     endpoint, table = endpoints[0], tables[0]
     shape = one(system, endpoint, SCO.returns)
-    if one(system, table, SCO.stores) != shape:
+    if one(system, table, SQLO.stores) != shape:
         raise ValueError("Endpoint and table must reference the same shape")
-    if one(system, endpoint, SCO.readsFrom) != table:
+    if one(system, endpoint, SQLO.readsFrom) != table:
         raise ValueError("GET endpoint must explicitly identify the table it reads")
-    if one(system, table, SCO.databaseEngine) != SCO.SQLite:
-        raise ValueError("Prototype only has a declared mapping for sco:SQLite")
+    if one(system, table, SQLO.databaseEngine) != SQLO.SQLite:
+        raise ValueError("Prototype only has a declared mapping for sqlo:SQLite")
     rdf_class = one(shapes, shape, SH.targetClass)
 
     api_path = str(one(system, endpoint, SCO.path))
@@ -256,12 +373,12 @@ def read_obligation_model(
     if f"{{{parameter_name}}}" not in api_path:
         raise ValueError(f"Path does not contain declared parameter {parameter_name!r}")
 
-    table_name = sql_identifier(str(one(system, table, SCO.tableName)))
-    id_column = sql_identifier(str(one(system, table, SCO.idColumn)))
-    id_datatype = one(system, table, SCO.idDatatype)
+    table_name = sql_identifier(str(one(system, table, SQLO.tableName)))
+    id_column = sql_identifier(str(one(system, table, SQLO.idColumn)))
+    id_datatype = one(system, table, SQLO.idDatatype)
     if id_datatype not in SQL_TYPES:
         raise ValueError(f"No SQL type mapping for identifier {id_datatype}")
-    if str(one(system, path_parameter, SCO.mapsToColumn)) != id_column:
+    if str(one(system, path_parameter, SQLO.mapsToColumn)) != id_column:
         raise ValueError("Path parameter must explicitly map to the identifier column")
 
     fields = []
@@ -306,12 +423,12 @@ def read_obligation_model(
             "openapi_type": OPENAPI_TYPES[parameter_datatype],
             "column": id_column,
         },
-        "database_engine": local_name(one(system, table, SCO.databaseEngine)),
+        "database_engine": local_name(one(system, table, SQLO.databaseEngine)),
         "table_name": table_name,
         "id_column": id_column,
         "id_sql_type": SQL_TYPES[id_datatype],
-        "id_primary_key": bool(one(system, table, SCO.idPrimaryKey).toPython()),
-        "id_generated": bool(one(system, table, SCO.idGenerated).toPython()),
+        "id_primary_key": bool(one(system, table, SQLO.idPrimaryKey).toPython()),
+        "id_generated": bool(one(system, table, SQLO.idGenerated).toPython()),
         "rdf_class": str(rdf_class),
         "resource_name": local_name(rdf_class),
         "shape_name": local_name(shape),
@@ -320,39 +437,104 @@ def read_obligation_model(
     }
 
 
+LEGACY_COMPILER_TERMS = (
+    "BootstrapProcess",
+    "CompilerConformanceFixture",
+    "CompilerProtocolV1",
+    "EvolutionStrategy",
+    "ModifyExistingImplementation",
+    "TransformationContract",
+    "bootstrapsProduct",
+    "conformanceFixture",
+    "deterministicOutput",
+    "evolutionStrategy",
+    "expectsArtifact",
+    "fixtureProduct",
+    "generatesArtifact",
+    "generatesImplementationArtifact",
+    "implementsContract",
+    "inputSpecPattern",
+    "rejectsMissingSpecs",
+    "seedImplementation",
+    "validFixtureProduct"
+)
+
+
+LEGACY_SEPARATED_TERMS = {
+    "SqlTable": SQLO,
+    "SQLite": SQLO,
+    "readsFrom": SQLO,
+    "stores": SQLO,
+    "databaseEngine": SQLO,
+    "idDatatype": SQLO,
+    "mapsToColumn": SQLO,
+    "tableName": SQLO,
+    "idColumn": SQLO,
+    "idPrimaryKey": SQLO,
+    "idGenerated": SQLO,
+    "DecisionProtocolV1": DPO,
+    "implementsDecisionContract": DPO,
+    "inputJsonPointer": DPO,
+}
+
+
+def reject_legacy_compiler_terms(graph: Graph) -> None:
+    """Explicit compiler/module vocabulary migrations reject old IRIs, never infer aliases."""
+    used = {value for triple in graph for value in triple if isinstance(value, URIRef)}
+    retired = sorted(term for term in ('validFixtureProduct', 'generatesArtifact') if CCO[term] in used)
+    if retired:
+        raise ValueError(
+            'Compiler Vocabulary Retirement v1: retired, unimplemented terms: '
+            + ', '.join('cco:' + term for term in retired)
+            + '; use cco:conformanceFixture with cco:fixtureProduct and cco:expectsArtifact'
+        )
+    separated = sorted(term for term in LEGACY_SEPARATED_TERMS if SCO[term] in used)
+    if separated:
+        replacements = ', '.join(f'sco:{term} -> {LEGACY_SEPARATED_TERMS[term][term]}' for term in separated)
+        raise ValueError('Ontology Module Conventions v1: migrate separated vocabulary terms: ' + replacements)
+    old = sorted((term for term in LEGACY_COMPILER_TERMS if SCO[term] in used))
+    if old:
+        replacements = ", ".join(f"sco:{term} -> cco:{term}" for term in old)
+        raise ValueError(
+            "Compiler vocabulary moved to " + str(CCO)
+            + "; update the explicit spec IRIs: " + replacements
+        )
+
+
 def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
-    products = list(graph.subjects(DCTERMS.conformsTo, SCO.CompilerProtocolV1))
+    reject_legacy_compiler_terms(graph)
+    products = list(graph.subjects(DCTERMS.conformsTo, CCO.CompilerProtocolV1))
     if len(products) != 1:
         raise ValueError(
             "Compiler profile expects exactly one product conforming to "
-            "sco:CompilerProtocolV1"
+            "cco:CompilerProtocolV1"
         )
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
         raise ValueError(
             "Compiler Protocol product must be a schema:SoftwareApplication"
         )
-    contract = one(graph, product, SCO.implementsContract)
-    if (contract, RDF.type, SCO.TransformationContract) not in graph:
+    contract = one(graph, product, CCO.implementsContract)
+    if (contract, RDF.type, CCO.TransformationContract) not in graph:
         raise ValueError(
-            "Compiler product contract must be a sco:TransformationContract"
+            "Compiler product contract must be a cco:TransformationContract"
         )
     fixture_nodes = sorted(
-        graph.objects(contract, SCO.conformanceFixture), key=str
+        graph.objects(contract, CCO.conformanceFixture), key=str
     )
     if not fixture_nodes:
         raise ValueError(
             "Spec compiler must declare at least one "
-            "sco:CompilerConformanceFixture"
+            "cco:CompilerConformanceFixture"
         )
     conformance_fixtures = []
     for fixture_node in fixture_nodes:
-        if (fixture_node, RDF.type, SCO.CompilerConformanceFixture) not in graph:
+        if (fixture_node, RDF.type, CCO.CompilerConformanceFixture) not in graph:
             raise ValueError(
                 f"Compiler conformance fixture {fixture_node} must be a "
-                "sco:CompilerConformanceFixture"
+                "cco:CompilerConformanceFixture"
             )
-        fixture_product = str(one(graph, fixture_node, SCO.fixtureProduct))
+        fixture_product = str(one(graph, fixture_node, CCO.fixtureProduct))
         fixture_path = (product_root / fixture_product).resolve()
         if not fixture_path.is_dir():
             raise ValueError(
@@ -360,7 +542,7 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
             )
         artifacts = sorted(
             str(value)
-            for value in graph.objects(fixture_node, SCO.expectsArtifact)
+            for value in graph.objects(fixture_node, CCO.expectsArtifact)
         )
         if not artifacts:
             raise ValueError(
@@ -382,31 +564,31 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
                 "generated_artifacts": artifacts,
             }
         )
-    bootstrap_processes = list(graph.subjects(SCO.bootstrapsProduct, product))
+    bootstrap_processes = list(graph.subjects(CCO.bootstrapsProduct, product))
     if len(bootstrap_processes) > 1:
         raise ValueError(
-            "Compiler product may declare at most one sco:BootstrapProcess"
+            "Compiler product may declare at most one cco:BootstrapProcess"
         )
     bootstrap = None
     if bootstrap_processes:
         process = bootstrap_processes[0]
-        if (process, RDF.type, SCO.BootstrapProcess) not in graph:
+        if (process, RDF.type, CCO.BootstrapProcess) not in graph:
             raise ValueError(
-                "Compiler bootstrap provenance must be a sco:BootstrapProcess"
+                "Compiler bootstrap provenance must be a cco:BootstrapProcess"
             )
-        seed = one(graph, process, SCO.seedImplementation)
+        seed = one(graph, process, CCO.seedImplementation)
         if (seed, RDF.type, SCHEMA.SoftwareApplication) not in graph:
             raise ValueError(
                 "Bootstrap seed must be a schema:SoftwareApplication"
             )
-        strategy = one(graph, process, SCO.evolutionStrategy)
-        if strategy != SCO.ModifyExistingImplementation:
+        strategy = one(graph, process, CCO.evolutionStrategy)
+        if strategy != CCO.ModifyExistingImplementation:
             raise ValueError(
                 "Bootstrap evolution strategy must be "
-                "sco:ModifyExistingImplementation"
+                "cco:ModifyExistingImplementation"
             )
         implementation_artifact = str(
-            one(graph, process, SCO.generatesImplementationArtifact)
+            one(graph, process, CCO.generatesImplementationArtifact)
         )
         implementation_path = Path(implementation_artifact)
         if implementation_path.is_absolute() or ".." in implementation_path.parts:
@@ -424,14 +606,14 @@ def read_compiler_contract(product_root: Path, graph: Graph) -> dict:
     return {
         "name": local_name(product),
         "contract": str(contract),
-        "protocol": str(SCO.CompilerProtocolV1),
-        "input_spec_pattern": str(one(graph, contract, SCO.inputSpecPattern)),
+        "protocol": str(CCO.CompilerProtocolV1),
+        "input_spec_pattern": str(one(graph, contract, CCO.inputSpecPattern)),
         "conformance_fixtures": conformance_fixtures,
         "rejects_missing_specs": bool(
-            one(graph, contract, SCO.rejectsMissingSpecs).toPython()
+            one(graph, contract, CCO.rejectsMissingSpecs).toPython()
         ),
         "deterministic_output": bool(
-            one(graph, contract, SCO.deterministicOutput).toPython()
+            one(graph, contract, CCO.deterministicOutput).toPython()
         ),
         "bootstrap": bootstrap,
     }
@@ -739,16 +921,17 @@ def read_decision_model(
 ) -> ExplicitDecisionAndObligationModel:
     if graph is None:
         graph = load_contract_graph(product_root)
-    products = list(graph.subjects(DCTERMS.conformsTo, SCO.DecisionProtocolV1))
+    reject_legacy_compiler_terms(graph)
+    products = list(graph.subjects(DCTERMS.conformsTo, DPO.DecisionProtocolV1))
     if len(products) != 1:
         raise ValueError(
             "Decision profile expects exactly one product conforming to "
-            "sco:DecisionProtocolV1"
+            "dpo:DecisionProtocolV1"
         )
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
         raise ValueError("Decision Protocol product must be a schema:SoftwareApplication")
-    contract = one(graph, product, SCO.implementsDecisionContract)
+    contract = one(graph, product, DPO.implementsDecisionContract)
     if (contract, RDF.type, SDO.DecisionContract) not in graph:
         raise ValueError("Decision product contract must be an sdo:DecisionContract")
     http_endpoint = read_http_endpoint(graph)
@@ -811,7 +994,7 @@ def read_decision_model(
             raise ValueError(
                 f"Decision Rule Condition {condition_node} must be an sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, SCO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Decision Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
@@ -872,7 +1055,7 @@ def read_decision_model(
                 f"Evidence applicability member {condition_node} must be an "
                 "sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, SCO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
@@ -3423,7 +3606,11 @@ def materialize_bootstrap_implementation(
         raise ValueError("Bootstrap seed has no unique generation marker")
     output = product_root / bootstrap["implementation_artifact"]
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(source.replace(current, successor), encoding="utf-8")
+    source = source.replace(current, successor)
+    source = re.sub(r"^PACKAGED_ONTOLOGIES = .*?$",
+                    lambda _match: "PACKAGED_ONTOLOGIES = " + repr(ontology_sources()),
+                    source, count=1, flags=re.MULTILINE)
+    output.write_text(source, encoding="utf-8")
     return output
 
 
@@ -3596,10 +3783,10 @@ def main() -> None:
     )
     graph = load_contract_graph(product_root)
     compiler_products = list(
-        graph.subjects(DCTERMS.conformsTo, SCO.CompilerProtocolV1)
+        graph.subjects(DCTERMS.conformsTo, CCO.CompilerProtocolV1)
     )
     decision_products = list(
-        graph.subjects(DCTERMS.conformsTo, SCO.DecisionProtocolV1)
+        graph.subjects(DCTERMS.conformsTo, DPO.DecisionProtocolV1)
     )
     post_endpoint_candidates = set(graph.subjects(RDF.type, SCO.PostEndpoint)) | set(
         graph.subjects(SCO.invokesContract, None)
@@ -3611,7 +3798,7 @@ def main() -> None:
         )
     http_contract = bool(
         list(graph.subjects(RDF.type, SCO.GetEndpoint))
-        or list(graph.subjects(RDF.type, SCO.SqlTable))
+        or list(graph.subjects(RDF.type, SQLO.SqlTable))
     )
     profiles = [
         name

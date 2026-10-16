@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Wiederverwendbare Ontologien · zyklusfreie Imports",
+    "locale": "de",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1380,
+      1000
+    ],
+    "legend": {
+      "mode": "auto",
+      "entries": {
+        "database": {
+          "label": "Ontologie · statische RDF-Daten"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "funding",
+      "label": "Funding Domain Ontology",
+      "pos": [
+        40,
+        50
+      ],
+      "summary": "Förderprogramme und Vorhaben.",
+      "description": "Wiederverwendbare Begriffe für Förderprogramme, Antragsteller und Vorhaben. Importiert den Decision-Kern, enthält aber keine Regeln eines konkreten Förderprodukts.",
+      "type": "database",
+      "size": [
+        380,
+        140
+      ],
+      "links": [
+        {
+          "label": "Zum Glossar",
+          "href": "../reference/glossary.html#ontology-boundaries"
+        }
+      ]
+    },
+    {
+      "id": "decision-protocol",
+      "label": "Decision Protocol Ontology",
+      "pos": [
+        500,
+        50
+      ],
+      "summary": "Aufruf und Bindung von Decision-Verträgen.",
+      "description": "Beschreibt das Decision-Aufrufprotokoll, die Bindung einer Anwendung an einen Decision Contract und JSON-Pointer für Eingabefakten. HTTP-Transport und Datenhaltung gehören nicht zu diesem Vokabular.",
+      "type": "database",
+      "size": [
+        380,
+        140
+      ],
+      "links": [
+        {
+          "label": "Zum Glossar",
+          "href": "../reference/glossary.html#ontology-boundaries"
+        }
+      ]
+    },
+    {
+      "id": "cloud",
+      "label": "Cloud Compliance Domain Ontology",
+      "pos": [
+        960,
+        50
+      ],
+      "summary": "Cloud-Zugriffe und Nachweisarten.",
+      "description": "Fachbegriffe für Cloud-Systeme und privilegierte Zugriffe. Verwendet den Decision-Kern, während konkrete Kontrollregeln und Testfälle in der abschließenden Produktspezifikation stehen.",
+      "type": "database",
+      "size": [
+        380,
+        140
+      ],
+      "links": [
+        {
+          "label": "Zum Glossar",
+          "href": "../reference/glossary.html#ontology-boundaries"
+        }
+      ]
+    },
+    {
+      "id": "decision",
+      "label": "Decision and Obligation Core Ontology",
+      "pos": [
+        500,
+        420
+      ],
+      "summary": "Regeln, Fakten, Ergebnisse und Nachweise.",
+      "description": "Der domänenunabhängige Kern beschreibt Regeln, Fakten, Entscheidungen, Pflichten und Quellenherkunft. Er kennt weder HTTP noch SQL noch konkrete Produkte.",
+      "type": "database",
+      "size": [
+        380,
+        140
+      ],
+      "links": [
+        {
+          "label": "Zum Glossar",
+          "href": "../reference/glossary.html#ontology-boundaries"
+        }
+      ]
+    },
+    {
+      "id": "contract",
+      "label": "HTTP API Ontology",
+      "pos": [
+        40,
+        790
+      ],
+      "summary": "HTTP-Endpunkte und Nachrichten.",
+      "description": "Wiederverwendbare Definitionen für HTTP-Endpunkte, Anfragen, Antworten, Pfade, Statuscodes und Nachrichtenkörper. Historische sco:-IRIs bleiben für HTTP-Begriffe erhalten. Keine SQL- oder Decision-Abhängigkeit.",
+      "type": "database",
+      "size": [
+        380,
+        140
+      ],
+      "links": [
+        {
+          "label": "Zum Glossar",
+          "href": "../reference/glossary.html#ontology-boundaries"
+        }
+      ]
+    },
+    {
+      "id": "sql",
+      "label": "SQL Storage Ontology",
+      "pos": [
+        500,
+        790
+      ],
+      "summary": "Tabellen, Spalten und Speicherbeziehungen.",
+      "description": "Wiederverwendbare Definitionen für SQL-Tabellen, Spalten, Datenbank-Engine und Speicherbeziehungen. Lesen aus einer Tabelle ist transportneutral; keine Abhängigkeit von HTTP.",
+      "type": "database",
+      "size": [
+        380,
+        140
+      ],
+      "links": [
+        {
+          "label": "Zum Glossar",
+          "href": "../reference/glossary.html#ontology-boundaries"
+        }
+      ]
+    },
+    {
+      "id": "compiler",
+      "label": "Compiler Contract Ontology",
+      "pos": [
+        960,
+        790
+      ],
+      "summary": "Transformation und Compiler-Protokoll.",
+      "description": "Beschreibt Transformationsverträge, Compiler-Aufrufe, Konformitätstestfälle und getrennte Bootstrap-Herkunft. Die konkrete Compiler-Produktspezifikation ist ein abschließender Nutzer dieses Vokabulars.",
+      "type": "database",
+      "size": [
+        380,
+        140
+      ],
+      "links": [
+        {
+          "label": "Zum Glossar",
+          "href": "../reference/glossary.html#ontology-boundaries"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "funding-to-decision",
+      "from": "funding",
+      "to": "decision",
+      "label": "importiert",
+      "variant": "emphasis"
+    },
+    {
+      "id": "decision-protocol-to-decision",
+      "from": "decision-protocol",
+      "to": "decision",
+      "label": "importiert",
+      "variant": "emphasis",
+      "labelDy": 24
+    },
+    {
+      "id": "cloud-to-decision",
+      "from": "cloud",
+      "to": "decision",
+      "label": "importiert",
+      "variant": "emphasis"
+    }
+  ]
+}

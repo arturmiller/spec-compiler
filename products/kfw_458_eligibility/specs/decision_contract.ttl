@@ -1,3 +1,4 @@
+@prefix dpo: <https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#> .
 @prefix kfw458: <https://arturmiller.github.io/spec-compiler/resources/funding/kfw-458/#> .
 @prefix funding: <https://arturmiller.github.io/spec-compiler/ontology/funding/#> .
 @prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
@@ -10,8 +11,8 @@
 kfw458:EligibilityEvaluator a schema:SoftwareApplication ;
     dcterms:title "KfW 458 applicant eligibility evaluator"@en ;
     dcterms:title "Prüfung der KfW-458-Antragsberechtigung"@de ;
-    dcterms:conformsTo sco:DecisionProtocolV1 ;
-    sco:implementsDecisionContract kfw458:ApplicantEligibilityDecision .
+    dcterms:conformsTo dpo:DecisionProtocolV1 ;
+    dpo:implementsDecisionContract kfw458:ApplicantEligibilityDecision .
 
 kfw458:Kfw458 a funding:FundingProgram ;
     dcterms:title "BEG Heizungsförderung für Privatpersonen – Wohngebäude (458)"@de .
@@ -78,7 +79,7 @@ kfw458:RuleNaturalPerson2026_07 a sdo:Rule ;
     sdo:sourceCitation kfw458:CitationEligibleApplicants2026_07 .
 kfw458:ConditionNaturalPerson a sdo:Condition ;
     sdo:factProperty funding:naturalPerson ;
-    sco:inputJsonPointer "/case/applicant/naturalPerson" ;
+    dpo:inputJsonPointer "/case/applicant/naturalPerson" ;
     sdo:expectedBoolean true .
 kfw458:QuestionNaturalPerson a sdo:FactQuestion ;
     sdo:elicitsCondition kfw458:ConditionNaturalPerson ;
@@ -93,7 +94,7 @@ kfw458:RuleOwner2026_07 a sdo:Rule ;
     sdo:sourceCitation kfw458:CitationEligibleApplicants2026_07 .
 kfw458:ConditionOwner a sdo:Condition ;
     sdo:factProperty funding:owner ;
-    sco:inputJsonPointer "/case/applicant/owner" ;
+    dpo:inputJsonPointer "/case/applicant/owner" ;
     sdo:expectedBoolean true .
 kfw458:QuestionOwner a sdo:FactQuestion ;
     sdo:elicitsCondition kfw458:ConditionOwner ;
@@ -108,7 +109,7 @@ kfw458:RuleNotOwnershipViaGbR2026_07 a sdo:Rule ;
     sdo:sourceCitation kfw458:CitationGbRExclusion2026_07 .
 kfw458:ConditionNotOwnershipViaGbR a sdo:Condition ;
     sdo:factProperty funding:ownershipViaGbR ;
-    sco:inputJsonPointer "/case/applicant/ownershipViaGbR" ;
+    dpo:inputJsonPointer "/case/applicant/ownershipViaGbR" ;
     sdo:expectedBoolean false .
 kfw458:QuestionOwnershipViaGbR a sdo:FactQuestion ;
     sdo:elicitsCondition kfw458:ConditionNotOwnershipViaGbR ;
@@ -120,7 +121,7 @@ kfw458:RuleNoUsufructRight2026_07 a sdo:Rule ;
     sdo:sourceCitation kfw458:CitationUsufructExclusion2026_07 .
 kfw458:ConditionNoUsufructRight a sdo:Condition ;
     sdo:factProperty funding:hasUsufructRight ;
-    sco:inputJsonPointer "/case/applicant/hasUsufructRight" ;
+    dpo:inputJsonPointer "/case/applicant/hasUsufructRight" ;
     sdo:expectedBoolean false .
 kfw458:QuestionUsufructRight a sdo:FactQuestion ;
     sdo:elicitsCondition kfw458:ConditionNoUsufructRight ;
@@ -135,7 +136,7 @@ kfw458:RuleExistingResidentialBuilding2026_07 a sdo:Rule ;
     sdo:sourceCitation kfw458:CitationEligibleApplicants2026_07 .
 kfw458:ConditionExistingResidentialBuilding a sdo:Condition ;
     sdo:factProperty funding:existingResidentialBuilding ;
-    sco:inputJsonPointer "/case/project/existingResidentialBuilding" ;
+    dpo:inputJsonPointer "/case/project/existingResidentialBuilding" ;
     sdo:expectedBoolean true .
 kfw458:QuestionExistingResidentialBuilding a sdo:FactQuestion ;
     sdo:elicitsCondition kfw458:ConditionExistingResidentialBuilding ;
@@ -150,7 +151,7 @@ kfw458:RuleBuildingInGermany2026_07 a sdo:Rule ;
     sdo:sourceCitation kfw458:CitationEligibleApplicants2026_07 .
 kfw458:ConditionBuildingInGermany a sdo:Condition ;
     sdo:factProperty funding:buildingInGermany ;
-    sco:inputJsonPointer "/case/project/buildingInGermany" ;
+    dpo:inputJsonPointer "/case/project/buildingInGermany" ;
     sdo:expectedBoolean true .
 kfw458:QuestionBuildingInGermany a sdo:FactQuestion ;
     sdo:elicitsCondition kfw458:ConditionBuildingInGermany ;
@@ -167,9 +168,9 @@ kfw458:OwnershipEvidenceRequirementForApplicantBonus2026_07
     sdo:evidenceSourceCitation kfw458:CitationOwnershipEvidenceForApplicantBonus2026_07 .
 kfw458:ConditionSelfUsesResidentialProperty a sdo:Condition ;
     sdo:factProperty funding:selfUsesResidentialProperty ;
-    sco:inputJsonPointer "/case/applicant/selfUsesResidentialProperty" ;
+    dpo:inputJsonPointer "/case/applicant/selfUsesResidentialProperty" ;
     sdo:expectedBoolean true .
 kfw458:ConditionClaimsClimateOrIncomeBonus a sdo:Condition ;
     sdo:factProperty funding:claimsClimateOrIncomeBonus ;
-    sco:inputJsonPointer "/case/applicant/claimsClimateOrIncomeBonus" ;
+    dpo:inputJsonPointer "/case/applicant/claimsClimateOrIncomeBonus" ;
     sdo:expectedBoolean true .

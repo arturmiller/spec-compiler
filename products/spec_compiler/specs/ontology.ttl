@@ -1,0 +1,12 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+
+<https://arturmiller.github.io/spec-compiler/resources/toolchain/>
+    a owl:Ontology ;
+    dcterms:title "Spec Compiler specification"@en, "Compiler-Produktspezifikation"@de ;
+    dcterms:description "Terminal product specification. Other ontologies must not import or reuse this module."@en ;
+    dcterms:description "Abschließende Produktspezifikation. Andere Ontologien dürfen dieses Modul weder importieren noch wiederverwenden."@de ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/resources/toolchain/#" ;
+    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/compiler/> ;
+    owl:versionInfo "1.0.0" .

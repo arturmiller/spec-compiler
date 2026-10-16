@@ -1,6 +1,6 @@
 {
   "generator": "spec-compiler",
-  "compiler_conventions_version": 2,
+  "compiler_conventions_version": 3,
   "runtime_protocol_version": 1,
   "work_items": [
     {

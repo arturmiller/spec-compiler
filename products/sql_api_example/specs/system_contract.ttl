@@ -1,3 +1,4 @@
+@prefix sqlo: <https://arturmiller.github.io/spec-compiler/ontology/sql/#> .
 @prefix article: <https://arturmiller.github.io/spec-compiler/resources/sql-api/#> .
 @prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -10,19 +11,19 @@ article:GetArticleEndpoint
     sco:pathParameter [
         sco:name "id" ;
         sh:datatype xsd:integer ;
-        sco:mapsToColumn "id" ;
+        sqlo:mapsToColumn "id" ;
     ] ;
     sco:successStatus 200 ;
     sco:mediaType "application/json" ;
-    sco:readsFrom article:ArticlesTable ;
+    sqlo:readsFrom article:ArticlesTable ;
     sco:returns article:ArticleShape .
 
 article:ArticlesTable
-    a sco:SqlTable ;
-    sco:databaseEngine sco:SQLite ;
-    sco:tableName "articles" ;
-    sco:idColumn "id" ;
-    sco:idDatatype xsd:integer ;
-    sco:idPrimaryKey true ;
-    sco:idGenerated true ;
-    sco:stores article:ArticleShape .
+    a sqlo:SqlTable ;
+    sqlo:databaseEngine sqlo:SQLite ;
+    sqlo:tableName "articles" ;
+    sqlo:idColumn "id" ;
+    sqlo:idDatatype xsd:integer ;
+    sqlo:idPrimaryKey true ;
+    sqlo:idGenerated true ;
+    sqlo:stores article:ArticleShape .

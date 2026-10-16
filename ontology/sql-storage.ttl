@@ -1,0 +1,98 @@
+@prefix sqlo: <https://arturmiller.github.io/spec-compiler/ontology/sql/#> .
+@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://arturmiller.github.io/spec-compiler/ontology/sql/>
+    a owl:Ontology ;
+    dcterms:title "SQL Storage Ontology"@en, "SQL-Speicherontologie"@de ;
+    dcterms:description "Transport-independent vocabulary for SQL tables, storage and reads."@en ;
+    dcterms:description "SQL-Speicherontologie: wiederverwendbare Definitionen, keine konkrete Produktspezifikation."@de ;
+    vann:preferredNamespacePrefix "sqlo" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/sql/#" ;
+    owl:versionInfo "0.2.0-experimental" .
+
+sqlo:SqlTable
+    a owl:Class ;
+    rdfs:label "SQL table"@en ;
+    rdfs:label "SQL-Tabelle"@de ;
+    rdfs:comment "Relational table that stores resources described by a SHACL shape."@en .
+
+sqlo:DatabaseEngine a owl:Class ;
+    rdfs:label "Database engine"@en, "Datenbank-Engine"@de ;
+    rdfs:comment "A named database engine selected explicitly by a storage specification; not an inferred runtime technology."@en ;
+    rdfs:comment "Die in einer Speicherspezifikation ausdrücklich gewählte Datenbank-Engine. SQLite ist ein konkreter Wert dieses Typs, keine Tabellenklasse und keine automatisch gewählte Technologie."@de .
+
+sqlo:SQLite
+    a owl:NamedIndividual, sqlo:DatabaseEngine ;
+    rdfs:label "SQLite"@en ;
+    rdfs:label "SQLite"@de .
+
+sqlo:readsFrom
+    a owl:ObjectProperty ;
+    rdfs:comment "A resource reads from the specified SQL table; independent of its transport."@en ;
+    rdfs:comment "Eine Ressource liest aus der angegebenen SQL-Tabelle; unabhängig von ihrem Transport."@de ;
+    rdfs:label "reads from"@en ;
+    rdfs:label "liest aus"@de ;
+    rdfs:range sqlo:SqlTable .
+
+sqlo:stores
+    a owl:ObjectProperty ;
+    rdfs:label "stores shape"@en ;
+    rdfs:label "speichert Shape"@de ;
+    rdfs:domain sqlo:SqlTable ;
+    rdfs:range sh:NodeShape .
+
+sqlo:databaseEngine
+    a owl:ObjectProperty ;
+    rdfs:label "database engine"@en ;
+    rdfs:label "Datenbank-Engine"@de ;
+    rdfs:domain sqlo:SqlTable ;
+    rdfs:range sqlo:DatabaseEngine .
+
+sqlo:idDatatype
+    a owl:ObjectProperty ;
+    rdfs:label "identifier datatype"@en ;
+    rdfs:label "Bezeichner-Datentyp"@de ;
+    rdfs:domain sqlo:SqlTable ;
+    rdfs:range rdfs:Datatype .
+
+sqlo:mapsToColumn
+    a owl:DatatypeProperty ;
+    rdfs:label "maps to column"@en ;
+    rdfs:label "bildet auf Spalte ab"@de ;
+    rdfs:range xsd:string .
+
+sqlo:tableName
+    a owl:DatatypeProperty ;
+    rdfs:label "table name"@en ;
+    rdfs:label "Tabellenname"@de ;
+    rdfs:domain sqlo:SqlTable ;
+    rdfs:range xsd:string .
+
+sqlo:idColumn
+    a owl:DatatypeProperty ;
+    rdfs:label "identifier column"@en ;
+    rdfs:label "Bezeichnerspalte"@de ;
+    rdfs:domain sqlo:SqlTable ;
+    rdfs:range xsd:string .
+
+sqlo:idPrimaryKey
+    a owl:DatatypeProperty ;
+    rdfs:label "identifier is primary key"@en ;
+    rdfs:label "Bezeichner ist Primärschlüssel"@de ;
+    rdfs:domain sqlo:SqlTable ;
+    rdfs:range xsd:boolean .
+
+sqlo:idGenerated
+    a owl:DatatypeProperty ;
+    rdfs:label "identifier is generated"@en ;
+    rdfs:label "Bezeichner wird generiert"@de ;
+    rdfs:domain sqlo:SqlTable ;
+    rdfs:range xsd:boolean .

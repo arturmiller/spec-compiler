@@ -101,13 +101,13 @@ def test_complete_ontology_build_needs_no_java_and_keeps_sources_authoritative(t
     monkeypatch.setattr(builder, "build_relationship_graph", lambda graph: None)
     with builder.site_output(output):
         builder.build_site()
-    for path in ("ontology", "ontology/decision", "ontology/funding", "ontology/cloud", "examples/sql-api"):
+    for path in ("ontology", "ontology/sql", "ontology/decision-protocol", "ontology/compiler", "ontology/decision", "ontology/funding", "ontology/cloud", "examples/sql-api"):
         assert (output / path / "index-de.html").is_file()
         assert (output / path / "index-en.html").is_file()
         assert (output / path / "webvowl/index.html").is_file()
         assert not (output / path / "webvowl/data/ontology.json").exists()
     for source, _, _ in builder.ONTOLOGY_PUBLICATIONS:
-        folder = {builder.ONTOLOGY: "ontology", builder.DECISION_ONTOLOGY: "ontology/decision",
+        folder = {builder.ONTOLOGY: "ontology", builder.SQL_ONTOLOGY: "ontology/sql", builder.PROTOCOL_ONTOLOGY: "ontology/decision-protocol", builder.COMPILER_ONTOLOGY: "ontology/compiler", builder.DECISION_ONTOLOGY: "ontology/decision",
                   builder.FUNDING_ONTOLOGY: "ontology/funding", builder.CLOUD_ONTOLOGY: "ontology/cloud"}[source]
         assert isomorphic(Graph().parse(source), Graph().parse(output / folder / "ontology.ttl"))
     sql = Graph().parse(output / "resources/sql-api/resources.ttl")

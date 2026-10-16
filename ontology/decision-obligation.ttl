@@ -16,7 +16,7 @@
     dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "sdo" ;
     vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision/#" ;
-    owl:versionInfo "0.4.0-experimental" .
+    owl:versionInfo "0.5.0-experimental" .
 
 sdo:DecisionContract a owl:Class ;
     rdfs:label "Decision contract"@en ;
@@ -28,6 +28,8 @@ sdo:RuleSet a owl:Class ;
     rdfs:label "Regelwerk"@de .
 
 sdo:RuleSetVersion a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ;
+        owl:onProperty dcterms:isVersionOf ; owl:allValuesFrom sdo:RuleSet ] ;
     rdfs:label "Rule set version"@en ;
     rdfs:label "Regelwerkversion"@de .
 
@@ -55,7 +57,8 @@ sdo:CaseFact a owl:Class ;
 sdo:FactGap a owl:Class ;
     rdfs:label "Fact gap"@en ;
     rdfs:label "Sachverhaltslücke"@de ;
-    rdfs:comment "Absence of a Fact required to evaluate a Condition; it is not a false Fact."@en .
+    rdfs:comment "Absence of a Fact required to evaluate a Condition; it is not a false Fact."@en ;
+    rdfs:comment "Im Entscheidungsergebnis festgehaltene fehlende Eingabe für eine bestimmte Bedingung. Eine Lücke ist kein falscher Sachverhalt und kann auch neben einem bereits negativen Ausgang bestehen."@de .
 
 sdo:FactQuestion a owl:Class ;
     rdfs:label "Fact question"@en ;
@@ -64,7 +67,9 @@ sdo:FactQuestion a owl:Class ;
 
 sdo:DecisionResult a owl:Class ;
     rdfs:label "Decision result"@en ;
-    rdfs:label "Entscheidungsergebnis"@de .
+    rdfs:label "Entscheidungsergebnis"@de ;
+    rdfs:comment "The result of evaluating one request: identifies the contract, selected rule set version and outcome, and contains condition evaluations, fact gaps and obligation evaluations. It is not merely the outcome code and does not prescribe a serialization."@en ;
+    rdfs:comment "Ergebnis einer konkreten Anfrage mit Entscheidungsvertrag, gewählter Regelwerkversion und Ausgang sowie Bedingungsauswertungen, Sachverhaltslücken und Verpflichtungsauswertungen. Es ist mehr als der Ausgang allein und legt kein Übertragungsformat fest."@de .
 
 sdo:DecisionOutcome a owl:Class ;
     rdfs:label "Decision outcome"@en ;
@@ -72,7 +77,9 @@ sdo:DecisionOutcome a owl:Class ;
 
 sdo:ConditionEvaluation a owl:Class ;
     rdfs:label "Condition evaluation"@en ;
-    rdfs:label "Bedingungsauswertung"@de .
+    rdfs:label "Bedingungsauswertung"@de ;
+    rdfs:comment "The satisfied, violated or unknown evaluation of a condition in the context of one rule and one decision result; not a change to the condition definition."@en ;
+    rdfs:comment "Bewertung einer Bedingung im Zusammenhang mit einer bestimmten Regel und einem konkreten Entscheidungsergebnis: erfüllt, verletzt oder unbestimmt. Die Bedingungsdefinition selbst bleibt unverändert."@de .
 
 sdo:Obligation a owl:Class ;
     rdfs:label "Obligation"@en ;
@@ -82,7 +89,8 @@ sdo:Obligation a owl:Class ;
 sdo:ObligationEvaluation a owl:Class ;
     rdfs:label "Obligation evaluation"@en ;
     rdfs:label "Verpflichtungsauswertung"@de ;
-    rdfs:comment "The fulfilled, violated, or unknown status of one Obligation for one Case."@en .
+    rdfs:comment "The fulfilled, violated, or unknown status of one Obligation for one Case."@en ;
+    rdfs:comment "Bewertung einer konkreten Verpflichtung innerhalb eines Entscheidungsergebnisses mit dem Status erfüllt, verletzt oder unbestimmt. Die Verpflichtung bleibt von ihrer Bewertung und von einer Testerwartung getrennt."@de .
 
 sdo:ObligationExpectation a owl:Class ;
     rdfs:label "Obligation expectation"@en ;
@@ -163,12 +171,77 @@ sdo:Source a owl:Class ;
     rdfs:label "Quelle"@de .
 
 sdo:SourceRevision a owl:Class ;
+    rdfs:subClassOf [ a owl:Restriction ;
+        owl:onProperty dcterms:isVersionOf ; owl:allValuesFrom sdo:Source ] ;
     rdfs:label "Source revision"@en ;
     rdfs:label "Quellenrevision"@de .
 
 sdo:SourceCitation a owl:Class ;
     rdfs:label "Source citation"@en ;
     rdfs:label "Quellenfundstelle"@de .
+
+# Class-local restrictions describe the existing standard version relation.
+# They do not assert existence or assign conflicting global domains/ranges.
+dcterms:isVersionOf rdfs:label "is version of"@en, "ist Version von"@de .
+
+# Domain model for results; JSON field names remain a separate protocol concern.
+sdo:resultForContract a owl:ObjectProperty ;
+    rdfs:label "result for contract"@en, "Ergebnis für Vertrag"@de ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:DecisionContract .
+
+sdo:resultRuleSetVersion a owl:ObjectProperty ;
+    rdfs:label "evaluated rule set version"@en, "ausgewertete Regelwerkversion"@de ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:RuleSetVersion .
+
+sdo:resultOutcome a owl:ObjectProperty ;
+    rdfs:label "has outcome"@en, "hat Entscheidungsausgang"@de ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:DecisionOutcome .
+
+sdo:hasConditionEvaluation a owl:ObjectProperty ;
+    rdfs:label "has condition evaluation"@en, "enthält Bedingungsauswertung"@de ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:ConditionEvaluation .
+
+sdo:hasFactGap a owl:ObjectProperty ;
+    rdfs:label "has fact gap"@en, "enthält Sachverhaltslücke"@de ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:FactGap .
+
+sdo:hasObligationEvaluation a owl:ObjectProperty ;
+    rdfs:label "has obligation evaluation"@en, "enthält Verpflichtungsauswertung"@de ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:ObligationEvaluation .
+
+sdo:nextQuestion a owl:ObjectProperty ;
+    rdfs:label "next fact question"@en, "nächste Sachverhaltsfrage"@de ;
+    rdfs:comment "A selected question, if any; the relation does not require a question to exist. Selection follows the versioned question selection conventions."@en ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:FactQuestion .
+
+sdo:decisiveRule a owl:ObjectProperty ;
+    rdfs:label "decisive rule"@en, "entscheidende Regel"@de ;
+    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:Rule .
+
+sdo:evaluatesCondition a owl:ObjectProperty ;
+    rdfs:label "evaluates condition"@en, "bewertet Bedingung"@de ;
+    rdfs:domain sdo:ConditionEvaluation ; rdfs:range sdo:Condition .
+
+sdo:evaluatedRule a owl:ObjectProperty ;
+    rdfs:label "evaluated rule"@en, "ausgewertete Regel"@de ;
+    rdfs:domain sdo:ConditionEvaluation ; rdfs:range sdo:Rule .
+
+sdo:conditionEvaluationState a owl:DatatypeProperty ;
+    rdfs:label "condition evaluation state"@en, "Zustand der Bedingungsauswertung"@de ;
+    rdfs:comment "Decision Conventions v1 uses satisfied, violated or unknown. The literal is an evaluation state, not a Fact value."@en ;
+    rdfs:domain sdo:ConditionEvaluation ; rdfs:range xsd:string .
+
+sdo:missingFactForCondition a owl:ObjectProperty ;
+    rdfs:label "missing fact for condition"@en, "fehlender Sachverhalt für Bedingung"@de ;
+    rdfs:domain sdo:FactGap ; rdfs:range sdo:Condition .
+
+sdo:evaluatesObligation a owl:ObjectProperty ;
+    rdfs:label "evaluates obligation"@en, "bewertet Verpflichtung"@de ;
+    rdfs:domain sdo:ObligationEvaluation ; rdfs:range sdo:Obligation .
+
+sdo:obligationEvaluationStatus a owl:ObjectProperty ;
+    rdfs:label "obligation evaluation status"@en, "ermittelter Verpflichtungsstatus"@de ;
+    rdfs:domain sdo:ObligationEvaluation ; rdfs:range sdo:ObligationStatus .
 
 sdo:usesRuleSetVersion a owl:ObjectProperty ;
     rdfs:label "uses rule set version"@en ;

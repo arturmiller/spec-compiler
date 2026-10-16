@@ -27,11 +27,13 @@ const server = http.createServer((request, response) => {
 });
 
 async function main() {
-  for (let attempt=0; attempt<100; attempt++) {
+  let previewReady=false;
+  for (let attempt=0; attempt<2400; attempt++) {
     const state=await (await fetch('http://127.0.0.1:8080/__preview/status')).json();
-    if (!state.building) { assert.equal(state.error,''); break; }
+    if (!state.building) { assert.equal(state.error,''); previewReady=true; break; }
     await wait(250);
   }
+  assert(previewReady,'Local preview did not finish its build');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-documentation-browser-'));
   const browser = spawn(browserPath, ['--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=0', '--user-data-dir='+profile, 'about:blank'], {stdio:'ignore', windowsHide:true});
@@ -89,12 +91,12 @@ async function main() {
     const bases=['http://127.0.0.1:8080/',`http://127.0.0.1:${server.address().port}${prefix}`];
     for(const base of bases){
       await command('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
-      for(const route of ['', 'compiler/', 'tutorials/', 'reference/', 'reference/architecture/', 'reference/decisions/', 'contributors/', 'ontology/index-de.html']){
+      for(const route of ['', 'compiler/', 'tutorials/', 'reference/', 'reference/architecture/', 'reference/decisions/', 'contributors/', 'ontology/index-de.html', 'ontologies/']){
         await navigate(base+route);
         assert.equal(await evaluate("document.querySelectorAll('.site-navigation a').length"),6);
         assert(await evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Horizontal overflow: '+route);
       }
-      for(const [reference,dataset] of [['ontology/','contract'],['ontology/decision/','decision'],['ontology/funding/','funding'],['ontology/cloud/','cloud'],['examples/sql-api/','sql-api']]){
+      for(const [reference,dataset] of [['ontology/','contract'],['ontology/sql/','sql'],['ontology/decision-protocol/','decision-protocol'],['ontology/compiler/','compiler'],['ontology/decision/','decision'],['ontology/funding/','funding'],['ontology/cloud/','cloud'],['examples/sql-api/','sql-api']]){
         for(const language of ['de','en']){
           await navigate(base+reference+'index-'+language+'.html');
           assert.equal(await evaluate('document.documentElement.lang'),language);
@@ -117,13 +119,68 @@ async function main() {
       await evaluate("document.querySelector('[data-theme-toggle]').click();void 0;");
       await screenshot(base.includes(prefix)?'reference-theme-prefix':'reference-theme-root');
       await navigate(base+'ontologies/');
-      await until("!!document.getElementById('graph')._cyreg?.cy");
-      assert.deepEqual(await evaluate("Array.from(document.querySelector('#ontology-select').options,o=>o.value)"),['contract','decision','funding','cloud']);
-      for(const dataset of ['contract','decision','funding','cloud']){
+      await until("!!document.getElementById('graph')?._cyreg?.cy");
+      assert.deepEqual(await evaluate("Array.from(document.querySelector('#ontology-select').options,o=>o.value)"),['dependencies','contract','sql','decision-protocol','compiler','decision','funding','cloud']);
+      assert.equal(await evaluate("document.getElementById('ontology-select').value"),'dependencies');
+      assert(await evaluate("document.getElementById('external-toggle-label').hidden"));
+      assert(!await evaluate("!!document.getElementById('property-catalog')"));
+      const migratedTerm='https://arturmiller.github.io/spec-compiler/ontology/#TransformationContract';
+      assert(!await evaluate(`JSON.parse(document.getElementById('ontology-data').textContent).find(d=>d.key==='contract').nodes.some(n=>n.id===${JSON.stringify(migratedTerm)})`));
+      for(const dataset of ['contract','sql','decision-protocol','compiler','decision','funding','cloud']){
         await evaluate(`document.getElementById('ontology-select').value=${JSON.stringify(dataset)};document.getElementById('ontology-select').dispatchEvent(new Event('change'));void 0;`);
         const links=await evaluate("['reference-de','reference-en','source-link'].map(id=>document.getElementById(id).href)");
         for(const link of links) assert.equal((await fetch(link)).status,200,link);
+        assert.equal(await evaluate("document.getElementById('graph')._cyreg.cy.nodes().filter(n=>n.connectedEdges().length===0).length"),0,'Isolated term in '+dataset);
+        const graphData=await evaluate(`JSON.parse(document.getElementById('ontology-data').textContent).find(d=>d.key===${JSON.stringify(dataset)})`);
+        assert(graphData.nodes.some(n=>n.external),'Missing direct vocabulary context in '+dataset);
+        assert(await evaluate("document.getElementById('show-external').checked && !document.getElementById('external-toggle-label').hidden"));
+        await evaluate("window.scopeCy=document.getElementById('graph')._cyreg.cy;scopeCy.zoom(scopeCy.zoom()*.9);scopeCy.pan({x:scopeCy.pan().x+9,y:scopeCy.pan().y-7});scopeCy.nodes('[external=\"1\"]')[0].emit('tap');void 0;");
+        const scopeViewport=await evaluate("({zoom:scopeCy.zoom(),pan:scopeCy.pan(),positions:scopeCy.nodes().map(n=>n.position())})");
+        await evaluate("document.getElementById('show-external').click();void 0;");
+        assert.equal(await evaluate("scopeCy.nodes('[external=\"1\"]:visible').length"),0);
+        const localCount=graphData.nodes.filter(n=>!n.external).length;
+        assert.equal(await evaluate("scopeCy.nodes(':visible').length"),localCount);
+        assert.equal(await evaluate("scopeCy.edges(':visible').filter(e=>e.source().data('external')==='1'||e.target().data('external')==='1').length"),0);
+        assert.equal(await evaluate("scopeCy.nodes(':selected')[0].data('external')"),'0');
+        assert(!await evaluate("document.querySelector('#graph-side .eyebrow').textContent.includes('Externer Begriff')"));
+        assert(await evaluate("Array.from(document.querySelectorAll('#graph-side [data-select]')).every(b=>scopeCy.getElementById(b.dataset.select).data('external')==='0')"));
+        assert.equal(await evaluate("new URLSearchParams(location.search).get('external')"),'0');
+        assert((await evaluate("document.getElementById('counts').textContent")).startsWith(localCount+'/'+graphData.nodes.length+' Knoten'));
+        assertViewport(await evaluate("({zoom:scopeCy.zoom(),pan:scopeCy.pan(),positions:scopeCy.nodes().map(n=>n.position())})"),scopeViewport);
+        await evaluate("document.querySelector('[data-edge-kind=\"type\"]').click();document.getElementById('search').value='test';document.getElementById('search').dispatchEvent(new Event('input'));void 0;");
+        assert.equal(await evaluate("scopeCy.nodes('[external=\"1\"]:visible').length"),0);
+        assertViewport(await evaluate("({zoom:scopeCy.zoom(),pan:scopeCy.pan(),positions:scopeCy.nodes().map(n=>n.position())})"),scopeViewport);
+        await evaluate("document.querySelector('[data-edge-kind=\"all\"]').click();document.getElementById('search').value='';document.getElementById('search').dispatchEvent(new Event('input'));void 0;");
+        if(dataset==='funding')await screenshot(base.includes(prefix)?'funding-local-only-prefix':'funding-local-only-root');
+        await evaluate("document.getElementById('show-external').click();void 0;");
+        assert.equal(await evaluate("scopeCy.nodes(':visible').length"),graphData.nodes.length);
+        assert.equal(await evaluate("new URLSearchParams(location.search).get('external')"),null);
+        assertViewport(await evaluate("({zoom:scopeCy.zoom(),pan:scopeCy.pan(),positions:scopeCy.nodes().map(n=>n.position())})"),scopeViewport);
+        for(const term of graphData.nodes.filter(n=>n.external&&n.referenceHref?.startsWith('../ontology/'))){
+          const target=new URL(term.referenceHref,base+'ontologies/');
+          const response=await fetch(target);assert.equal(response.status,200);
+          assert((await response.text()).includes('id="'+decodeURIComponent(target.hash.slice(1))+'"'),'Missing external reference anchor '+target);
+        }
+        if(dataset==='sql'){
+          assert.equal(await evaluate("document.getElementById('graph')._cyreg.cy.getElementById('https://arturmiller.github.io/spec-compiler/ontology/sql/#SQLite').style('shape')"),'hexagon');
+          await screenshot(base.includes(prefix)?'sql-context-prefix':'sql-context-root');
+        }
+        if(dataset==='funding'||dataset==='cloud'){
+          await evaluate("window.contextCy=document.getElementById('graph')._cyreg.cy;contextCy.nodes('[external=\"1\"]')[0].emit('tap');void 0;");
+          assert(await evaluate("document.getElementById('graph-side').textContent.includes('Externer Begriff')"));
+          assert.equal(await evaluate("contextCy.nodes('[external=\"1\"]')[0].style('border-style')"),'dashed');
+          await screenshot((dataset==='funding'?'funding-context':'cloud-context')+(base.includes(prefix)?'-prefix':'-root'));
+        }
       }
+      await evaluate("document.getElementById('show-external').click();document.getElementById('ontology-select').value='funding';document.getElementById('ontology-select').dispatchEvent(new Event('change'));void 0;");
+      assert(!await evaluate("document.getElementById('show-external').checked"));
+      assert.equal(await evaluate("document.getElementById('graph')._cyreg.cy.nodes('[external=\"1\"]:visible').length"),0);
+      await navigate(base+'ontologies/?ontology=funding&external=0&term='+encodeURIComponent('https://arturmiller.github.io/spec-compiler/ontology/decision/#Case'));
+      await until("!!document.getElementById('graph')?._cyreg?.cy");
+      assert(!await evaluate("document.getElementById('show-external').checked"));
+      assert.equal(await evaluate("document.getElementById('graph')._cyreg.cy.nodes('[external=\"1\"]:visible').length"),0);
+      assert(!(await evaluate("new URLSearchParams(location.search).get('term')")).includes('/decision/'));
+      await evaluate("document.getElementById('show-external').click();document.getElementById('ontology-select').value='cloud';document.getElementById('ontology-select').dispatchEvent(new Event('change'));void 0;");
       await evaluate("window.testCy=document.getElementById('graph')._cyreg.cy;testCy.zoom(testCy.zoom()*.9);testCy.pan({x:testCy.pan().x+13,y:testCy.pan().y-11});void 0;");
       const viewport=await evaluate("({zoom:testCy.zoom(),pan:testCy.pan(),positions:testCy.nodes().map(n=>n.position())})");
       await evaluate("void testCy.nodes()[1].emit('tap');");
@@ -141,8 +198,67 @@ async function main() {
       await command('Input.dispatchMouseEvent',{type:'mouseWheel',...wheelPosition,deltaX:0,deltaY:-120});
       await until(`Math.abs(testCy.zoom()-${beforeWheel})>1e-6`);
       await screenshot(base.includes(prefix)?'graph-prefix':'graph-root');
+      await navigate(base+'ontologies/?ontology=decision&term='+encodeURIComponent('https://arturmiller.github.io/spec-compiler/ontology/decision/#DecisionResult'));
+      await until("!!document.getElementById('graph')?._cyreg?.cy");
+      await evaluate("window.resultCy=document.getElementById('graph')._cyreg.cy;void 0;");
+      assert.equal(await evaluate('resultCy.nodes().filter(n=>n.connectedEdges().length===0).length'),0);
+      assert(await evaluate("document.getElementById('graph-side').textContent.includes('enthält Bedingungsauswertung')"));
+      const resultViewport=await evaluate("({zoom:resultCy.zoom(),pan:resultCy.pan(),positions:resultCy.nodes().map(n=>n.position())})");
+      await screenshot(base.includes(prefix)?'decision-result-prefix':'decision-result-root');
+      for(const term of ['ConditionEvaluation','FactGap','ObligationEvaluation','RuleSet','Source']){
+        await evaluate(`void resultCy.getElementById('https://arturmiller.github.io/spec-compiler/ontology/decision/#'+${JSON.stringify(term)}).emit('tap');`);
+        assertViewport(await evaluate("({zoom:resultCy.zoom(),pan:resultCy.pan(),positions:resultCy.nodes().map(n=>n.position())})"),resultViewport);
+        if(['RuleSet','Source'].includes(term)) assert(await evaluate("document.getElementById('graph-side').textContent.includes('Lokale Zieltyp-Beschränkung')"));
+      }
+      await evaluate("document.querySelector('[data-edge-kind=\"type\"]').click();void 0;");
+      assert.equal(await evaluate("resultCy.edges(':visible').filter(e=>e.data('kind')!=='type').length"),0);
+      assertViewport(await evaluate("({zoom:resultCy.zoom(),pan:resultCy.pan(),positions:resultCy.nodes().map(n=>n.position())})"),resultViewport);
+      await navigate(base+'ontologies/?ontology=compiler&term='+encodeURIComponent('https://arturmiller.github.io/spec-compiler/ontology/compiler/#generatesArtifact'));
+      await until("!!document.getElementById('graph')?._cyreg?.cy");
+      assert(await evaluate("document.getElementById('graph-side').textContent.includes('Veraltet') && document.getElementById('graph-side').textContent.includes('expectsArtifact')"));
+      await navigate(base+'ontologies/?ontology=contract&term='+encodeURIComponent(migratedTerm)+'&context=1');
+      await until("new URLSearchParams(location.search).get('ontology')==='compiler' && !!document.getElementById('graph')?._cyreg?.cy");
+      assert.equal(await evaluate("new URLSearchParams(location.search).get('term')"),'https://arturmiller.github.io/spec-compiler/ontology/compiler/#TransformationContract');
+      assert.equal(await evaluate("document.getElementById('ontology-select').value"),'compiler');
+      await screenshot(base.includes(prefix)?'compiler-graph-prefix':'compiler-graph-root');
+      for(const anchor of ['TransformationContract',migratedTerm]){
+        await command('Page.navigate',{url:base+'ontology/index-de.html?legacy=1#'+encodeURIComponent(anchor)});
+        await until("location.pathname.endsWith('/ontology/compiler/index-de.html') && location.hash==='#TransformationContract' && location.search.includes('legacy=1')");
+        assert(await evaluate("!!document.getElementById('TransformationContract')"));
+      }
+      for(const [term,dataset] of [['SqlTable','sql'],['DecisionProtocolV1','decision-protocol'],['inputJsonPointer','decision-protocol']]){
+        const old='https://arturmiller.github.io/spec-compiler/ontology/#'+term;
+        const current='https://arturmiller.github.io/spec-compiler/ontology/'+dataset+'/#'+term;
+        await command('Page.navigate',{url:base+'ontologies/?ontology=contract&term='+encodeURIComponent(old)});
+        await until(`new URLSearchParams(location.search).get('ontology')===${JSON.stringify(dataset)} && new URLSearchParams(location.search).get('term')===${JSON.stringify(current)} && !!document.getElementById('graph')?._cyreg?.cy`);
+        await command('Page.navigate',{url:base+'ontology/index-de.html#'+term});
+        await until(`location.pathname.endsWith(${JSON.stringify('/ontology/'+dataset+'/index-de.html')}) && location.hash===${JSON.stringify('#'+term)} && !!document.getElementById(${JSON.stringify(term)})`);
+      }
+      await command('Page.navigate',{url:base+'ontologies/overview.html'});
+      await until("location.pathname.endsWith('/ontologies/') && !!document.getElementById('graph')?._cyreg?.cy");
+      await evaluate("window.moduleCy=document.getElementById('graph')._cyreg.cy;void 0;");
+      fs.writeFileSync(path.join(evidence,base.includes(prefix)?'module-routing-prefix.json':'module-routing-root.json'),JSON.stringify(await evaluate("moduleCy.edges().map(e=>({source:e.source().id(),target:e.target().id(),turn:e.data('turn'),style:e.style('taxi-turn'),points:e.segmentPoints?.()}))"),null,2));
+      assert.equal(await evaluate("moduleCy.nodes(':visible').length"),7);
+      const moduleViewport=await evaluate("({zoom:moduleCy.zoom(),pan:moduleCy.pan(),positions:moduleCy.nodes().map(n=>n.position())})");
+      await screenshot(base.includes(prefix)?'dependencies-prefix':'dependencies-root');
+      await evaluate("document.getElementById('show-products').click();void 0;");
+      assert.equal(await evaluate("moduleCy.nodes(':visible').length"),11);
+      assert.equal(await evaluate("moduleCy.nodes('[role=\"product\"]:visible').length"),4);
+      assert.equal(await evaluate("moduleCy.edges().filter(e=>e.target().data('role')==='product').length"),0);
+      assertViewport(await evaluate("({zoom:moduleCy.zoom(),pan:moduleCy.pan(),positions:moduleCy.nodes().map(n=>n.position())})"),moduleViewport);
+      await screenshot(base.includes(prefix)?'product-specifications-prefix':'product-specifications-root');
+      await evaluate("void moduleCy.nodes('[role=\"product\"]')[0].emit('tap');");
+      assert(await evaluate("document.getElementById('graph-side').textContent.includes('Abschließende Produktspezifikation')"));
+      assertViewport(await evaluate("({zoom:moduleCy.zoom(),pan:moduleCy.pan(),positions:moduleCy.nodes().map(n=>n.position())})"),moduleViewport);
+      await evaluate("document.getElementById('show-products').click();void 0;");
+      assert.equal(await evaluate("moduleCy.nodes(':visible').length"),7);
+      assertViewport(await evaluate("({zoom:moduleCy.zoom(),pan:moduleCy.pan(),positions:moduleCy.nodes().map(n=>n.position())})"),moduleViewport);
+      const dependencyData=await (await fetch(base+'ontologies/dependencies.json')).json();
+      assert.equal(dependencyData.direction,'dependent-to-required');
+      assert.deepEqual(dependencyData.dependencies.filter(e=>!e.from.startsWith('product-')).map(e=>[e.from,e.to]),[['cloud','decision'],['decision-protocol','decision'],['funding','decision']]);
+      assert(!dependencyData.dependencies.some(e=>e.to.startsWith('product-')));
       await navigate(base+'tutorials/sql-api/graph/?ontology=sql-api');
-      await until("!!document.getElementById('graph')._cyreg?.cy");
+      await until("!!document.getElementById('graph')?._cyreg?.cy");
       assert.deepEqual(await evaluate("Array.from(document.querySelector('#ontology-select').options,o=>o.value)"),['sql-api']);
       for(const link of await evaluate("['reference-de','reference-en','source-link'].map(id=>document.getElementById(id).href)")) assert.equal((await fetch(link)).status,200,link);
       await command('Page.navigate',{url:base+'graph/?ontology=funding&context=1#keep'});
@@ -187,15 +303,15 @@ async function main() {
       assert.equal(await evaluate("document.querySelector('.semantic-passport-detail').textContent"),nodeDescription);
       assert(await evaluate('document.documentElement.scrollWidth <= innerWidth'));
       await screenshot(base.includes(prefix)?'node-details-mobile-prefix':'node-details-mobile-root');
-      for(const route of ['', 'compiler/', 'reference/architecture/', 'tutorials/sql-api/', 'ontologies/', 'contributors/', 'ontology/index-de.html', 'examples/sql-api/index-en.html']){
+      for(const route of ['', 'compiler/', 'reference/architecture/', 'tutorials/sql-api/', 'ontologies/', 'contributors/', 'ontology/index-de.html', 'ontology/compiler/index-de.html', 'ontology/sql/index-de.html', 'ontology/decision-protocol/index-de.html', 'examples/sql-api/index-en.html']){
         await navigate(base+route);
         assert(await evaluate('document.documentElement.scrollWidth <= innerWidth'), 'Mobile horizontal overflow: '+route);
       }
       await screenshot(base.includes(prefix)?'mobile-prefix':'mobile-root');
     }
     assert.deepEqual(errors,[],'Browser JavaScript exceptions');
-    console.log('Browser checks passed: six reader paths, root/prefix navigation, five bilingual RDF references, four ontology graphs and one tutorial graph, redirects, stable viewport, zoom, theme, glossary search, detailed node passport, focus/Escape, mobile.');
-    fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify({ok:true,checks:['navigation','rdf-references','rdf-downloads','legacy-redirects','reference-anchors','datasets','viewport','zoom','theme','search','glossary-search','redirects','diagram-focus','long-node-details','glossary-link-navigation','escape','canonical-svg-export','mobile-node-details','mobile'],screenshots:path.relative(root,evidence)},null,2));
+    console.log('Browser checks passed: root/prefix, eight bilingual RDF references, seven reusable ontology graphs and SQL tutorial, explicit import overview, terminal product-specification toggle, namespace redirects, stable viewport and positions, zoom, theme, search, focus/Escape, SVG export, mobile.');
+    fs.writeFileSync(path.join(evidence,'result.json'),JSON.stringify({ok:true,checks:['navigation','rdf-references','rdf-downloads','legacy-redirects','namespace-migration','ontology-dependencies','dependency-directions','terminal-product-toggle','reference-anchors','datasets','viewport','zoom','theme','search','glossary-search','redirects','diagram-focus','long-node-details','glossary-link-navigation','escape','canonical-svg-export','mobile-node-details','mobile'],screenshots:path.relative(root,evidence)},null,2));
     await command('Browser.close');
   } finally {
     socket?.close();browser.kill();server.close();

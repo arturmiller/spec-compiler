@@ -1,6 +1,6 @@
 {
   "generator": "spec-compiler",
-  "compiler_conventions_version": 2,
+  "compiler_conventions_version": 3,
   "decision_conventions_version": 1,
   "decision_protocol_version": 1,
   "question_selection_conventions_version": 1,

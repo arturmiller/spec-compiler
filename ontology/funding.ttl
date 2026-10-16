@@ -16,7 +16,8 @@
     dcterms:source <https://github.com/arturmiller/spec-compiler> ;
     vann:preferredNamespacePrefix "funding" ;
     vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/funding/#" ;
-    owl:versionInfo "0.2.0-experimental" .
+    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;
+    owl:versionInfo "0.3.0-experimental" .
 
 funding:FundingProgram a owl:Class ;
     rdfs:label "Funding program"@en ;
@@ -24,11 +25,13 @@ funding:FundingProgram a owl:Class ;
 
 funding:Applicant a owl:Class ;
     rdfs:label "Applicant"@en ;
-    rdfs:label "Antragstellende Person"@de .
+    rdfs:label "Antragstellende Person"@de ;
+    rdfs:comment "Die im Fall betrachtete antragstellende Person. Ihre Eigenschaften werden von den Regeln geprüft; sie ist weder der Entscheidungsvertrag noch eine Zusage des Fördergebers."@de .
 
 funding:Project a owl:Class ;
     rdfs:label "Project"@en ;
-    rdfs:label "Vorhaben"@de .
+    rdfs:label "Vorhaben"@de ;
+    rdfs:comment "Das im Fall betrachtete Vorhaben mit seinen ausdrücklich angegebenen Eigenschaften, etwa Standort und Gebäudebestand. Es ist von der antragstellenden Person getrennt."@de .
 
 funding:LandRegisterExcerpt a owl:Class ;
     rdfs:subClassOf sdo:Evidence ;
@@ -58,7 +61,18 @@ funding:Unknown a owl:NamedIndividual, sdo:DecisionOutcome ;
 funding:fundingProgram a owl:ObjectProperty ;
     rdfs:label "funding program"@en ;
     rdfs:label "Förderprogramm"@de ;
+    rdfs:domain funding:ApplicantEligibilityDecision ;
     rdfs:range funding:FundingProgram .
+
+funding:hasApplicant a owl:ObjectProperty ;
+    rdfs:label "has applicant"@en, "hat antragstellende Person"@de ;
+    rdfs:comment "Relates a concrete Case to its Applicant; does not bind a reusable Decision Contract to one person or require an RDF representation in JSON products."@en ;
+    rdfs:domain sdo:Case ; rdfs:range funding:Applicant .
+
+funding:hasProject a owl:ObjectProperty ;
+    rdfs:label "has project"@en, "hat Vorhaben"@de ;
+    rdfs:comment "Relates a concrete Case to its Project. It does not assert that the Applicant owns the Project or that funding has been approved."@en ;
+    rdfs:domain sdo:Case ; rdfs:range funding:Project .
 
 funding:naturalPerson a owl:DatatypeProperty ;
     rdfs:label "is a natural person"@en ;

@@ -5,27 +5,34 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 from pathlib import Path
+import json
 import shutil
 
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
-from rdflib.namespace import OWL, RDFS, SH
+from rdflib.namespace import DCTERMS, OWL, RDFS, SH
 
 if __package__:
-    from .ontology_relationship_graph import build_dataset, write_graph_site
+    from .ontology_relationship_graph import build_dataset, dependency_dataset, write_graph_site
     from .ontology_reference import turtle, write_reference
+    from .ontology_dependencies import read_dependencies
 else:
-    from ontology_relationship_graph import build_dataset, write_graph_site
+    from ontology_relationship_graph import build_dataset, dependency_dataset, write_graph_site
     from ontology_reference import turtle, write_reference
+    from ontology_dependencies import read_dependencies
 
 
 ROOT = Path(__file__).parents[1]
 ONTOLOGY = ROOT / "ontology" / "shacl-contract.ttl"
+SQL_ONTOLOGY = ROOT / "ontology" / "sql-storage.ttl"
+PROTOCOL_ONTOLOGY = ROOT / "ontology" / "decision-protocol.ttl"
+COMPILER_ONTOLOGY = ROOT / "ontology" / "compiler-contract.ttl"
 DECISION_ONTOLOGY = ROOT / "ontology" / "decision-obligation.ttl"
 FUNDING_ONTOLOGY = ROOT / "ontology" / "funding.ttl"
 CLOUD_ONTOLOGY = ROOT / "ontology" / "cloud-compliance.ttl"
 OUTPUT = ROOT / "build" / "ontology-site"
 GRAPH_OUTPUT = OUTPUT / "graph"
 REFERENCE_OUTPUT = OUTPUT / "ontology"
+COMPILER_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "compiler"
 DECISION_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "decision"
 FUNDING_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "funding"
 CLOUD_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "cloud"
@@ -33,6 +40,15 @@ SQL_API_OUTPUT = OUTPUT / "examples" / "sql-api"
 ONTOLOGY_IRI = "https://arturmiller.github.io/spec-compiler/ontology/"
 VOCABULARY_IRI = ONTOLOGY_IRI + "#"
 SCO = Namespace(VOCABULARY_IRI)
+SQL_ONTOLOGY_IRI = ONTOLOGY_IRI + "sql/"
+SQL_VOCABULARY_IRI = SQL_ONTOLOGY_IRI + "#"
+SQLO = Namespace(SQL_VOCABULARY_IRI)
+PROTOCOL_ONTOLOGY_IRI = ONTOLOGY_IRI + "decision-protocol/"
+PROTOCOL_VOCABULARY_IRI = PROTOCOL_ONTOLOGY_IRI + "#"
+DPO = Namespace(PROTOCOL_VOCABULARY_IRI)
+COMPILER_ONTOLOGY_IRI = ONTOLOGY_IRI + "compiler/"
+COMPILER_VOCABULARY_IRI = COMPILER_ONTOLOGY_IRI + "#"
+CCO = Namespace(COMPILER_VOCABULARY_IRI)
 DECISION_ONTOLOGY_IRI = ONTOLOGY_IRI + "decision/"
 DECISION_VOCABULARY_IRI = DECISION_ONTOLOGY_IRI + "#"
 SDO = Namespace(DECISION_VOCABULARY_IRI)
@@ -60,6 +76,9 @@ RESOURCE_PUBLICATIONS = {
 }
 ONTOLOGY_PUBLICATIONS = (
     (ONTOLOGY, ONTOLOGY_IRI, VOCABULARY_IRI),
+    (SQL_ONTOLOGY, SQL_ONTOLOGY_IRI, SQL_VOCABULARY_IRI),
+    (PROTOCOL_ONTOLOGY, PROTOCOL_ONTOLOGY_IRI, PROTOCOL_VOCABULARY_IRI),
+    (COMPILER_ONTOLOGY, COMPILER_ONTOLOGY_IRI, COMPILER_VOCABULARY_IRI),
     (DECISION_ONTOLOGY, DECISION_ONTOLOGY_IRI, DECISION_VOCABULARY_IRI),
     (FUNDING_ONTOLOGY, FUNDING_ONTOLOGY_IRI, FUNDING_VOCABULARY_IRI),
     (CLOUD_ONTOLOGY, CLOUD_ONTOLOGY_IRI, CLOUD_VOCABULARY_IRI),
@@ -69,13 +88,14 @@ ONTOLOGY_PUBLICATIONS = (
 @contextmanager
 def site_output(output: Path):
     """Point derived artifacts at a private candidate, never at live preview files."""
-    global OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT
+    global OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT, COMPILER_REFERENCE_OUTPUT
     global FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT
     previous = (OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT,
-                FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT)
+                FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT, COMPILER_REFERENCE_OUTPUT)
     OUTPUT = output
     GRAPH_OUTPUT = output / "graph"
     REFERENCE_OUTPUT = output / "ontology"
+    COMPILER_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "compiler"
     DECISION_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "decision"
     FUNDING_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "funding"
     CLOUD_REFERENCE_OUTPUT = REFERENCE_OUTPUT / "cloud"
@@ -84,10 +104,19 @@ def site_output(output: Path):
         yield
     finally:
         (OUTPUT, GRAPH_OUTPUT, REFERENCE_OUTPUT, DECISION_REFERENCE_OUTPUT,
-         FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT) = previous
+         FUNDING_REFERENCE_OUTPUT, CLOUD_REFERENCE_OUTPUT, SQL_API_OUTPUT, COMPILER_REFERENCE_OUTPUT) = previous
+
+
+def product_ontology_roots() -> list[Path]:
+    return sorted(path.parent for path in (ROOT / "products").glob("*/specs"))
+
+
+def dependency_analysis() -> dict:
+    return read_dependencies(ONTOLOGY_PUBLICATIONS, product_ontology_roots())
 
 
 def validate_publication_sources() -> None:
+    dependency_analysis()
     definitions = set()
     unlabeled = []
     for ontology_path, ontology_iri, vocabulary_iri in ONTOLOGY_PUBLICATIONS:
@@ -293,7 +322,7 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
     """Project explicit instance/SHACL relations for the Relationship Graph."""
     generated_terms: set[URIRef] = set()
     endpoints = set(graph.subjects(RDF.type, SCO.GetEndpoint))
-    tables = set(graph.subjects(RDF.type, SCO.SqlTable))
+    tables = set(graph.subjects(RDF.type, SQLO.SqlTable))
 
     for endpoint in endpoints:
         if not isinstance(endpoint, URIRef):
@@ -316,7 +345,7 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
                         label_de="liefert",
                     )
                 )
-        for table in graph.objects(endpoint, SCO.readsFrom):
+        for table in graph.objects(endpoint, SQLO.readsFrom):
             if isinstance(table, URIRef):
                 generated_terms.add(
                     _add_visualization_edge(
@@ -336,7 +365,7 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
         graph.add((table, RDFS.label, Literal("articles table", lang="en")))
         graph.add((table, RDFS.label, Literal("Artikeltabelle", lang="de")))
         generated_terms.add(table)
-        for shape in graph.objects(table, SCO.stores):
+        for shape in graph.objects(table, SQLO.stores):
             if isinstance(shape, URIRef):
                 generated_terms.update(_project_shape(graph, shape))
                 generated_terms.add(
@@ -352,6 +381,24 @@ def _add_sql_api_visualization_projection(graph: Graph) -> set[URIRef]:
     return generated_terms
 
 
+def compiler_term_migrations() -> dict[str, str]:
+    graph = Graph().parse(COMPILER_ONTOLOGY, format="turtle")
+    return {VOCABULARY_IRI + str(term)[len(COMPILER_VOCABULARY_IRI):]: str(term)
+            for term in sorted(set(graph.subjects()), key=str)
+            if isinstance(term, URIRef) and str(term).startswith(COMPILER_VOCABULARY_IRI)}
+
+
+def term_migrations() -> dict[str, str]:
+    result = compiler_term_migrations()
+    for source, _iri, namespace in ONTOLOGY_PUBLICATIONS:
+        if source not in (SQL_ONTOLOGY, PROTOCOL_ONTOLOGY):
+            continue
+        graph = Graph().parse(source, format="turtle")
+        result.update({VOCABULARY_IRI + str(term)[len(namespace):]: str(term)
+                       for term in set(graph.subjects()) if str(term).startswith(namespace)})
+    return dict(sorted(result.items()))
+
+
 def build_relationship_graph(sql_api_graph: Graph | None = None) -> None:
     """Refresh just the ontology viewer for the local authoring loop."""
     if sql_api_graph is None:
@@ -359,6 +406,16 @@ def build_relationship_graph(sql_api_graph: Graph | None = None) -> None:
         for source in sorted((ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")):
             sql_api_graph.parse(source, format="turtle")
         _add_sql_api_visualization_projection(sql_api_graph)
+    catalog = Graph()
+    publications = {}
+    for path, _iri, namespace in ONTOLOGY_PUBLICATIONS:
+        module = Graph().parse(path, format='turtle')
+        catalog += module
+        key = 'contract' if path == ONTOLOGY else str(_iri).rstrip('/').rsplit('/', 1)[-1]
+        publications[namespace] = {'key': key,
+            'title': next(str(value) for value in module.objects(URIRef(_iri), DCTERMS.title)
+                          if value.language == 'en'),
+            'referenceHref': '../ontology/' + (key + '/' if key != 'contract' else '')}
     datasets = [
         build_dataset(
             Graph().parse(path, format="turtle"),
@@ -367,11 +424,25 @@ def build_relationship_graph(sql_api_graph: Graph | None = None) -> None:
             namespace=namespace,
             source_href=source_href,
             reference_href=reference_href,
+            context_graph=catalog,
+            publications=publications,
         )
         for path, key, title, namespace, source_href, reference_href in (
             (
-                ONTOLOGY, "contract", "SHACL Contract Ontology", VOCABULARY_IRI,
+                ONTOLOGY, "contract", "HTTP API Ontology", VOCABULARY_IRI,
                 "../ontology/ontology.ttl", "../ontology/",
+            ),
+            (
+                SQL_ONTOLOGY, "sql", "SQL Storage Ontology", SQL_VOCABULARY_IRI,
+                "../ontology/sql/ontology.ttl", "../ontology/sql/",
+            ),
+            (
+                PROTOCOL_ONTOLOGY, "decision-protocol", "Decision Protocol Ontology", PROTOCOL_VOCABULARY_IRI,
+                "../ontology/decision-protocol/ontology.ttl", "../ontology/decision-protocol/",
+            ),
+            (
+                COMPILER_ONTOLOGY, "compiler", "Compiler Contract Ontology", COMPILER_VOCABULARY_IRI,
+                "../ontology/compiler/ontology.ttl", "../ontology/compiler/",
             ),
             (
                 DECISION_ONTOLOGY, "decision", "Decision and Obligation Core Ontology",
@@ -410,11 +481,16 @@ def build_relationship_graph(sql_api_graph: Graph | None = None) -> None:
     }
     if not expected_sql_edges <= sql_edges:
         raise ValueError("SQL API Relationship Graph is missing its Shape chain")
-    write_graph_site(OUTPUT / "ontologies", datasets[:-1])
+    migrations = term_migrations()
+    for dataset in datasets[:-1]:
+        dataset["legacyTerms"] = {old: new for old, new in migrations.items()
+                                  if new.startswith(dataset["namespace"])}
+    write_graph_site(OUTPUT / "ontologies", [dependency_dataset(dependency_analysis()), *datasets[:-1]])
     example = dict(datasets[-1])
     example["sourceHref"] = "../../../resources/sql-api/resources.ttl"
     example["referenceHref"] = "../../../examples/sql-api/"
-    write_graph_site(OUTPUT / "tutorials" / "sql-api" / "graph", [example])
+    write_graph_site(OUTPUT / "tutorials" / "sql-api" / "graph", [example],
+                     overview_href="../../../ontologies/overview.html")
     _write_graph_redirect()
 
 
@@ -429,19 +505,26 @@ def build_site() -> None:
     output.mkdir(parents=True, exist_ok=True)
     publications = {
         VOCABULARY_IRI: "ontology/",
+        SQL_VOCABULARY_IRI: "ontology/sql/",
+        PROTOCOL_VOCABULARY_IRI: "ontology/decision-protocol/",
+        COMPILER_VOCABULARY_IRI: "ontology/compiler/",
         DECISION_VOCABULARY_IRI: "ontology/decision/",
         FUNDING_VOCABULARY_IRI: "ontology/funding/",
         CLOUD_VOCABULARY_IRI: "ontology/cloud/",
         str(ARTICLE): "examples/sql-api/",
     }
     for source, reference, title, namespace, landing, key in (
-        (ONTOLOGY, REFERENCE_OUTPUT, "SHACL Contract Ontology", VOCABULARY_IRI, "../", "contract"),
+        (ONTOLOGY, REFERENCE_OUTPUT, "HTTP API Ontology", VOCABULARY_IRI, "../", "contract"),
+        (SQL_ONTOLOGY, REFERENCE_OUTPUT / "sql", "SQL Storage Ontology", SQL_VOCABULARY_IRI, "../../", "sql"),
+        (PROTOCOL_ONTOLOGY, REFERENCE_OUTPUT / "decision-protocol", "Decision Protocol Ontology", PROTOCOL_VOCABULARY_IRI, "../../", "decision-protocol"),
+        (COMPILER_ONTOLOGY, COMPILER_REFERENCE_OUTPUT, "Compiler Contract Ontology", COMPILER_VOCABULARY_IRI, "../../", "compiler"),
         (DECISION_ONTOLOGY, DECISION_REFERENCE_OUTPUT, "Decision and Obligation Core Ontology", DECISION_VOCABULARY_IRI, "../../", "decision"),
         (FUNDING_ONTOLOGY, FUNDING_REFERENCE_OUTPUT, "Funding Domain Ontology", FUNDING_VOCABULARY_IRI, "../../", "funding"),
         (CLOUD_ONTOLOGY, CLOUD_REFERENCE_OUTPUT, "Cloud Compliance Domain Ontology", CLOUD_VOCABULARY_IRI, "../../", "cloud"),
     ):
         write_reference(Graph().parse(source, format="turtle"), reference, title=title,
-                        namespace=namespace, graph_key=key, site_root_href=landing, publications=publications)
+                        namespace=namespace, graph_key=key, site_root_href=landing, publications=publications,
+                        moved_terms=term_migrations() if key == "contract" else None)
     _publish_examples()
     sql_api = Graph()
     for source in sorted((ROOT / "products" / "sql_api_example" / "specs").glob("*.ttl")):
@@ -451,6 +534,10 @@ def build_site() -> None:
                     graph_key="sql-api", site_root_href="../../", publications=publications,
                     source_href="../../resources/sql-api/resources.ttl", derived=True)
     build_relationship_graph(sql_api)
+    (OUTPUT / "ontologies").mkdir(parents=True, exist_ok=True)
+    (OUTPUT / "ontologies" / "dependencies.json").write_text(
+        json.dumps(dependency_analysis(), ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8", newline="\n")
     (OUTPUT / ".nojekyll").write_text("", encoding="utf-8")
 
 

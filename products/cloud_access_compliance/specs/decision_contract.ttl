@@ -1,3 +1,4 @@
+@prefix dpo: <https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#> .
 @prefix cloudiam: <https://arturmiller.github.io/spec-compiler/resources/cloud/privileged-access/#> .
 @prefix cloud: <https://arturmiller.github.io/spec-compiler/ontology/cloud/#> .
 @prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .
@@ -10,8 +11,8 @@
 cloudiam:ComplianceEvaluator a schema:SoftwareApplication ;
     dcterms:title "Cloud privileged-access compliance evaluator"@en ;
     dcterms:title "Cloud-Compliance-Prüfung für privilegierte Zugriffe"@de ;
-    dcterms:conformsTo sco:DecisionProtocolV1 ;
-    sco:implementsDecisionContract cloudiam:PrivilegedAccessComplianceDecision .
+    dcterms:conformsTo dpo:DecisionProtocolV1 ;
+    dpo:implementsDecisionContract cloudiam:PrivilegedAccessComplianceDecision .
 
 cloudiam:PrivilegedAccessComplianceDecision
     a sdo:DecisionContract, cloud:PrivilegedAccessComplianceDecision ;
@@ -53,7 +54,7 @@ cloudiam:ObligationUniqueOrganizationalUsers a sdo:Obligation ;
 
 cloudiam:ConditionUniqueOrganizationalUsers a sdo:Condition ;
     sdo:factProperty cloud:organizationalUsersUniquelyIdentified ;
-    sco:inputJsonPointer "/case/system/identity/organizationalUsersUniquelyIdentified" ;
+    dpo:inputJsonPointer "/case/system/identity/organizationalUsersUniquelyIdentified" ;
     sdo:expectedBoolean true .
 
 cloudiam:QuestionUniqueOrganizationalUsers a sdo:FactQuestion ;
@@ -71,7 +72,7 @@ cloudiam:ObligationPrivilegedMfa a sdo:Obligation ;
 
 cloudiam:ConditionPrivilegedMfa a sdo:Condition ;
     sdo:factProperty cloud:privilegedAccessUsesMfa ;
-    sco:inputJsonPointer "/case/system/identity/privilegedAccessUsesMfa" ;
+    dpo:inputJsonPointer "/case/system/identity/privilegedAccessUsesMfa" ;
     sdo:expectedBoolean true .
 
 cloudiam:QuestionPrivilegedMfa a sdo:FactQuestion ;
@@ -87,5 +88,5 @@ cloudiam:MfaMechanismTestRequirement a sdo:EvidenceRequirement ;
 
 cloudiam:ConditionHasPrivilegedAccounts a sdo:Condition ;
     sdo:factProperty cloud:hasPrivilegedAccounts ;
-    sco:inputJsonPointer "/case/system/identity/hasPrivilegedAccounts" ;
+    dpo:inputJsonPointer "/case/system/identity/hasPrivilegedAccounts" ;
     sdo:expectedBoolean true .

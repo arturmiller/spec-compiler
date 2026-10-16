@@ -1,0 +1,151 @@
+@prefix cco: <https://arturmiller.github.io/spec-compiler/ontology/compiler/#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix vann: <http://purl.org/vocab/vann/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://arturmiller.github.io/spec-compiler/ontology/compiler/>
+    a owl:Ontology ;
+    dcterms:title "Compiler Contract Ontology"@en ;
+    dcterms:title "Compiler-Vertragsontologie"@de ;
+    dcterms:description "Vocabulary for compiler products, transformation contracts, conformance fixtures, and separately described bootstrap provenance."@en ;
+    dcterms:description "Vokabular für Compilerprodukte, Transformationsverträge, Konformitätstestfälle und getrennt beschriebene Bootstrap-Herkunft."@de ;
+    dcterms:creator <https://github.com/arturmiller> ;
+    dcterms:source <https://github.com/arturmiller/spec-compiler> ;
+    vann:preferredNamespacePrefix "cco" ;
+    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/compiler/#" ;
+    owl:versionInfo "0.2.0-experimental" .
+
+cco:TransformationContract
+    a owl:Class ;
+    rdfs:label "Transformation contract"@en ;
+    rdfs:label "Transformationsvertrag"@de ;
+    rdfs:comment "Versioned description of accepted inputs, emitted outputs, rejection behavior, and result equivalence."@en ;
+    rdfs:comment "Versionierter Vertrag über akzeptierte Eingaben, erzeugte Ausgaben, Ablehnungsfälle und Ergebnisgleichheit eines Compilerprodukts."@de .
+
+cco:BootstrapProcess
+    a owl:Class ;
+    rdfs:label "Bootstrap process"@en ;
+    rdfs:label "Bootstrap-Prozess"@de ;
+    rdfs:comment "Provenance for deriving a candidate implementation from an explicitly identified seed implementation."@en ;
+    rdfs:comment "Herkunft einer abgeleiteten Implementierung aus einer ausdrücklich benannten Ausgangsimplementierung; getrennt vom Transformationsvertrag."@de .
+
+cco:EvolutionStrategy
+    a owl:Class ;
+    rdfs:label "Evolution strategy"@en ;
+    rdfs:label "Evolutionsstrategie"@de .
+
+cco:ModifyExistingImplementation
+    a owl:NamedIndividual, cco:EvolutionStrategy ;
+    rdfs:label "Modify existing implementation"@en ;
+    rdfs:label "Bestehende Implementierung verändern"@de .
+
+cco:CompilerProtocolV1
+    a owl:NamedIndividual, dcterms:Standard ;
+    rdfs:label "Compiler Protocol v1"@en ;
+    rdfs:label "Compilerprotokoll v1"@de ;
+    rdfs:comment "Manifest-driven command-line protocol for invoking a compiler on a Product Bundle."@en .
+
+cco:implementsContract
+    a owl:ObjectProperty ;
+    rdfs:label "implements contract"@en ;
+    rdfs:label "implementiert Vertrag"@de ;
+    rdfs:domain schema:SoftwareApplication ;
+    rdfs:range cco:TransformationContract .
+
+cco:bootstrapsProduct
+    a owl:ObjectProperty ;
+    rdfs:label "bootstraps product"@en ;
+    rdfs:label "führt Bootstrap für Produkt durch"@de ;
+    rdfs:domain cco:BootstrapProcess ;
+    rdfs:range schema:SoftwareApplication .
+
+cco:seedImplementation
+    a owl:ObjectProperty ;
+    rdfs:label "seed implementation"@en ;
+    rdfs:label "Ausgangsimplementierung"@de ;
+    rdfs:domain cco:BootstrapProcess ;
+    rdfs:range schema:SoftwareApplication .
+
+cco:evolutionStrategy
+    a owl:ObjectProperty ;
+    rdfs:label "evolution strategy"@en ;
+    rdfs:label "Evolutionsstrategie"@de ;
+    rdfs:domain cco:BootstrapProcess ;
+    rdfs:range cco:EvolutionStrategy .
+
+cco:inputSpecPattern
+    a owl:DatatypeProperty ;
+    rdfs:label "input specification pattern"@en ;
+    rdfs:label "Eingabespezifikationsmuster"@de ;
+    rdfs:domain cco:TransformationContract ;
+    rdfs:range xsd:string .
+
+cco:CompilerConformanceFixture
+    a owl:Class ;
+    rdfs:label "compiler conformance fixture"@en ;
+    rdfs:label "Compiler-Konformitäts-Fixture"@de .
+
+cco:conformanceFixture
+    a owl:ObjectProperty ;
+    rdfs:label "has conformance fixture"@en ;
+    rdfs:label "hat Konformitäts-Fixture"@de ;
+    rdfs:domain cco:TransformationContract ;
+    rdfs:range cco:CompilerConformanceFixture .
+
+cco:fixtureProduct
+    a owl:DatatypeProperty ;
+    rdfs:label "fixture product"@en ;
+    rdfs:label "Fixture-Produkt"@de ;
+    rdfs:domain cco:CompilerConformanceFixture ;
+    rdfs:range xsd:string .
+
+cco:expectsArtifact
+    a owl:DatatypeProperty ;
+    rdfs:label "expects artifact"@en ;
+    rdfs:label "erwartet Artefakt"@de ;
+    rdfs:domain cco:CompilerConformanceFixture ;
+    rdfs:range xsd:string .
+
+cco:validFixtureProduct
+    a owl:DatatypeProperty ;
+    owl:deprecated true ;
+    rdfs:comment "Retired: unused by the compiler. Use conformanceFixture with fixtureProduct and expectsArtifact; authored uses are rejected by Compiler Vocabulary Retirement v1."@en ;
+    rdfs:comment "Veraltet und ohne Verarbeitung: Stattdessen conformanceFixture mit fixtureProduct und expectsArtifact verwenden. Compiler Vocabulary Retirement v1 lehnt Produktaussagen mit diesem Begriff ab."@de ;
+    rdfs:label "valid fixture product"@en ;
+    rdfs:label "gültiges Fixture-Produkt"@de ;
+    rdfs:domain cco:TransformationContract ;
+    rdfs:range xsd:string .
+
+cco:generatesArtifact
+    a owl:DatatypeProperty ;
+    owl:deprecated true ;
+    rdfs:comment "Retired: unused by the compiler. State expectsArtifact on an explicit conformanceFixture; authored uses are rejected by Compiler Vocabulary Retirement v1."@en ;
+    rdfs:comment "Veraltet und ohne Verarbeitung: Erwartete Ausgaben über expectsArtifact an einer expliziten conformanceFixture angeben. Compiler Vocabulary Retirement v1 lehnt Produktaussagen mit diesem Begriff ab."@de ;
+    rdfs:label "generates artifact"@en ;
+    rdfs:label "generiert Artefakt"@de ;
+    rdfs:domain cco:TransformationContract ;
+    rdfs:range xsd:string .
+
+cco:rejectsMissingSpecs
+    a owl:DatatypeProperty ;
+    rdfs:label "rejects missing specifications"@en ;
+    rdfs:label "lehnt fehlende Spezifikationen ab"@de ;
+    rdfs:domain cco:TransformationContract ;
+    rdfs:range xsd:boolean .
+
+cco:deterministicOutput
+    a owl:DatatypeProperty ;
+    rdfs:label "has deterministic output"@en ;
+    rdfs:label "hat deterministische Ausgabe"@de ;
+    rdfs:domain cco:TransformationContract ;
+    rdfs:range xsd:boolean .
+
+cco:generatesImplementationArtifact
+    a owl:DatatypeProperty ;
+    rdfs:label "generates implementation artifact"@en ;
+    rdfs:label "generiert Implementierungsartefakt"@de ;
+    rdfs:domain cco:BootstrapProcess ;
+    rdfs:range xsd:string .

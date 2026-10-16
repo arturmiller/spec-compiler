@@ -330,8 +330,32 @@ def diagram_sources() -> dict[str, Path]:
             raise ValueError(f"Unknown diagram type: {source}")
         if data.get("meta", {}).get("quality_profile") != "showcase":
             raise ValueError(f"Documentation diagrams require the showcase profile: {source}")
-        result[source.stem] = source
+        if source.stem == "ontology-dependencies":
+            dependencies, _tables = ontology_dependency_views()
+            if __package__:
+                from .ontology_dependencies import dependency_diagram
+            else:
+                from ontology_dependencies import dependency_diagram
+            model = dependency_diagram(data, dependencies)
+            payload = json.dumps(model, ensure_ascii=False, indent=2) + "\n"
+            derived = CACHE / "derived-models" / hashlib.sha256(payload.encode()).hexdigest() / source.name
+            derived.parent.mkdir(parents=True, exist_ok=True)
+            derived.write_text(payload, encoding="utf-8", newline="\n")
+            result[source.stem] = derived
+        else:
+            result[source.stem] = source
     return result
+
+
+def ontology_dependency_views():
+    if __package__:
+        from .build_ontology_site import ONTOLOGY_PUBLICATIONS
+        from .ontology_dependencies import read_dependencies, dependency_tables
+    else:
+        from build_ontology_site import ONTOLOGY_PUBLICATIONS
+        from ontology_dependencies import read_dependencies, dependency_tables
+    analysis = read_dependencies(ONTOLOGY_PUBLICATIONS)
+    return analysis, dependency_tables(analysis)
 
 
 def source_target(source: Path, value: str, document_map: dict[Path, Document]) -> str | None:
@@ -539,6 +563,9 @@ def compile_documents(stage: Path) -> list[dict]:
             target.write_text(redirect_page(document.route, document.parsed.redirect), encoding="utf-8")
             continue
         markup = document.markup
+        if 'data-ontology-dependencies' in markup:
+            _analysis, tables = ontology_dependency_views()
+            markup = re.sub(r'<div\b[^>]*data-ontology-dependencies[^>]*></div>', lambda _: tables, markup)
         for name in document.parsed.diagrams:
             iframe_url = relative_url(document.route, "diagrams/" + name + ".html")
             figure = (
