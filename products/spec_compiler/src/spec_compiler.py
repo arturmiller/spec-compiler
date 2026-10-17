@@ -6,13 +6,18 @@ import argparse
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from functools import wraps
+import hashlib
+import html
+from importlib.metadata import version as package_version
 import json
 from pathlib import Path
 from pprint import pformat
 import re
 
 from jsonschema import Draft202012Validator, SchemaError
-from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib.compare import to_canonical_graph
 from rdflib.namespace import DCTERMS, OWL, RDFS, SH, VANN, XSD
 
 ROOT = Path(__file__).parents[1]
@@ -27,6 +32,7 @@ VERSION_SELECTION_CONVENTIONS_VERSION = 1
 OBLIGATION_EVALUATION_CONVENTIONS_VERSION = 1
 HTTP_CONTRACT_CONVENTIONS_VERSION = 1
 ONTOLOGY_MODULE_CONVENTIONS_VERSION = 1
+PROCESSING_REPORT_CONVENTIONS_VERSION = 1
 # G1 receives an exact local RDF catalog snapshot, not a network resolver.
 PACKAGED_ONTOLOGIES = {'cloud-compliance.ttl': '@prefix cloud: <https://arturmiller.github.io/spec-compiler/ontology/cloud/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/cloud/>\n    a owl:Ontology ;\n    dcterms:title "Cloud Compliance Domain Ontology"@en ;\n    dcterms:title "Domänenontologie für Cloud-Compliance"@de ;\n    dcterms:description "Domain vocabulary for bounded cloud-system compliance decisions."@en ;\n    dcterms:description "Domänenvokabular für abgegrenzte Compliance-Entscheidungen über Cloud-Systeme."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "cloud" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/cloud/#" ;\n    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;\n    owl:versionInfo "0.2.0-experimental" .\n\ncloud:CloudSystem a owl:Class ;\n    rdfs:label "Cloud system"@en ;\n    rdfs:label "Cloud-System"@de ;\n    rdfs:comment "Das im konkreten Fall betrachtete Cloud-System mit den gelieferten Angaben zu Identifikation und privilegierten Zugriffen. Es ist nicht die Prüfsoftware und seine Angaben sind keine automatische Konfigurationsprüfung."@de .\n\ncloud:hasSystem a owl:ObjectProperty ;\n    rdfs:label "has assessed cloud system"@en, "hat betrachtetes Cloud-System"@de ;\n    rdfs:comment "Relates the Case to the Cloud System whose supplied profile is assessed; the reusable Decision Contract does not identify one concrete deployed system."@en ;\n    rdfs:domain sdo:Case ; rdfs:range cloud:CloudSystem .\n\ncloud:PrivilegedAccessComplianceDecision a owl:Class ;\n    rdfs:subClassOf sdo:DecisionContract ;\n    rdfs:label "Privileged-access compliance decision"@en ;\n    rdfs:label "Compliance-Entscheidung für privilegierte Zugriffe"@de .\n\ncloud:AuthenticationMechanismTestResult a owl:Class ;\n    rdfs:subClassOf sdo:Evidence ;\n    rdfs:label "Authentication-mechanism test result"@en ;\n    rdfs:label "Testergebnis des Authentisierungsmechanismus"@de .\n\ncloud:Satisfied a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "satisfied"@en ;\n    rdfs:label "erfüllt"@de ;\n    sdo:outcomeCode "satisfied" .\n\ncloud:Violated a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "violated"@en ;\n    rdfs:label "verletzt"@de ;\n    sdo:outcomeCode "violated" .\n\ncloud:Unknown a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "unknown"@en ;\n    rdfs:label "unbestimmt"@de ;\n    sdo:outcomeCode "unknown" .\n\ncloud:organizationalUsersUniquelyIdentified a owl:DatatypeProperty ;\n    rdfs:label "organizational users are uniquely identified"@en ;\n    rdfs:label "Organisationsbenutzende werden eindeutig identifiziert"@de ;\n    rdfs:domain cloud:CloudSystem ;\n    rdfs:range xsd:boolean .\n\ncloud:privilegedAccessUsesMfa a owl:DatatypeProperty ;\n    rdfs:label "privileged access uses multi-factor authentication"@en ;\n    rdfs:label "privilegierter Zugriff nutzt Mehrfaktorauthentisierung"@de ;\n    rdfs:domain cloud:CloudSystem ;\n    rdfs:range xsd:boolean .\n\ncloud:hasPrivilegedAccounts a owl:DatatypeProperty ;\n    rdfs:label "has privileged accounts"@en ;\n    rdfs:label "hat privilegierte Konten"@de ;\n    rdfs:domain cloud:CloudSystem ;\n    rdfs:range xsd:boolean .\n', 'compiler-contract.ttl': '@prefix cco: <https://arturmiller.github.io/spec-compiler/ontology/compiler/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/compiler/>\n    a owl:Ontology ;\n    dcterms:title "Compiler Contract Ontology"@en ;\n    dcterms:title "Compiler-Vertragsontologie"@de ;\n    dcterms:description "Vocabulary for compiler products, transformation contracts, conformance fixtures, and separately described bootstrap provenance."@en ;\n    dcterms:description "Vokabular für Compilerprodukte, Transformationsverträge, Konformitätstestfälle und getrennt beschriebene Bootstrap-Herkunft."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "cco" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/compiler/#" ;\n    owl:versionInfo "0.2.0-experimental" .\n\ncco:TransformationContract\n    a owl:Class ;\n    rdfs:label "Transformation contract"@en ;\n    rdfs:label "Transformationsvertrag"@de ;\n    rdfs:comment "Versioned description of accepted inputs, emitted outputs, rejection behavior, and result equivalence."@en ;\n    rdfs:comment "Versionierter Vertrag über akzeptierte Eingaben, erzeugte Ausgaben, Ablehnungsfälle und Ergebnisgleichheit eines Compilerprodukts."@de .\n\ncco:BootstrapProcess\n    a owl:Class ;\n    rdfs:label "Bootstrap process"@en ;\n    rdfs:label "Bootstrap-Prozess"@de ;\n    rdfs:comment "Provenance for deriving a candidate implementation from an explicitly identified seed implementation."@en ;\n    rdfs:comment "Herkunft einer abgeleiteten Implementierung aus einer ausdrücklich benannten Ausgangsimplementierung; getrennt vom Transformationsvertrag."@de .\n\ncco:EvolutionStrategy\n    a owl:Class ;\n    rdfs:label "Evolution strategy"@en ;\n    rdfs:label "Evolutionsstrategie"@de .\n\ncco:ModifyExistingImplementation\n    a owl:NamedIndividual, cco:EvolutionStrategy ;\n    rdfs:label "Modify existing implementation"@en ;\n    rdfs:label "Bestehende Implementierung verändern"@de .\n\ncco:CompilerProtocolV1\n    a owl:NamedIndividual, dcterms:Standard ;\n    rdfs:label "Compiler Protocol v1"@en ;\n    rdfs:label "Compilerprotokoll v1"@de ;\n    rdfs:comment "Manifest-driven command-line protocol for invoking a compiler on a Product Bundle."@en .\n\ncco:implementsContract\n    a owl:ObjectProperty ;\n    rdfs:label "implements contract"@en ;\n    rdfs:label "implementiert Vertrag"@de ;\n    rdfs:domain schema:SoftwareApplication ;\n    rdfs:range cco:TransformationContract .\n\ncco:bootstrapsProduct\n    a owl:ObjectProperty ;\n    rdfs:label "bootstraps product"@en ;\n    rdfs:label "führt Bootstrap für Produkt durch"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range schema:SoftwareApplication .\n\ncco:seedImplementation\n    a owl:ObjectProperty ;\n    rdfs:label "seed implementation"@en ;\n    rdfs:label "Ausgangsimplementierung"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range schema:SoftwareApplication .\n\ncco:evolutionStrategy\n    a owl:ObjectProperty ;\n    rdfs:label "evolution strategy"@en ;\n    rdfs:label "Evolutionsstrategie"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range cco:EvolutionStrategy .\n\ncco:inputSpecPattern\n    a owl:DatatypeProperty ;\n    rdfs:label "input specification pattern"@en ;\n    rdfs:label "Eingabespezifikationsmuster"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:string .\n\ncco:CompilerConformanceFixture\n    a owl:Class ;\n    rdfs:label "compiler conformance fixture"@en ;\n    rdfs:label "Compiler-Konformitäts-Fixture"@de .\n\ncco:conformanceFixture\n    a owl:ObjectProperty ;\n    rdfs:label "has conformance fixture"@en ;\n    rdfs:label "hat Konformitäts-Fixture"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range cco:CompilerConformanceFixture .\n\ncco:fixtureProduct\n    a owl:DatatypeProperty ;\n    rdfs:label "fixture product"@en ;\n    rdfs:label "Fixture-Produkt"@de ;\n    rdfs:domain cco:CompilerConformanceFixture ;\n    rdfs:range xsd:string .\n\ncco:expectsArtifact\n    a owl:DatatypeProperty ;\n    rdfs:label "expects artifact"@en ;\n    rdfs:label "erwartet Artefakt"@de ;\n    rdfs:domain cco:CompilerConformanceFixture ;\n    rdfs:range xsd:string .\n\ncco:validFixtureProduct\n    a owl:DatatypeProperty ;\n    owl:deprecated true ;\n    rdfs:comment "Retired: unused by the compiler. Use conformanceFixture with fixtureProduct and expectsArtifact; authored uses are rejected by Compiler Vocabulary Retirement v1."@en ;\n    rdfs:comment "Veraltet und ohne Verarbeitung: Stattdessen conformanceFixture mit fixtureProduct und expectsArtifact verwenden. Compiler Vocabulary Retirement v1 lehnt Produktaussagen mit diesem Begriff ab."@de ;\n    rdfs:label "valid fixture product"@en ;\n    rdfs:label "gültiges Fixture-Produkt"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:string .\n\ncco:generatesArtifact\n    a owl:DatatypeProperty ;\n    owl:deprecated true ;\n    rdfs:comment "Retired: unused by the compiler. State expectsArtifact on an explicit conformanceFixture; authored uses are rejected by Compiler Vocabulary Retirement v1."@en ;\n    rdfs:comment "Veraltet und ohne Verarbeitung: Erwartete Ausgaben über expectsArtifact an einer expliziten conformanceFixture angeben. Compiler Vocabulary Retirement v1 lehnt Produktaussagen mit diesem Begriff ab."@de ;\n    rdfs:label "generates artifact"@en ;\n    rdfs:label "generiert Artefakt"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:string .\n\ncco:rejectsMissingSpecs\n    a owl:DatatypeProperty ;\n    rdfs:label "rejects missing specifications"@en ;\n    rdfs:label "lehnt fehlende Spezifikationen ab"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:boolean .\n\ncco:deterministicOutput\n    a owl:DatatypeProperty ;\n    rdfs:label "has deterministic output"@en ;\n    rdfs:label "hat deterministische Ausgabe"@de ;\n    rdfs:domain cco:TransformationContract ;\n    rdfs:range xsd:boolean .\n\ncco:generatesImplementationArtifact\n    a owl:DatatypeProperty ;\n    rdfs:label "generates implementation artifact"@en ;\n    rdfs:label "generiert Implementierungsartefakt"@de ;\n    rdfs:domain cco:BootstrapProcess ;\n    rdfs:range xsd:string .\n', 'decision-obligation.ttl': '@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/decision/>\n    a owl:Ontology ;\n    dcterms:title "Decision and Obligation Core Ontology"@en ;\n    dcterms:title "Kernontologie für Entscheidungen und Verpflichtungen"@de ;\n    dcterms:description "Domain-independent vocabulary for source-backed decisions and obligations."@en ;\n    dcterms:description "Domänenunabhängiges Vokabular für quellengestützte Entscheidungen und Verpflichtungen."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "sdo" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision/#" ;\n    owl:versionInfo "0.5.0-experimental" .\n\nsdo:DecisionContract a owl:Class ;\n    rdfs:label "Decision contract"@en ;\n    rdfs:label "Entscheidungsvertrag"@de ;\n    rdfs:comment "Versioned specification of a decision question, accepted Case facts, candidate Rule Set Versions, outcomes, and observable result obligations."@en .\n\nsdo:RuleSet a owl:Class ;\n    rdfs:label "Rule set"@en ;\n    rdfs:label "Regelwerk"@de .\n\nsdo:RuleSetVersion a owl:Class ;\n    rdfs:subClassOf [ a owl:Restriction ;\n        owl:onProperty dcterms:isVersionOf ; owl:allValuesFrom sdo:RuleSet ] ;\n    rdfs:label "Rule set version"@en ;\n    rdfs:label "Regelwerkversion"@de .\n\nsdo:Rule a owl:Class ;\n    rdfs:label "Rule"@en ;\n    rdfs:label "Regel"@de .\n\nsdo:Condition a owl:Class ;\n    rdfs:label "Condition"@en ;\n    rdfs:label "Bedingung"@de .\n\nsdo:Case a owl:Class ;\n    rdfs:label "Case"@en ;\n    rdfs:label "Fall"@de .\n\nsdo:Fact a owl:Class ;\n    rdfs:label "Fact"@en ;\n    rdfs:label "Fallsachverhalt"@de .\n\nsdo:CaseFact a owl:Class ;\n    rdfs:subClassOf sdo:Fact ;\n    rdfs:label "Case fact"@en ;\n    rdfs:label "Fallsachverhalt"@de .\n\nsdo:FactGap a owl:Class ;\n    rdfs:label "Fact gap"@en ;\n    rdfs:label "Sachverhaltslücke"@de ;\n    rdfs:comment "Absence of a Fact required to evaluate a Condition; it is not a false Fact."@en ;\n    rdfs:comment "Im Entscheidungsergebnis festgehaltene fehlende Eingabe für eine bestimmte Bedingung. Eine Lücke ist kein falscher Sachverhalt und kann auch neben einem bereits negativen Ausgang bestehen."@de .\n\nsdo:FactQuestion a owl:Class ;\n    rdfs:label "Fact question"@en ;\n    rdfs:label "Sachverhaltsfrage"@de ;\n    rdfs:comment "An authored prompt that can elicit one Fact required to evaluate a Condition."@en .\n\nsdo:DecisionResult a owl:Class ;\n    rdfs:label "Decision result"@en ;\n    rdfs:label "Entscheidungsergebnis"@de ;\n    rdfs:comment "The result of evaluating one request: identifies the contract, selected rule set version and outcome, and contains condition evaluations, fact gaps and obligation evaluations. It is not merely the outcome code and does not prescribe a serialization."@en ;\n    rdfs:comment "Ergebnis einer konkreten Anfrage mit Entscheidungsvertrag, gewählter Regelwerkversion und Ausgang sowie Bedingungsauswertungen, Sachverhaltslücken und Verpflichtungsauswertungen. Es ist mehr als der Ausgang allein und legt kein Übertragungsformat fest."@de .\n\nsdo:DecisionOutcome a owl:Class ;\n    rdfs:label "Decision outcome"@en ;\n    rdfs:label "Entscheidungsausgang"@de .\n\nsdo:ConditionEvaluation a owl:Class ;\n    rdfs:label "Condition evaluation"@en ;\n    rdfs:label "Bedingungsauswertung"@de ;\n    rdfs:comment "The satisfied, violated or unknown evaluation of a condition in the context of one rule and one decision result; not a change to the condition definition."@en ;\n    rdfs:comment "Bewertung einer Bedingung im Zusammenhang mit einer bestimmten Regel und einem konkreten Entscheidungsergebnis: erfüllt, verletzt oder unbestimmt. Die Bedingungsdefinition selbst bleibt unverändert."@de .\n\nsdo:Obligation a owl:Class ;\n    rdfs:label "Obligation"@en ;\n    rdfs:label "Verpflichtung"@de ;\n    rdfs:comment "A normative requirement explicitly imposed by a Rule; its evaluation inherits that Rule\'s Condition and Source Citation."@en .\n\nsdo:ObligationEvaluation a owl:Class ;\n    rdfs:label "Obligation evaluation"@en ;\n    rdfs:label "Verpflichtungsauswertung"@de ;\n    rdfs:comment "The fulfilled, violated, or unknown status of one Obligation for one Case."@en ;\n    rdfs:comment "Bewertung einer konkreten Verpflichtung innerhalb eines Entscheidungsergebnisses mit dem Status erfüllt, verletzt oder unbestimmt. Die Verpflichtung bleibt von ihrer Bewertung und von einer Testerwartung getrennt."@de .\n\nsdo:ObligationExpectation a owl:Class ;\n    rdfs:label "Obligation expectation"@en ;\n    rdfs:label "Verpflichtungserwartung"@de ;\n    rdfs:comment "The expected Obligation status in a Conformance Case."@en .\n\nsdo:ObligationStatus a owl:Class ;\n    rdfs:label "Obligation status"@en ;\n    rdfs:label "Verpflichtungsstatus"@de .\n\nsdo:ObligationFulfilled a owl:NamedIndividual, sdo:ObligationStatus ;\n    rdfs:label "fulfilled"@en ;\n    rdfs:label "erfüllt"@de .\n\nsdo:ObligationViolated a owl:NamedIndividual, sdo:ObligationStatus ;\n    rdfs:label "violated"@en ;\n    rdfs:label "verletzt"@de .\n\nsdo:ObligationUnknown a owl:NamedIndividual, sdo:ObligationStatus ;\n    rdfs:label "unknown"@en ;\n    rdfs:label "unbestimmt"@de .\n\nsdo:ConformanceCase a owl:Class ;\n    rdfs:subClassOf sdo:Case ;\n    rdfs:label "Conformance case"@en ;\n    rdfs:label "Konformitätsfall"@de .\n\nsdo:QuestionFlowCase a owl:Class ;\n    rdfs:subClassOf sdo:ConformanceCase ;\n    rdfs:label "question flow case"@en ;\n    rdfs:label "Frageablauf-Konformitätsfall"@de ;\n    rdfs:comment "A complete positive Conformance Case whose Facts are supplied as answers in the generated multi-step question-flow proof."@en .\n\nsdo:VersionSelectionCase a owl:Class ;\n    rdfs:subClassOf sdo:ConformanceCase ;\n    rdfs:label "version selection case"@en ;\n    rdfs:label "Versionsauswahl-Konformitätsfall"@de ;\n    rdfs:comment "A Conformance Case that proves temporal Rule Set Version selection from its explicit Decision Date."@en .\n\nsdo:EvidenceRequirement a owl:Class ;\n    rdfs:label "Evidence requirement"@en ;\n    rdfs:label "Nachweisanforderung"@de ;\n    rdfs:comment "An independently sourced requirement for Evidence that supports a Condition without determining that Condition\'s truth."@en .\n\nsdo:Evidence a owl:Class ;\n    rdfs:label "Evidence"@en ;\n    rdfs:label "Nachweis"@de ;\n    rdfs:comment "Supplied information or an artifact offered for an Evidence Requirement; presence alone does not establish fulfillment."@en .\n\nsdo:EvidenceAssessment a owl:Class ;\n    rdfs:label "Evidence assessment"@en ;\n    rdfs:label "Nachweisbewertung"@de ;\n    rdfs:comment "An explicit acceptance or rejection of one supplied Evidence item for one Evidence Requirement."@en .\n\nsdo:EvidenceExpectation a owl:Class ;\n    rdfs:label "Evidence expectation"@en ;\n    rdfs:label "Nachweiserwartung"@de ;\n    rdfs:comment "The expected Evidence Requirement status in a Conformance Case."@en .\n\nsdo:EvidenceRequirementStatus a owl:Class ;\n    rdfs:label "Evidence requirement status"@en ;\n    rdfs:label "Status der Nachweisanforderung"@de .\n\nsdo:EvidenceRequirementFulfilled a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;\n    rdfs:label "fulfilled"@en ;\n    rdfs:label "erfüllt"@de .\n\nsdo:EvidenceRequirementMissing a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;\n    rdfs:label "missing"@en ;\n    rdfs:label "fehlend"@de .\n\nsdo:EvidenceRequirementNotApplicable a owl:NamedIndividual, sdo:EvidenceRequirementStatus ;\n    rdfs:label "not applicable"@en ;\n    rdfs:label "nicht anwendbar"@de .\n\nsdo:Source a owl:Class ;\n    rdfs:label "Source"@en ;\n    rdfs:label "Quelle"@de .\n\nsdo:SourceRevision a owl:Class ;\n    rdfs:subClassOf [ a owl:Restriction ;\n        owl:onProperty dcterms:isVersionOf ; owl:allValuesFrom sdo:Source ] ;\n    rdfs:label "Source revision"@en ;\n    rdfs:label "Quellenrevision"@de .\n\nsdo:SourceCitation a owl:Class ;\n    rdfs:label "Source citation"@en ;\n    rdfs:label "Quellenfundstelle"@de .\n\n# Class-local restrictions describe the existing standard version relation.\n# They do not assert existence or assign conflicting global domains/ranges.\ndcterms:isVersionOf rdfs:label "is version of"@en, "ist Version von"@de .\n\n# Domain model for results; JSON field names remain a separate protocol concern.\nsdo:resultForContract a owl:ObjectProperty ;\n    rdfs:label "result for contract"@en, "Ergebnis für Vertrag"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:DecisionContract .\n\nsdo:resultRuleSetVersion a owl:ObjectProperty ;\n    rdfs:label "evaluated rule set version"@en, "ausgewertete Regelwerkversion"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:RuleSetVersion .\n\nsdo:resultOutcome a owl:ObjectProperty ;\n    rdfs:label "has outcome"@en, "hat Entscheidungsausgang"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:DecisionOutcome .\n\nsdo:hasConditionEvaluation a owl:ObjectProperty ;\n    rdfs:label "has condition evaluation"@en, "enthält Bedingungsauswertung"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:ConditionEvaluation .\n\nsdo:hasFactGap a owl:ObjectProperty ;\n    rdfs:label "has fact gap"@en, "enthält Sachverhaltslücke"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:FactGap .\n\nsdo:hasObligationEvaluation a owl:ObjectProperty ;\n    rdfs:label "has obligation evaluation"@en, "enthält Verpflichtungsauswertung"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:ObligationEvaluation .\n\nsdo:nextQuestion a owl:ObjectProperty ;\n    rdfs:label "next fact question"@en, "nächste Sachverhaltsfrage"@de ;\n    rdfs:comment "A selected question, if any; the relation does not require a question to exist. Selection follows the versioned question selection conventions."@en ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:FactQuestion .\n\nsdo:decisiveRule a owl:ObjectProperty ;\n    rdfs:label "decisive rule"@en, "entscheidende Regel"@de ;\n    rdfs:domain sdo:DecisionResult ; rdfs:range sdo:Rule .\n\nsdo:evaluatesCondition a owl:ObjectProperty ;\n    rdfs:label "evaluates condition"@en, "bewertet Bedingung"@de ;\n    rdfs:domain sdo:ConditionEvaluation ; rdfs:range sdo:Condition .\n\nsdo:evaluatedRule a owl:ObjectProperty ;\n    rdfs:label "evaluated rule"@en, "ausgewertete Regel"@de ;\n    rdfs:domain sdo:ConditionEvaluation ; rdfs:range sdo:Rule .\n\nsdo:conditionEvaluationState a owl:DatatypeProperty ;\n    rdfs:label "condition evaluation state"@en, "Zustand der Bedingungsauswertung"@de ;\n    rdfs:comment "Decision Conventions v1 uses satisfied, violated or unknown. The literal is an evaluation state, not a Fact value."@en ;\n    rdfs:domain sdo:ConditionEvaluation ; rdfs:range xsd:string .\n\nsdo:missingFactForCondition a owl:ObjectProperty ;\n    rdfs:label "missing fact for condition"@en, "fehlender Sachverhalt für Bedingung"@de ;\n    rdfs:domain sdo:FactGap ; rdfs:range sdo:Condition .\n\nsdo:evaluatesObligation a owl:ObjectProperty ;\n    rdfs:label "evaluates obligation"@en, "bewertet Verpflichtung"@de ;\n    rdfs:domain sdo:ObligationEvaluation ; rdfs:range sdo:Obligation .\n\nsdo:obligationEvaluationStatus a owl:ObjectProperty ;\n    rdfs:label "obligation evaluation status"@en, "ermittelter Verpflichtungsstatus"@de ;\n    rdfs:domain sdo:ObligationEvaluation ; rdfs:range sdo:ObligationStatus .\n\nsdo:usesRuleSetVersion a owl:ObjectProperty ;\n    rdfs:label "uses rule set version"@en ;\n    rdfs:label "verwendet Regelwerkversion"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:RuleSetVersion .\n\nsdo:hasRule a owl:ObjectProperty ;\n    rdfs:label "has rule"@en ;\n    rdfs:label "hat Regel"@de ;\n    rdfs:domain sdo:RuleSetVersion ;\n    rdfs:range sdo:Rule .\n\nsdo:condition a owl:ObjectProperty ;\n    rdfs:label "condition"@en ;\n    rdfs:label "Bedingung"@de ;\n    rdfs:domain sdo:Rule ;\n    rdfs:range sdo:Condition .\n\nsdo:imposesObligation a owl:ObjectProperty ;\n    rdfs:label "imposes obligation"@en ;\n    rdfs:label "begründet Verpflichtung"@de ;\n    rdfs:domain sdo:Rule ;\n    rdfs:range sdo:Obligation .\n\nsdo:factProperty a owl:ObjectProperty ;\n    rdfs:label "fact property"@en ;\n    rdfs:label "Sachverhaltsproperty"@de ;\n    rdfs:domain sdo:Condition ;\n    rdfs:range rdf:Property .\n\nsdo:sourceCitation a owl:ObjectProperty ;\n    rdfs:label "source citation"@en ;\n    rdfs:label "Quellenfundstelle"@de ;\n    rdfs:domain sdo:Rule ;\n    rdfs:range sdo:SourceCitation .\n\nsdo:hasEvidenceRequirement a owl:ObjectProperty ;\n    rdfs:label "has evidence requirement"@en ;\n    rdfs:label "hat Nachweisanforderung"@de ;\n    rdfs:domain sdo:RuleSetVersion ;\n    rdfs:range sdo:EvidenceRequirement .\n\nsdo:versionSourceCitation a owl:ObjectProperty ;\n    rdfs:label "version source citation"@en ;\n    rdfs:label "Quellenfundstelle der Version"@de ;\n    rdfs:domain sdo:RuleSetVersion ;\n    rdfs:range sdo:SourceCitation .\n\nsdo:supportsCondition a owl:ObjectProperty ;\n    rdfs:label "supports condition"@en ;\n    rdfs:label "stützt Bedingung"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range sdo:Condition .\n\nsdo:applicabilityCondition a owl:ObjectProperty ;\n    rdfs:label "applicability condition"@en ;\n    rdfs:label "Anwendbarkeitsbedingung"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range sdo:Condition .\n\nsdo:requiredEvidenceType a owl:ObjectProperty ;\n    rdfs:label "required evidence type"@en ;\n    rdfs:label "erforderlicher Nachweistyp"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range owl:Class .\n\nsdo:evidenceSourceCitation a owl:ObjectProperty ;\n    rdfs:label "evidence source citation"@en ;\n    rdfs:label "Quellenfundstelle der Nachweisanforderung"@de ;\n    rdfs:domain sdo:EvidenceRequirement ;\n    rdfs:range sdo:SourceCitation .\n\nsdo:hasEvidence a owl:ObjectProperty ;\n    rdfs:label "has evidence"@en ;\n    rdfs:label "hat Nachweis"@de ;\n    rdfs:domain sdo:Case ;\n    rdfs:range sdo:Evidence .\n\nsdo:evidenceType a owl:ObjectProperty ;\n    rdfs:label "evidence type"@en ;\n    rdfs:label "Nachweistyp"@de ;\n    rdfs:domain sdo:Evidence ;\n    rdfs:range owl:Class .\n\nsdo:hasEvidenceAssessment a owl:ObjectProperty ;\n    rdfs:label "has evidence assessment"@en ;\n    rdfs:label "hat Nachweisbewertung"@de ;\n    rdfs:domain sdo:Evidence ;\n    rdfs:range sdo:EvidenceAssessment .\n\nsdo:assessesEvidenceRequirement a owl:ObjectProperty ;\n    rdfs:label "assesses evidence requirement"@en ;\n    rdfs:label "bewertet Nachweisanforderung"@de ;\n    rdfs:domain sdo:EvidenceAssessment ;\n    rdfs:range sdo:EvidenceRequirement .\n\nsdo:hasEvidenceExpectation a owl:ObjectProperty ;\n    rdfs:label "has evidence expectation"@en ;\n    rdfs:label "hat Nachweiserwartung"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:EvidenceExpectation .\n\nsdo:expectsEvidenceRequirement a owl:ObjectProperty ;\n    rdfs:label "expects evidence requirement"@en ;\n    rdfs:label "erwartet Nachweisanforderung"@de ;\n    rdfs:domain sdo:EvidenceExpectation ;\n    rdfs:range sdo:EvidenceRequirement .\n\nsdo:expectedEvidenceStatus a owl:ObjectProperty ;\n    rdfs:label "expected evidence status"@en ;\n    rdfs:label "erwartet Nachweisstatus"@de ;\n    rdfs:domain sdo:EvidenceExpectation ;\n    rdfs:range sdo:EvidenceRequirementStatus .\n\nsdo:hasObligationExpectation a owl:ObjectProperty ;\n    rdfs:label "has obligation expectation"@en ;\n    rdfs:label "hat Verpflichtungserwartung"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:ObligationExpectation .\n\nsdo:expectsObligation a owl:ObjectProperty ;\n    rdfs:label "expects obligation"@en ;\n    rdfs:label "erwartet Verpflichtung"@de ;\n    rdfs:domain sdo:ObligationExpectation ;\n    rdfs:range sdo:Obligation .\n\nsdo:expectedObligationStatus a owl:ObjectProperty ;\n    rdfs:label "expected obligation status"@en ;\n    rdfs:label "erwartet Verpflichtungsstatus"@de ;\n    rdfs:domain sdo:ObligationExpectation ;\n    rdfs:range sdo:ObligationStatus .\n\nsdo:citesSourceRevision a owl:ObjectProperty ;\n    rdfs:label "cites source revision"@en ;\n    rdfs:label "zitiert Quellenrevision"@de ;\n    rdfs:domain sdo:SourceCitation ;\n    rdfs:range sdo:SourceRevision .\n\nsdo:positiveOutcome a owl:ObjectProperty ;\n    rdfs:label "positive outcome"@en ;\n    rdfs:label "positiver Ausgang"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:negativeOutcome a owl:ObjectProperty ;\n    rdfs:label "negative outcome"@en ;\n    rdfs:label "negativer Ausgang"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:unknownOutcome a owl:ObjectProperty ;\n    rdfs:label "unknown outcome"@en ;\n    rdfs:label "unbestimmter Ausgang"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:hasConformanceCase a owl:ObjectProperty ;\n    rdfs:label "has conformance case"@en ;\n    rdfs:label "hat Konformitätsfall"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range sdo:ConformanceCase .\n\nsdo:forDecisionContract a owl:ObjectProperty ;\n    rdfs:label "for decision contract"@en ;\n    rdfs:label "für Entscheidungsvertrag"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:DecisionContract .\n\nsdo:expectsOutcome a owl:ObjectProperty ;\n    rdfs:label "expects outcome"@en ;\n    rdfs:label "erwartet Ausgang"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:DecisionOutcome .\n\nsdo:expectsRuleSetVersion a owl:ObjectProperty ;\n    rdfs:label "expects rule set version"@en ;\n    rdfs:label "erwartet Regelwerkversion"@de ;\n    rdfs:comment "A conformance oracle for the version derived from the Decision Date; it is not a selection input."@en ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range sdo:RuleSetVersion .\n\nsdo:hasFact a owl:ObjectProperty ;\n    rdfs:label "has fact"@en ;\n    rdfs:label "hat Fallsachverhalt"@de ;\n    rdfs:domain sdo:Case ;\n    rdfs:range sdo:CaseFact .\n\nsdo:forCondition a owl:ObjectProperty ;\n    rdfs:label "for condition"@en ;\n    rdfs:label "für Bedingung"@de ;\n    rdfs:domain sdo:CaseFact ;\n    rdfs:range sdo:Condition .\n\nsdo:elicitsCondition a owl:ObjectProperty ;\n    rdfs:label "elicits condition fact for"@en ;\n    rdfs:label "erfragt Sachverhalt für Bedingung"@de ;\n    rdfs:domain sdo:FactQuestion ;\n    rdfs:range sdo:Condition .\n\nsdo:requiresAllRules a owl:DatatypeProperty ;\n    rdfs:label "requires all rules"@en ;\n    rdfs:label "erfordert alle Regeln"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range xsd:boolean .\n\nsdo:expectedBoolean a owl:DatatypeProperty ;\n    rdfs:label "expected boolean"@en ;\n    rdfs:label "erwarteter boolescher Wert"@de ;\n    rdfs:domain sdo:Condition ;\n    rdfs:range xsd:boolean .\n\nsdo:booleanValue a owl:DatatypeProperty ;\n    rdfs:label "boolean value"@en ;\n    rdfs:label "boolescher Wert"@de ;\n    rdfs:domain sdo:CaseFact ;\n    rdfs:range xsd:boolean .\n\nsdo:accepted a owl:DatatypeProperty ;\n    rdfs:label "accepted"@en ;\n    rdfs:label "akzeptiert"@de ;\n    rdfs:domain sdo:EvidenceAssessment ;\n    rdfs:range xsd:boolean .\n\nsdo:questionText a owl:DatatypeProperty ;\n    rdfs:label "question text"@en ;\n    rdfs:label "Fragetext"@de ;\n    rdfs:domain sdo:FactQuestion ;\n    rdfs:range xsd:string .\n\nsdo:obligationText a owl:DatatypeProperty ;\n    rdfs:label "obligation text"@en ;\n    rdfs:label "Verpflichtungstext"@de ;\n    rdfs:domain sdo:Obligation ;\n    rdfs:range xsd:string .\n\nsdo:questionPriority a owl:DatatypeProperty ;\n    rdfs:label "question priority"@en ;\n    rdfs:label "Fragepriorität"@de ;\n    rdfs:comment "A positive integer; lower values are selected before higher values when their Conditions both have Fact Gaps."@en ;\n    rdfs:domain sdo:FactQuestion ;\n    rdfs:range xsd:positiveInteger .\n\nsdo:outcomeCode a owl:DatatypeProperty ;\n    rdfs:label "outcome code"@en ;\n    rdfs:label "Ausgangscode"@de ;\n    rdfs:domain sdo:DecisionOutcome ;\n    rdfs:range xsd:string .\n\nsdo:scopeNote a owl:DatatypeProperty ;\n    rdfs:label "scope note"@en ;\n    rdfs:label "Geltungsbereichshinweis"@de ;\n    rdfs:domain sdo:DecisionContract ;\n    rdfs:range xsd:string .\n\nsdo:validFrom a owl:DatatypeProperty ;\n    rdfs:label "valid from"@en ;\n    rdfs:label "gültig ab"@de ;\n    rdfs:range xsd:date .\n\nsdo:validUntil a owl:DatatypeProperty ;\n    rdfs:label "valid until"@en ;\n    rdfs:label "gültig bis"@de ;\n    rdfs:range xsd:date .\n\nsdo:decisionDate a owl:DatatypeProperty ;\n    rdfs:label "decision date"@en ;\n    rdfs:label "Entscheidungsdatum"@de ;\n    rdfs:domain sdo:ConformanceCase ;\n    rdfs:range xsd:date .\n\nsdo:sourceLocator a owl:DatatypeProperty ;\n    rdfs:label "source locator"@en ;\n    rdfs:label "Quellenfundort"@de ;\n    rdfs:domain sdo:SourceCitation ;\n    rdfs:range xsd:string .\n\nsdo:sourceStatement a owl:DatatypeProperty ;\n    rdfs:label "source statement"@en ;\n    rdfs:label "Quellenaussage"@de ;\n    rdfs:domain sdo:SourceCitation ;\n    rdfs:range xsd:string .\n\nsdo:contentSha256 a owl:DatatypeProperty ;\n    rdfs:label "content SHA-256"@en ;\n    rdfs:label "Inhalts-SHA-256"@de ;\n    rdfs:domain sdo:SourceRevision ;\n    rdfs:range xsd:string .\n\nsdo:byteSize a owl:DatatypeProperty ;\n    rdfs:label "byte size"@en ;\n    rdfs:label "Byte-Größe"@de ;\n    rdfs:domain sdo:SourceRevision ;\n    rdfs:range xsd:integer .\n', 'decision-protocol.ttl': '@prefix dpo: <https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/>\n    a owl:Ontology ;\n    dcterms:title "Decision Protocol Ontology"@en, "Decision-Protokollontologie"@de ;\n    dcterms:description "Decision invocation protocol and bindings, independent of HTTP and SQL."@en ;\n    dcterms:description "Decision-Protokollontologie: wiederverwendbare Definitionen, keine konkrete Produktspezifikation."@de ;\n    vann:preferredNamespacePrefix "dpo" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/decision-protocol/#" ;\n    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;\n    owl:versionInfo "0.2.0-experimental" .\n\ndpo:DecisionProtocolV1\n    a owl:NamedIndividual, dcterms:Standard ;\n    rdfs:label "Decision Protocol v1"@en ;\n    rdfs:label "Entscheidungsprotokoll v1"@de ;\n    rdfs:comment "Manifest-driven protocol that sends one JSON Decision Request to a product process and observes one JSON Decision Result."@en .\n\ndpo:implementsDecisionContract\n    a owl:ObjectProperty ;\n    rdfs:label "implements decision contract"@en ;\n    rdfs:label "implementiert Entscheidungsvertrag"@de ;\n    rdfs:domain schema:SoftwareApplication ;\n    rdfs:range sdo:DecisionContract .\n\ndpo:inputJsonPointer\n    a owl:DatatypeProperty ;\n    rdfs:label "input JSON pointer"@en ;\n    rdfs:label "Eingabe-JSON-Pointer"@de ;\n    rdfs:comment "RFC 6901 pointer identifying a Condition\'s Fact in the Decision Protocol v1 request."@en ;\n    rdfs:domain sdo:Condition ;\n    rdfs:range xsd:string .\n', 'funding.ttl': '@prefix funding: <https://arturmiller.github.io/spec-compiler/ontology/funding/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/funding/>\n    a owl:Ontology ;\n    dcterms:title "Funding Domain Ontology"@en ;\n    dcterms:title "Förderdomänenontologie"@de ;\n    dcterms:description "Domain vocabulary for funding programs and scoped eligibility decisions."@en ;\n    dcterms:description "Domänenvokabular für Förderprogramme und abgegrenzte Förderfähigkeitsentscheidungen."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "funding" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/funding/#" ;\n    owl:imports <https://arturmiller.github.io/spec-compiler/ontology/decision/> ;\n    owl:versionInfo "0.3.0-experimental" .\n\nfunding:FundingProgram a owl:Class ;\n    rdfs:label "Funding program"@en ;\n    rdfs:label "Förderprogramm"@de .\n\nfunding:Applicant a owl:Class ;\n    rdfs:label "Applicant"@en ;\n    rdfs:label "Antragstellende Person"@de ;\n    rdfs:comment "Die im Fall betrachtete antragstellende Person. Ihre Eigenschaften werden von den Regeln geprüft; sie ist weder der Entscheidungsvertrag noch eine Zusage des Fördergebers."@de .\n\nfunding:Project a owl:Class ;\n    rdfs:label "Project"@en ;\n    rdfs:label "Vorhaben"@de ;\n    rdfs:comment "Das im Fall betrachtete Vorhaben mit seinen ausdrücklich angegebenen Eigenschaften, etwa Standort und Gebäudebestand. Es ist von der antragstellenden Person getrennt."@de .\n\nfunding:LandRegisterExcerpt a owl:Class ;\n    rdfs:subClassOf sdo:Evidence ;\n    rdfs:label "Land-register excerpt"@en ;\n    rdfs:label "Grundbuchauszug"@de .\n\nfunding:ApplicantEligibilityDecision a owl:Class ;\n    rdfs:subClassOf sdo:DecisionContract ;\n    rdfs:label "Applicant eligibility decision"@en ;\n    rdfs:label "Entscheidung über Antragsberechtigung"@de .\n\nfunding:Eligible a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "eligible"@en ;\n    rdfs:label "antragsberechtigt"@de ;\n    sdo:outcomeCode "eligible" .\n\nfunding:Ineligible a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "ineligible"@en ;\n    rdfs:label "nicht antragsberechtigt"@de ;\n    sdo:outcomeCode "ineligible" .\n\nfunding:Unknown a owl:NamedIndividual, sdo:DecisionOutcome ;\n    rdfs:label "unknown"@en ;\n    rdfs:label "unbestimmt"@de ;\n    sdo:outcomeCode "unknown" .\n\nfunding:fundingProgram a owl:ObjectProperty ;\n    rdfs:label "funding program"@en ;\n    rdfs:label "Förderprogramm"@de ;\n    rdfs:domain funding:ApplicantEligibilityDecision ;\n    rdfs:range funding:FundingProgram .\n\nfunding:hasApplicant a owl:ObjectProperty ;\n    rdfs:label "has applicant"@en, "hat antragstellende Person"@de ;\n    rdfs:comment "Relates a concrete Case to its Applicant; does not bind a reusable Decision Contract to one person or require an RDF representation in JSON products."@en ;\n    rdfs:domain sdo:Case ; rdfs:range funding:Applicant .\n\nfunding:hasProject a owl:ObjectProperty ;\n    rdfs:label "has project"@en, "hat Vorhaben"@de ;\n    rdfs:comment "Relates a concrete Case to its Project. It does not assert that the Applicant owns the Project or that funding has been approved."@en ;\n    rdfs:domain sdo:Case ; rdfs:range funding:Project .\n\nfunding:naturalPerson a owl:DatatypeProperty ;\n    rdfs:label "is a natural person"@en ;\n    rdfs:label "ist eine natürliche Person"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:owner a owl:DatatypeProperty ;\n    rdfs:label "is an owner"@en ;\n    rdfs:label "ist Eigentümerin oder Eigentümer"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:ownershipViaGbR a owl:DatatypeProperty ;\n    rdfs:label "holds ownership through a GbR"@en ;\n    rdfs:label "hält Eigentum über eine GbR"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:hasUsufructRight a owl:DatatypeProperty ;\n    rdfs:label "has a usufruct right"@en ;\n    rdfs:label "hat ein Nießbrauchrecht"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:selfUsesResidentialProperty a owl:DatatypeProperty ;\n    rdfs:label "self-uses the residential property"@en ;\n    rdfs:label "nutzt die Wohnimmobilie selbst"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:claimsClimateOrIncomeBonus a owl:DatatypeProperty ;\n    rdfs:label "claims a climate-speed or income bonus"@en ;\n    rdfs:label "beansprucht Klimageschwindigkeits- oder Einkommensbonus"@de ;\n    rdfs:domain funding:Applicant ;\n    rdfs:range xsd:boolean .\n\nfunding:existingResidentialBuilding a owl:DatatypeProperty ;\n    rdfs:label "concerns an existing residential building"@en ;\n    rdfs:label "betrifft ein bestehendes Wohngebäude"@de ;\n    rdfs:domain funding:Project ;\n    rdfs:range xsd:boolean .\n\nfunding:buildingInGermany a owl:DatatypeProperty ;\n    rdfs:label "building is in Germany"@en ;\n    rdfs:label "Gebäude liegt in Deutschland"@de ;\n    rdfs:domain funding:Project ;\n    rdfs:range xsd:boolean .\n', 'shacl-contract.ttl': '@prefix sco: <https://arturmiller.github.io/spec-compiler/ontology/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix sh: <http://www.w3.org/ns/shacl#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/>\n    a owl:Ontology ;\n    dcterms:title "HTTP API Ontology"@en ;\n    dcterms:title "HTTP-API-Ontologie"@de ;\n    dcterms:description "Reusable vocabulary for HTTP endpoints, requests and responses, independent of storage and decision semantics."@en ;\n    dcterms:description "Wiederverwendbare Definitionen für HTTP-Endpunkte, Anfragen und Antworten, unabhängig von Speicherung und Decision-Semantik."@de ;\n    dcterms:creator <https://github.com/arturmiller> ;\n    dcterms:source <https://github.com/arturmiller/spec-compiler> ;\n    vann:preferredNamespacePrefix "sco" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/#" ;\n    owl:versionInfo "0.4.0-experimental" .\n\n\nsco:HttpEndpoint\n    a owl:Class ;\n    rdfs:label "HTTP endpoint"@en ;\n    rdfs:label "HTTP-Endpunkt"@de .\n\nsco:GetEndpoint\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpEndpoint ;\n    rdfs:label "GET endpoint"@en ;\n    rdfs:label "GET-Endpunkt"@de ;\n    rdfs:comment "HTTP GET endpoint that returns resources described by a SHACL shape."@en .\n\nsco:PostEndpoint\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpEndpoint ;\n    rdfs:label "POST endpoint"@en ;\n    rdfs:label "POST-Endpunkt"@de ;\n    rdfs:comment "HTTP endpoint invoked with the POST method."@en .\n\nsco:HttpMessage\n    a owl:Class ;\n    rdfs:label "HTTP message"@en ;\n    rdfs:label "HTTP-Nachricht"@de .\n\nsco:HttpRequest\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpMessage ;\n    rdfs:label "HTTP request"@en ;\n    rdfs:label "HTTP-Anfrage"@de .\n\nsco:HttpResponse\n    a owl:Class ;\n    rdfs:subClassOf sco:HttpMessage ;\n    rdfs:label "HTTP response"@en ;\n    rdfs:label "HTTP-Antwort"@de .\n\nsco:PathParameter a owl:Class ;\n    rdfs:label "Path parameter"@en, "Pfadparameter"@de ;\n    rdfs:comment "An explicitly named value in a GET path with a declared datatype; independent of a concrete storage mapping."@en ;\n    rdfs:comment "Ein ausdrücklich benannter Wert im GET-Pfad mit deklariertem Datentyp. Eine optionale Zuordnung zu einer Speicherspalte gehört zur SQL-Ontologie, nicht zur HTTP-Definition."@de .\n\nsco:request\n    a owl:ObjectProperty ;\n    rdfs:label "request"@en ;\n    rdfs:label "Anfrage"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range sco:HttpRequest .\n\nsco:successResponse\n    a owl:ObjectProperty ;\n    rdfs:label "successful response"@en ;\n    rdfs:label "Erfolgsantwort"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range sco:HttpResponse .\n\nsco:invalidRequestResponse\n    a owl:ObjectProperty ;\n    rdfs:label "response to an invalid request"@en ;\n    rdfs:label "Antwort auf eine ungültige Anfrage"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range sco:HttpResponse .\n\nsco:invokesContract\n    a owl:ObjectProperty ;\n    rdfs:label "invokes contract"@en ;\n    rdfs:label "ruft Vertrag auf"@de ;\n    rdfs:domain sco:HttpEndpoint .\n\nsco:bodySchema\n    a owl:DatatypeProperty ;\n    rdfs:label "body schema"@en ;\n    rdfs:label "Body-Schema"@de ;\n    rdfs:domain sco:HttpMessage ;\n    rdfs:range rdf:JSON ;\n    rdfs:comment "An authored JSON Schema describing the HTTP message body."@en .\n\nsco:bodyPointer\n    a owl:DatatypeProperty ;\n    rdfs:label "body pointer"@en ;\n    rdfs:label "Body-Pointer"@de ;\n    rdfs:domain sco:HttpMessage ;\n    rdfs:range xsd:string ;\n    rdfs:comment "JSON Pointer locating the invoked contract input, result, or error text in the corresponding HTTP message body; the empty string denotes the whole body."@en .\n\nsco:bodyRequired\n    a owl:DatatypeProperty ;\n    rdfs:label "body required"@en ;\n    rdfs:label "Body erforderlich"@de ;\n    rdfs:domain sco:HttpRequest ;\n    rdfs:range xsd:boolean .\n\nsco:statusCode\n    a owl:DatatypeProperty ;\n    rdfs:label "HTTP status code"@en ;\n    rdfs:label "HTTP-Statuscode"@de ;\n    rdfs:domain sco:HttpResponse ;\n    rdfs:range xsd:integer .\n\nsco:returns\n    a owl:ObjectProperty ;\n    rdfs:label "returns shape"@en ;\n    rdfs:label "liefert Shape"@de ;\n    rdfs:domain sco:GetEndpoint ;\n    rdfs:range sh:NodeShape .\n\nsco:pathParameter\n    a owl:ObjectProperty ;\n    rdfs:label "path parameter"@en ;\n    rdfs:label "Pfadparameter"@de ;\n    rdfs:domain sco:GetEndpoint ;\n    rdfs:range sco:PathParameter .\n\nsco:path\n    a owl:DatatypeProperty ;\n    rdfs:label "HTTP path"@en ;\n    rdfs:label "HTTP-Pfad"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range xsd:string .\n\nsco:name\n    a owl:DatatypeProperty ;\n    rdfs:label "name"@en ;\n    rdfs:label "Name"@de ;\n    rdfs:range xsd:string .\n\nsco:successStatus\n    a owl:DatatypeProperty ;\n    rdfs:label "success status"@en ;\n    rdfs:label "Erfolgsstatus"@de ;\n    rdfs:domain sco:HttpEndpoint ;\n    rdfs:range xsd:integer .\n\nsco:mediaType\n    a owl:DatatypeProperty ;\n    rdfs:label "media type"@en ;\n    rdfs:label "Medientyp"@de ;\n    rdfs:range xsd:string .\n', 'sql-storage.ttl': '@prefix sqlo: <https://arturmiller.github.io/spec-compiler/ontology/sql/#> .\n@prefix sdo: <https://arturmiller.github.io/spec-compiler/ontology/decision/#> .\n@prefix dcterms: <http://purl.org/dc/terms/> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix schema: <https://schema.org/> .\n@prefix sh: <http://www.w3.org/ns/shacl#> .\n@prefix vann: <http://purl.org/vocab/vann/> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n\n<https://arturmiller.github.io/spec-compiler/ontology/sql/>\n    a owl:Ontology ;\n    dcterms:title "SQL Storage Ontology"@en, "SQL-Speicherontologie"@de ;\n    dcterms:description "Transport-independent vocabulary for SQL tables, storage and reads."@en ;\n    dcterms:description "SQL-Speicherontologie: wiederverwendbare Definitionen, keine konkrete Produktspezifikation."@de ;\n    vann:preferredNamespacePrefix "sqlo" ;\n    vann:preferredNamespaceUri "https://arturmiller.github.io/spec-compiler/ontology/sql/#" ;\n    owl:versionInfo "0.2.0-experimental" .\n\nsqlo:SqlTable\n    a owl:Class ;\n    rdfs:label "SQL table"@en ;\n    rdfs:label "SQL-Tabelle"@de ;\n    rdfs:comment "Relational table that stores resources described by a SHACL shape."@en .\n\nsqlo:DatabaseEngine a owl:Class ;\n    rdfs:label "Database engine"@en, "Datenbank-Engine"@de ;\n    rdfs:comment "A named database engine selected explicitly by a storage specification; not an inferred runtime technology."@en ;\n    rdfs:comment "Die in einer Speicherspezifikation ausdrücklich gewählte Datenbank-Engine. SQLite ist ein konkreter Wert dieses Typs, keine Tabellenklasse und keine automatisch gewählte Technologie."@de .\n\nsqlo:SQLite\n    a owl:NamedIndividual, sqlo:DatabaseEngine ;\n    rdfs:label "SQLite"@en ;\n    rdfs:label "SQLite"@de .\n\nsqlo:readsFrom\n    a owl:ObjectProperty ;\n    rdfs:comment "A resource reads from the specified SQL table; independent of its transport."@en ;\n    rdfs:comment "Eine Ressource liest aus der angegebenen SQL-Tabelle; unabhängig von ihrem Transport."@de ;\n    rdfs:label "reads from"@en ;\n    rdfs:label "liest aus"@de ;\n    rdfs:range sqlo:SqlTable .\n\nsqlo:stores\n    a owl:ObjectProperty ;\n    rdfs:label "stores shape"@en ;\n    rdfs:label "speichert Shape"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range sh:NodeShape .\n\nsqlo:databaseEngine\n    a owl:ObjectProperty ;\n    rdfs:label "database engine"@en ;\n    rdfs:label "Datenbank-Engine"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range sqlo:DatabaseEngine .\n\nsqlo:idDatatype\n    a owl:ObjectProperty ;\n    rdfs:label "identifier datatype"@en ;\n    rdfs:label "Bezeichner-Datentyp"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range rdfs:Datatype .\n\nsqlo:mapsToColumn\n    a owl:DatatypeProperty ;\n    rdfs:label "maps to column"@en ;\n    rdfs:label "bildet auf Spalte ab"@de ;\n    rdfs:range xsd:string .\n\nsqlo:tableName\n    a owl:DatatypeProperty ;\n    rdfs:label "table name"@en ;\n    rdfs:label "Tabellenname"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:string .\n\nsqlo:idColumn\n    a owl:DatatypeProperty ;\n    rdfs:label "identifier column"@en ;\n    rdfs:label "Bezeichnerspalte"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:string .\n\nsqlo:idPrimaryKey\n    a owl:DatatypeProperty ;\n    rdfs:label "identifier is primary key"@en ;\n    rdfs:label "Bezeichner ist Primärschlüssel"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:boolean .\n\nsqlo:idGenerated\n    a owl:DatatypeProperty ;\n    rdfs:label "identifier is generated"@en ;\n    rdfs:label "Bezeichner wird generiert"@de ;\n    rdfs:domain sqlo:SqlTable ;\n    rdfs:range xsd:boolean .\n'}
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
@@ -230,11 +236,371 @@ class ArtifactPlan:
         return [product_root / path for path, _ in self.outputs]
 
 
-def one(graph: Graph, subject, predicate):
+class ProcessingGraph(Graph):
+    """Authored statements with provenance and successful interpretation records.
+
+    Query results are only candidates. An interpretation is retained when its
+    reader succeeds, and becomes a contract use only when its normalized result
+    is projected to an existing artifact by build_processing_report().
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.origins = {}
+        self.frames = []
+        self.interpretations = []
+        self.checking = False
+        self.module_validated = False
+
+    @classmethod
+    def load(cls, product_root, files):
+        result = cls()
+        occurrences = {}
+        for path in files:
+            canonical = to_canonical_graph(Graph().parse(path, format="turtle"))
+            serialized = sorted(json.dumps([_report_term(term) for term in triple],
+                                           sort_keys=True, ensure_ascii=False) for triple in canonical)
+            digest = hashlib.sha256("\n".join(serialized).encode()).hexdigest()
+            occurrence = occurrences.get(digest, 0)
+            occurrences[digest] = occurrence + 1
+            for triple in canonical:
+                # Files have separate blank-node scopes. Identical files must
+                # not accidentally merge their independently authored bnodes.
+                triple = tuple(BNode(f"{digest}-{occurrence}-{term}")
+                               if isinstance(term, BNode) else term for term in triple)
+                result.add(triple)
+                result.origins.setdefault(triple, set()).add(path.relative_to(product_root).as_posix())
+        return result
+
+    def triples(self, triple):
+        for found in super().triples(triple):
+            if self.frames and self.checking:
+                self.frames[-1]["checks"].add(found)
+            yield found
+
+    def __contains__(self, triple):
+        previous = self.checking
+        self.checking = True
+        try:
+            return super().__contains__(triple)
+        finally:
+            self.checking = previous
+
+    def context_value(self, subject, predicate, value, field, normalized):
+        if self.frames:
+            self.frames[-1]["contexts"][subject, predicate, value] = (field, normalized)
+
+    def field_value(self, subject, predicate, value, field, normalized):
+        if self.frames:
+            self.frames[-1]["fields"].setdefault((subject, predicate, value), []).append((field, normalized))
+
+    def bind_projection(self, resource, owner, collection, selector, value):
+        if self.frames:
+            self.frames[-1]["aliases"].append((str(resource), str(owner), collection, selector, value))
+
+
+def interpreted(rule, conventions, kind, *, graph=None):
+    """Record one successful normalizer; graph access alone is not a use claim."""
+    def decorate(function):
+        @wraps(function)
+        def call(*args, **kwargs):
+            active_graph = graph if isinstance(graph, ProcessingGraph) else next(
+                (value for value in (*args, *kwargs.values()) if isinstance(value, ProcessingGraph)), None)
+            if active_graph is None:
+                return function(*args, **kwargs)
+            frame = {"rule": rule, "conventions": conventions, "kind": kind,
+                     "checks": set(), "contexts": {}, "fields": {}, "aliases": []}
+            start = len(active_graph.interpretations)
+            active_graph.frames.append(frame)
+            try:
+                result = function(*args, **kwargs)
+            except BaseException:
+                del active_graph.interpretations[start:]
+                raise
+            finally:
+                active_graph.frames.pop()
+            if result is not None:
+                frame["result"] = result
+                active_graph.interpretations.append(frame)
+            return result
+        return call
+    return decorate
+
+
+def _pointer_segment(value):
+    return str(value).replace("~", "~0").replace("/", "~1")
+
+
+def _artifact_nodes(value, pointer=""):
+    yield pointer, value
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield from _artifact_nodes(child, pointer + "/" + _pointer_segment(key))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from _artifact_nodes(child, pointer + f"/{index}")
+
+
+def _report_term(term):
+    if isinstance(term, URIRef):
+        return {"kind": "iri", "value": str(term)}
+    if isinstance(term, BNode):
+        return {"kind": "blank", "value": str(term)}
+    return {"kind": "literal", "value": str(term),
+            "datatype": str(term.datatype) if term.datatype else None,
+            "language": term.language}
+
+
+def _same_json_value(left, right):
+    """Preserve JSON types: Python otherwise considers True == 1 and False == 0."""
+    return json.dumps(left, sort_keys=True, ensure_ascii=False) == json.dumps(right, sort_keys=True, ensure_ascii=False)
+
+
+def build_processing_report(graph, plan, endpoint):
+    """Project successful interpretations onto already rendered artifact data."""
+    if set(graph) != set(graph.origins):
+        raise ValueError("Processing report input was changed after loading its authored provenance")
+    artifacts = {path.as_posix(): text for path, text in plan.outputs}
+    decision_path = "generated/decision-contract.json"
+    http_path = "generated/expected-openapi.json"
+    decision = json.loads(artifacts[decision_path])
+    decision_nodes = list(_artifact_nodes(decision))
+    work = json.loads(artifacts["generated/work-graph.json"])["work_items"]
+    uses = {triple: {} for triple in graph.origins}
+    aliases = [alias for frame in graph.interpretations for alias in frame["aliases"]]
+
+    def projected_resources(resource, nodes, owner=None):
+        matches = []
+        for source, parent, collection, selector, expected in aliases:
+            if source != resource or (owner is not None and parent != owner):
+                continue
+            for pointer, value in nodes.items():
+                if not isinstance(value, dict) or value.get("id") != parent:
+                    continue
+                for index, child in enumerate(value.get(collection, [])):
+                    if child.get(selector) == expected:
+                        matches.append(pointer + "/" + collection + f"/{index}")
+        return matches
+
+    def record(triple, usage):
+        if triple not in uses:
+            raise ValueError("Processing report refers to a statement outside the authored graph")
+        key = json.dumps(usage, sort_keys=True, ensure_ascii=False)
+        uses[triple][key] = usage
+
+    def links(suffixes):
+        return [{"id": item["id"], "artifact": "generated/work-graph.json",
+                 "jsonPointer": f"/work_items/{index}", "proof": item["test"]}
+                for index, item in enumerate(work)
+                if any(item["id"].endswith(suffix) for suffix in suffixes)]
+
+    if not graph.module_validated:
+        raise ValueError("A processing report requires successful ontology module validation")
+    for triple in uses:
+        record(triple, {"kind": "structural", "rule": "ontology-module-validation-v1",
+                        "conventions": ["Ontology Module Conventions v1"],
+                        "meaning": "Local identity, ownership and import boundary only; no product behavior proof."})
+    for frame in graph.interpretations:
+        result, kind = frame["result"], frame["kind"]
+        path, document, targets, work_links = decision_path, decision, [""], []
+        if kind == "condition":
+            targets = [pointer for pointer, value in decision_nodes
+                       if isinstance(value, dict) and value.get("id") == result.identifier]
+            work_links = links((".evidence-evaluation",)) if isinstance(result, EvidenceApplicabilityCondition) else links((".decision-evaluation", ".question-flow"))
+        elif kind == "source":
+            targets = [pointer for pointer, value in decision_nodes if isinstance(value, dict)
+                       and (value.get("id") == result.source_revision or value.get("citation") == result.citation)]
+            work_links = links((".result-provenance",))
+        elif kind.startswith("http"):
+            if endpoint is None:
+                raise ValueError("HTTP processing records require an authored HTTP contract")
+            if (kind == "http-endpoint" and result != endpoint) or (
+                kind == "http-message" and result not in
+                (endpoint.request, endpoint.success_response, endpoint.invalid_request_response)
+            ):
+                raise ValueError("HTTP interpretation is not part of the selected normalized endpoint")
+            path, document = http_path, json.loads(artifacts[http_path])
+            base = "/paths/" + _pointer_segment(endpoint.path) + "/post"
+            target = base
+            if kind == "http-message":
+                target += (f"/responses/{result.status_code}" if isinstance(result, HttpResponse)
+                           else "/requestBody")
+            targets = [target]
+            work_links = links((".http-api",))
+        node_map = dict(_artifact_nodes(document))
+        if not targets or any(target not in node_map for target in targets):
+            raise ValueError(f"Processing interpretation has no rendered target: {frame['rule']}")
+        base_use = {"rule": frame["rule"], "conventions": list(frame["conventions"])}
+        for triple in frame["checks"]:
+            record(triple, {**base_use, "kind": "structural"})
+        for triple, fields in frame["fields"].items():
+            projected = []
+            for field, normalized in fields:
+                parents = set(targets) | {pointer for pointer, value in node_map.items()
+                                          if isinstance(value, dict) and value.get("id") == str(triple[0])}
+                parents.update(projected_resources(str(triple[0]), node_map))
+                if field == "@schema":
+                    candidates = [target + "/content/" + _pointer_segment(result.media_type) + "/schema" for target in targets]
+                elif field == "@media-type":
+                    candidates = [target + "/content/" + _pointer_segment(normalized) for target in targets]
+                elif field == "@http-path":
+                    candidates = ["/paths/" + _pointer_segment(normalized) + "/post"]
+                elif field == "@response-status":
+                    candidates = [base + "/responses/" + str(normalized)]
+                elif field == "@body-pointer":
+                    key = ("request_pointer" if isinstance(result, HttpRequest) else
+                           "result_pointer" if result.status_code == endpoint.success_response.status_code else "error_pointer")
+                    candidates = [base + "/x-spec-compiler-binding/" + key]
+                elif field == "@resource":
+                    candidates = projected_resources(normalized, node_map, str(triple[0]))
+                elif field in {"@http-request", "@http-success", "@http-invalid"}:
+                    message = {"@http-request": result.request, "@http-success": result.success_response,
+                               "@http-invalid": result.invalid_request_response}[field]
+                    if message.identifier != normalized:
+                        raise ValueError("HTTP message projection does not match its normalized resource")
+                    candidates = [base + ("/requestBody" if field == "@http-request" else f"/responses/{message.status_code}")]
+                elif field == "@question-binding":
+                    candidates = [pointer + "/question/id" for pointer, value in node_map.items()
+                                  if isinstance(value, dict) and value.get("id") == normalized
+                                  and value.get("question", {}).get("id") == str(triple[0])]
+                else:
+                    candidates = [field] if field.startswith("/") else [parent + "/" + field for parent in parents]
+                expanded = []
+                for candidate in candidates:
+                    if "*" in candidate.split("/"):
+                        pattern = "/".join("[^/]+" if part == "*" else re.escape(part) for part in candidate.split("/"))
+                        expanded.extend(pointer for pointer in node_map if re.fullmatch(pattern, pointer))
+                    else:
+                        expanded.append(candidate)
+                candidates = expanded
+                presence = field in {"@media-type", "@http-path", "@response-status", "@resource",
+                                     "@http-request", "@http-success", "@http-invalid", "@question-binding"}
+                candidates = [pointer for pointer in candidates
+                              if pointer in node_map and (presence or _same_json_value(node_map[pointer], normalized))]
+                if not candidates:
+                    raise ValueError(f"Normalized field has no matching rendered destination: {frame['rule']}/{field}")
+                projected.extend(candidates)
+            record(triple, {**base_use, "kind": "contract",
+                            "artifacts": [{"path": path, "jsonPointer": pointer} for pointer in sorted(set(projected))],
+                            "workItems": work_links})
+        for triple, (field, normalized) in frame["contexts"].items():
+            candidates = [field] if field.startswith("/") else [target + "/" + field for target in targets]
+            candidates = [pointer for pointer in candidates if pointer in node_map and _same_json_value(node_map[pointer], normalized)]
+            if not candidates:
+                raise ValueError(f"Context value has no matching rendered destination: {frame['rule']}")
+            record(triple, {**base_use, "kind": "context",
+                            "artifacts": [{"path": path, "jsonPointer": pointer} for pointer in candidates]})
+    if endpoint is not None:
+        binding = (URIRef(endpoint.identifier), SCO.invokesContract, URIRef(endpoint.invokes_contract))
+        record(binding, {"kind": "structural", "rule": "decision-http-binding-v1",
+                         "conventions": ["HTTP Contract Conventions v1"],
+                         "meaning": "Explicit invoked contract equals the selected Decision Contract."})
+    statements = []
+    for triple, entries in uses.items():
+        terms = [_report_term(term) for term in triple]
+        identifier = hashlib.sha256(json.dumps(terms, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        entries = [entries[key] for key in sorted(entries)]
+        kinds = {entry["kind"] for entry in entries}
+        semantic_status = "contract" if "contract" in kinds else "context" if "context" in kinds else "unassigned"
+        processing_status = semantic_status
+        if semantic_status == "unassigned" and any(entry["rule"] != "ontology-module-validation-v1" for entry in entries):
+            processing_status = "structural-only"
+        statements.append({"id": "statement-" + identifier,
+                           "subject": terms[0], "predicate": terms[1], "object": terms[2],
+                           "origins": sorted(graph.origins[triple]),
+                           "semanticStatus": semantic_status, "processingStatus": processing_status,
+                           "uses": entries})
+    catalog = ontology_sources()
+    conventions = {
+        "Ontology Module Conventions v1": "ontology-module-conventions-v1",
+        "Decision Protocol v1": "decision-protocol-v1",
+        "Decision Conventions v1": "decision-conventions-v1",
+        "Question Selection Conventions v1": "question-selection-conventions-v1",
+        "Evidence Evaluation Conventions v1": "evidence-evaluation-conventions-v1",
+        "Version Selection Conventions v1": "version-selection-conventions-v1",
+        "Obligation Evaluation Conventions v1": "obligation-evaluation-conventions-v1",
+        "HTTP Contract Conventions v1": "http-contract-conventions-v1",
+    }
+    convention_root = "https://arturmiller.github.io/spec-compiler/reference/conventions.html#"
+    return {"schemaVersion": 1, "reportConvention": "Processing Report Conventions v1",
+            "reportConventionVersion": PROCESSING_REPORT_CONVENTIONS_VERSION,
+            "reportConventionReference": convention_root + "processing-report-conventions-v1",
+            "conventionReferences": {name: convention_root + anchor for name, anchor in sorted(conventions.items())},
+            "profile": "decision-http" if endpoint else "decision",
+            "scope": {"input": "authored-product-statements", "notCoveredProfiles": ["http-sql", "compiler"],
+                      "contractCompleteness": "not-assessed", "delegation": "not-assessed",
+                      "unknownStatements": "No semantic use proven; this does not establish harmlessness or lack of compiler support."},
+            "compiler": {"sourceSha256": hashlib.sha256(Path(__file__).read_text(encoding="utf-8").encode()).hexdigest(),
+                         "bootstrapGeneration": BOOTSTRAP_GENERATION,
+                         "conventionsVersion": COMPILER_CONVENTIONS_VERSION,
+                         "dependencies": {name: package_version(name) for name in ("rdflib", "jsonschema")}},
+            "catalog": {"sha256": hashlib.sha256(json.dumps(catalog, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+                        "modules": sorted(catalog)},
+            "summary": {"statements": len(statements),
+                        "structuralOnly": sum(item["processingStatus"] == "structural-only" for item in statements),
+                        **{status: sum(item["semanticStatus"] == status for item in statements)
+                           for status in ("contract", "context", "unassigned")}},
+            "statements": sorted(statements, key=lambda item: item["id"])}
+
+
+def render_processing_report(report):
+    """Render the analytical report as portable HTML without product dependencies."""
+    esc = html.escape
+    labels = {"contract": "Vertragsverarbeitung", "context": "Kontextübernahme",
+              "unassigned": "Semantisch nicht zugeordnet", "structural": "Strukturprüfung",
+              "structural-only": "Nur strukturell geprüft; semantisch nicht zugeordnet"}
+    parts = ['<!doctype html><html lang="de"><head><meta charset="utf-8">',
+             '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Spec-Verarbeitungsbericht</title>',
+             '<style>body{font:16px/1.55 system-ui;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#182c3d;background:#f8fafb}details{background:white;border:1px solid #ccd7df;border-radius:6px;margin:.6rem 0;padding:.8rem}summary{cursor:pointer;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#006873}input,select{font:inherit;padding:.4rem;max-width:100%}[hidden]{display:none}</style></head><body>',
+             '<h1>Spec-Verarbeitungsbericht</h1><p>Generiert nach Processing Report Conventions v1. <a href="processing-report.json">JSON herunterladen</a></p>',
+             '<p>Dieser Bericht beschreibt die tatsächliche Verwendung verfasster Produktaussagen. Strukturprüfung ist kein Verhaltenstest. Nicht zugeordnet bedeutet: keine semantische Verwendung belegt. Daraus folgen weder fachliche Harmlosigkeit noch Delegation oder ein vollständiger Produktvertrag.</p>',
+             f'<p>Profil: {esc(report["profile"])}. Aussagen: {report["summary"]["statements"]}. '
+             + ' · '.join(f'{labels[key]}: {report["summary"][key]}' for key in ("contract", "context", "unassigned"))
+             + f'. Davon mit konkreter Strukturprüfung: {report["summary"]["structuralOnly"]}.</p>',
+             '<p>Noch nicht erfasst: HTTP/SQL- und Compilerprofil. Vertragsverwendungen benennen Abhängigkeiten eines normalisierten Vertragsbestandteils; sie behaupten keinen eigenen Verhaltenstest für jede einzelne Aussage.</p>',
+             '<label>Suche <input id="search" type="search"></label> <label>Semantische Zuordnung <select id="status"><option value="">Alle</option>'
+             + ''.join(f'<option value="{key}">{value}</option>' for key, value in labels.items() if key != "structural") + '</select></label>',
+             '<p id="count" aria-live="polite"></p>']
+    for statement in report["statements"]:
+        terms = [statement[key]["value"] for key in ("subject", "predicate", "object")]
+        title = ' · '.join(value if len(value) <= 180 else value[:177] + '...' for value in terms)
+        parts.append(f'<details id="{statement["id"]}" data-status="{statement["semanticStatus"]}" data-processing="{statement["processingStatus"]}"><summary>{esc(labels[statement["processingStatus"]])}: {esc(title)}</summary>')
+        parts.append('<pre>' + esc(json.dumps({key: statement[key] for key in ("subject", "predicate", "object", "origins")}, ensure_ascii=False, indent=2)) + '</pre>')
+        for usage in statement["uses"]:
+            parts.append(f'<p><strong>{esc(labels[usage["kind"]])}</strong>: {esc(usage["rule"])} · {esc(", ".join(usage["conventions"]))}</p>')
+            for target in usage.get("artifacts", []):
+                # All targets originate from the fixed artifact plan, never spec-authored URLs.
+                relative = "../" + target["path"]
+                parts.append(f'<p>Artefakt: <a href="{esc(relative, quote=True)}">{esc(target["path"])}</a> · JSON Pointer <code>{esc(target["jsonPointer"] or "/")}</code></p>')
+            for item in usage.get("workItems", []):
+                parts.append(f'<p>Arbeitsauftrag: {esc(item["id"])} · Nachweisreferenz: <code>{esc(item["proof"])}</code>. Keine Vollständigkeitszusage.</p>')
+        parts.append('</details>')
+    parts.append('<details><summary>Compiler- und Katalogidentität</summary><pre>' + esc(json.dumps({key: report[key] for key in ("compiler", "catalog", "scope")}, indent=2, ensure_ascii=False)) + '</pre></details>')
+    parts.append('''<script>const search=document.querySelector('#search'),status=document.querySelector('#status'),rows=[...document.querySelectorAll('[data-status]')];function filter(){let visible=0;for(const row of rows){const selected=status.value==='structural-only'?row.dataset.processing:row.dataset.status;row.hidden=Boolean(status.value&&selected!==status.value)||!row.textContent.toLowerCase().includes(search.value.toLowerCase());if(!row.hidden)visible++;}document.querySelector('#count').textContent=visible+' Aussagen sichtbar';}search.addEventListener('input',filter);status.addEventListener('change',filter);filter();</script></body></html>''')
+    return "\n".join(parts) + "\n"
+
+
+def one(graph: Graph, subject, predicate, *, report_field=None):
     values = list(graph.objects(subject, predicate))
     if len(values) != 1:
         raise ValueError(f"Expected exactly one {predicate} on {subject}, got {len(values)}")
-    return values[0]
+    value = values[0]
+    if isinstance(graph, ProcessingGraph) and graph.frames:
+        graph.frames[-1]["checks"].add((subject, predicate, value))
+        if report_field is not None:
+            normalized = value.toPython()
+            if isinstance(normalized, date):
+                normalized = normalized.isoformat()
+            graph.field_value(subject, predicate, value, report_field, normalized)
+    return value
+
+
+def projected_objects(graph, subject, predicate, field):
+    """Read a collection explicitly projected by its successful normalizer."""
+    for value in graph.objects(subject, predicate):
+        if isinstance(graph, ProcessingGraph):
+            graph.field_value(subject, predicate, value, field, str(value))
+        yield value
 
 
 def optional(graph: Graph, subject, predicate, default=None):
@@ -365,15 +731,20 @@ def validate_product_ontology(graph: Graph, source: str = "product specs") -> No
     validate_ontology_modules(modules)
 
 
-def load_contract_graph(product_root: Path) -> Graph:
+def load_contract_graph(product_root: Path, *, processing_report: bool = False) -> Graph:
     specs_root = product_root / "specs"
     spec_files = sorted(specs_root.glob("*.ttl"))
     if not spec_files:
         raise ValueError(f"No Turtle specs found in {specs_root}")
-    contract_graph = Graph()
-    for spec_file in spec_files:
-        contract_graph.parse(spec_file, format="turtle")
+    if processing_report:
+        contract_graph = ProcessingGraph.load(product_root, spec_files)
+    else:
+        contract_graph = Graph()
+        for spec_file in spec_files:
+            contract_graph.parse(spec_file, format="turtle")
     validate_product_ontology(contract_graph, str(specs_root))
+    if isinstance(contract_graph, ProcessingGraph):
+        contract_graph.module_validated = True
     return contract_graph
 
 
@@ -665,10 +1036,15 @@ def _date_value(value, description: str) -> str:
     return converted.isoformat()
 
 
-def _required_text(graph: Graph, subject, predicate, description: str) -> str:
-    value = str(one(graph, subject, predicate)).strip()
+def _required_text(graph: Graph, subject, predicate, description: str, *, context_field=None, report_field=None) -> str:
+    term = one(graph, subject, predicate)
+    value = str(term).strip()
     if not value:
         raise ValueError(f"{description} must not be empty")
+    if context_field is not None and isinstance(graph, ProcessingGraph):
+        graph.context_value(subject, predicate, term, context_field, value)
+    if report_field is not None and isinstance(graph, ProcessingGraph):
+        graph.field_value(subject, predicate, term, report_field, value)
     return value
 
 
@@ -695,27 +1071,28 @@ def _json_pointer(value: str) -> str:
     return value
 
 
+@interpreted("decision-source-v1", ("Decision Conventions v1",), "source")
 def _read_decision_source(graph: Graph, citation) -> DecisionSource:
     if (citation, RDF.type, SDO.SourceCitation) not in graph:
         raise ValueError(
             f"Decision Rule source {citation} must be an sdo:SourceCitation"
         )
-    revision = one(graph, citation, SDO.citesSourceRevision)
+    revision = one(graph, citation, SDO.citesSourceRevision, report_field="source_revision")
     if (revision, RDF.type, SDO.SourceRevision) not in graph:
         raise ValueError(
             f"Source Citation {citation} must cite an sdo:SourceRevision"
         )
-    source = one(graph, revision, DCTERMS.isVersionOf)
+    source = one(graph, revision, DCTERMS.isVersionOf, report_field="source")
     if (source, RDF.type, SDO.Source) not in graph:
         raise ValueError(
             f"Source Revision {revision} must identify an sdo:Source"
         )
-    sha256 = str(one(graph, revision, SDO.contentSha256))
+    sha256 = str(one(graph, revision, SDO.contentSha256, report_field="content_sha256"))
     if not SHA256.fullmatch(sha256):
         raise ValueError(
             f"Source Revision {revision} must declare a lowercase SHA-256 digest"
         )
-    byte_size = int(one(graph, revision, SDO.byteSize))
+    byte_size = int(one(graph, revision, SDO.byteSize, report_field="byte_size"))
     if byte_size <= 0:
         raise ValueError(f"Source Revision {revision} byte size must be positive")
     return DecisionSource(
@@ -723,29 +1100,29 @@ def _read_decision_source(graph: Graph, citation) -> DecisionSource:
         source_revision=str(revision),
         source=str(source),
         locator=_required_text(
-            graph, citation, SDO.sourceLocator, "Source Citation locator"
+            graph, citation, SDO.sourceLocator, "Source Citation locator", report_field="locator"
         ),
         statement=_required_text(
-            graph, citation, SDO.sourceStatement, "Source Citation statement"
+            graph, citation, SDO.sourceStatement, "Source Citation statement", report_field="statement"
         ),
         title=_required_text(
-            graph, revision, DCTERMS.title, "Source Revision title"
+            graph, revision, DCTERMS.title, "Source Revision title", context_field="title"
         ),
         identifier=_required_text(
             graph,
             revision,
             DCTERMS.identifier,
-            "Source Revision identifier",
+            "Source Revision identifier", report_field="identifier",
         ),
         version=_required_text(
-            graph, revision, OWL.versionInfo, "Source Revision version"
+            graph, revision, OWL.versionInfo, "Source Revision version", report_field="version"
         ),
         valid_from=_date_value(
-            one(graph, revision, SDO.validFrom),
+            one(graph, revision, SDO.validFrom, report_field="valid_from"),
             f"Source Revision {revision} validFrom",
         ),
         content_url=_required_text(
-            graph, revision, SCHEMA.contentUrl, "Source Revision content URL"
+            graph, revision, SCHEMA.contentUrl, "Source Revision content URL", report_field="content_url"
         ),
         content_sha256=sha256,
         byte_size=byte_size,
@@ -857,13 +1234,14 @@ def _check_http_schema_keywords(schema) -> None:
             _check_http_schema_keywords(child)
 
 
+@interpreted("http-message-v1", ("HTTP Contract Conventions v1",), "http-message")
 def _read_http_message(graph: Graph, node, response: bool) -> HttpMessage:
     if not isinstance(node, URIRef):
         raise ValueError("HTTP messages must be named resources for deterministic provenance")
     expected_type = SCO.HttpResponse if response else SCO.HttpRequest
     if (node, RDF.type, expected_type) not in graph:
         raise ValueError(f"HTTP message {node} must be a {expected_type}")
-    media_type = _required_text(graph, node, SCO.mediaType, "HTTP media type")
+    media_type = _required_text(graph, node, SCO.mediaType, "HTTP media type", report_field="@media-type")
     if not re.fullmatch(r"application/(?:[a-z0-9!#$&^_.+-]+\+)?json", media_type):
         raise ValueError(f"HTTP body requires a JSON media type: {media_type}")
     value = one(graph, node, SCO.bodySchema)
@@ -878,7 +1256,9 @@ def _read_http_message(graph: Graph, node, response: bool) -> HttpMessage:
     except (ValueError, SchemaError) as error:
         raise ValueError(f"Invalid HTTP body schema on {node}: {error}") from error
     _check_http_schema_keywords(body_schema)
-    pointer = one(graph, node, SCO.bodyPointer)
+    if isinstance(graph, ProcessingGraph):
+        graph.field_value(node, SCO.bodySchema, value, "@schema", body_schema)
+    pointer = one(graph, node, SCO.bodyPointer, report_field="@body-pointer")
     if not isinstance(pointer, Literal) or not isinstance(pointer.toPython(), str):
         raise ValueError("HTTP body pointer must be an explicit string")
     pointer = str(pointer)
@@ -903,15 +1283,16 @@ def _read_http_message(graph: Graph, node, response: bool) -> HttpMessage:
     if response:
         return HttpResponse(
             **fields,
-            status_code=_positive_integer_value(one(graph, node, SCO.statusCode), "HTTP status"),
-            description=_required_text(graph, node, DCTERMS.description, "HTTP response description"),
+            status_code=_positive_integer_value(one(graph, node, SCO.statusCode, report_field="@response-status"), "HTTP status"),
+            description=_required_text(graph, node, DCTERMS.description, "HTTP response description", context_field="description"),
         )
-    body_required = _boolean_value(one(graph, node, SCO.bodyRequired), "HTTP body required")
+    body_required = _boolean_value(one(graph, node, SCO.bodyRequired, report_field="required"), "HTTP body required")
     if not body_required:
         raise ValueError("The supported HTTP contract profile requires a request body")
     return HttpRequest(**fields, body_required=body_required)
 
 
+@interpreted("http-endpoint-v1", ("HTTP Contract Conventions v1",), "http-endpoint")
 def read_http_endpoint(graph: Graph) -> HttpEndpoint | None:
     """Read explicit HTTP messages and bindings without product-specific mapping IRIs."""
     endpoints = set(graph.subjects(RDF.type, SCO.PostEndpoint)) | set(
@@ -926,28 +1307,29 @@ def read_http_endpoint(graph: Graph) -> HttpEndpoint | None:
         raise ValueError("HTTP endpoints must be named resources for deterministic provenance")
     if (endpoint, RDF.type, SCO.PostEndpoint) not in graph:
         raise ValueError(f"HTTP endpoint {endpoint} must be a sco:PostEndpoint")
-    path = _required_text(graph, endpoint, SCO.path, "HTTP POST path")
+    path = _required_text(graph, endpoint, SCO.path, "HTTP POST path", report_field="@http-path")
     if not re.fullmatch(r"/[A-Za-z0-9/_.~-]*", path) or "//" in path:
         raise ValueError(f"HTTP POST path must be a fixed, safe path: {path}")
-    contract = one(graph, endpoint, SCO.invokesContract)
+    contract = one(graph, endpoint, SCO.invokesContract, report_field="x-spec-compiler-binding/invokes_contract")
     if not isinstance(contract, URIRef):
         raise ValueError("HTTP endpoint must invoke an explicit contract IRI")
-    request = _read_http_message(graph, one(graph, endpoint, SCO.request), response=False)
-    success = _read_http_message(graph, one(graph, endpoint, SCO.successResponse), response=True)
-    invalid = _read_http_message(graph, one(graph, endpoint, SCO.invalidRequestResponse), response=True)
+    request = _read_http_message(graph, one(graph, endpoint, SCO.request, report_field="@http-request"), response=False)
+    success = _read_http_message(graph, one(graph, endpoint, SCO.successResponse, report_field="@http-success"), response=True)
+    invalid = _read_http_message(graph, one(graph, endpoint, SCO.invalidRequestResponse, report_field="@http-invalid"), response=True)
     if not 200 <= success.status_code < 300 or success.status_code in (204, 205):
         raise ValueError("HTTP success response must have a body-bearing 2xx status")
     if not 400 <= invalid.status_code < 500:
         raise ValueError("HTTP invalid-request response must have a 4xx status")
     return HttpEndpoint(
         identifier=str(endpoint), path=path,
-        title=_required_text(graph, endpoint, DCTERMS.title, "HTTP API title"),
-        version=_required_text(graph, endpoint, SCHEMA.version, "HTTP API version"),
+        title=_required_text(graph, endpoint, DCTERMS.title, "HTTP API title", context_field="/info/title"),
+        version=_required_text(graph, endpoint, SCHEMA.version, "HTTP API version", context_field="/info/version"),
         invokes_contract=str(contract), request=request,
         success_response=success, invalid_request_response=invalid,
     )
 
 
+@interpreted("decision-contract-v1", ("Decision Protocol v1", "Decision Conventions v1", "Version Selection Conventions v1", "Question Selection Conventions v1", "Evidence Evaluation Conventions v1", "Obligation Evaluation Conventions v1", "Ontology Module Conventions v1"), "decision")
 def read_decision_model(
     product_root: Path, graph: Graph | None = None
 ) -> ExplicitDecisionAndObligationModel:
@@ -963,11 +1345,13 @@ def read_decision_model(
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
         raise ValueError("Decision Protocol product must be a schema:SoftwareApplication")
-    contract = one(graph, product, DPO.implementsDecisionContract)
+    if isinstance(graph, ProcessingGraph):
+        graph.field_value(product, DCTERMS.conformsTo, DPO.DecisionProtocolV1, "/product", str(product))
+    contract = one(graph, product, DPO.implementsDecisionContract, report_field="/decision_contract")
     if (contract, RDF.type, SDO.DecisionContract) not in graph:
         raise ValueError("Decision product contract must be an sdo:DecisionContract")
     if not _boolean_value(
-        one(graph, contract, SDO.requiresAllRules),
+        one(graph, contract, SDO.requiresAllRules, report_field="/rule_set/versions/*/requires_all_rules"),
         f"Decision Contract {contract} requiresAllRules",
     ):
         raise ValueError(
@@ -976,9 +1360,9 @@ def read_decision_model(
         )
 
     outcome_nodes = {
-        "positive": one(graph, contract, SDO.positiveOutcome),
-        "negative": one(graph, contract, SDO.negativeOutcome),
-        "unknown": one(graph, contract, SDO.unknownOutcome),
+        "positive": one(graph, contract, SDO.positiveOutcome, report_field="/outcomes/positive/id"),
+        "negative": one(graph, contract, SDO.negativeOutcome, report_field="/outcomes/negative/id"),
+        "unknown": one(graph, contract, SDO.unknownOutcome, report_field="/outcomes/unknown/id"),
     }
     outcomes = {str(node) for node in outcome_nodes.values()}
     if len(outcomes) != 3:
@@ -987,8 +1371,8 @@ def read_decision_model(
         if (node, RDF.type, SDO.DecisionOutcome) not in graph:
             raise ValueError(f"Decision outcome {node} must be an sdo:DecisionOutcome")
     outcome_codes = {
-        str(node): str(one(graph, node, SDO.outcomeCode))
-        for node in outcome_nodes.values()
+        str(node): str(one(graph, node, SDO.outcomeCode, report_field=f"/outcomes/{role}/code"))
+        for role, node in outcome_nodes.items()
     }
     if len(set(outcome_codes.values())) != 3 or any(
         not SQL_IDENTIFIER.fullmatch(code) for code in outcome_codes.values()
@@ -998,7 +1382,7 @@ def read_decision_model(
     negative_outcome = str(outcome_nodes["negative"])
     unknown_outcome = str(outcome_nodes["unknown"])
 
-    version_nodes = sorted(graph.objects(contract, SDO.usesRuleSetVersion), key=str)
+    version_nodes = sorted(projected_objects(graph, contract, SDO.usesRuleSetVersion, "/rule_set/versions/*/id"), key=str)
     if not version_nodes:
         raise ValueError(
             f"Decision Contract {contract} must declare at least one "
@@ -1015,6 +1399,7 @@ def read_decision_model(
     parsed_versions = []
     stable_rule_set = None
 
+    @interpreted("decision-condition-v1", ("Decision Conventions v1", "Question Selection Conventions v1"), "condition", graph=graph)
     def read_rule_condition(condition_node) -> DecisionCondition:
         condition_id = str(condition_node)
         if condition_id in condition_cache:
@@ -1023,7 +1408,7 @@ def read_decision_model(
             raise ValueError(
                 f"Decision Rule Condition {condition_node} must be an sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer, report_field="input_json_pointer")))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Decision Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
@@ -1034,6 +1419,8 @@ def read_decision_model(
                 f"sdo:FactQuestion, got {len(question_nodes)}"
             )
         question_node = question_nodes[0]
+        if isinstance(graph, ProcessingGraph):
+            graph.field_value(question_node, SDO.elicitsCondition, condition_node, "@question-binding", condition_id)
         if (question_node, RDF.type, SDO.FactQuestion) not in graph:
             raise ValueError(f"Question {question_node} must be an sdo:FactQuestion")
         question_id = str(question_node)
@@ -1041,7 +1428,7 @@ def read_decision_model(
             raise ValueError(f"Fact Question {question_node} elicits more than one Condition")
         question_owners[question_id] = condition_id
         priority = _positive_integer_value(
-            one(graph, question_node, SDO.questionPriority),
+            one(graph, question_node, SDO.questionPriority, report_field="priority"),
             f"Fact Question {question_node} priority",
         )
         if priority in priority_owners and priority_owners[priority] != condition_id:
@@ -1052,17 +1439,17 @@ def read_decision_model(
         priority_owners[priority] = condition_id
         condition = DecisionCondition(
             identifier=condition_id,
-            fact_property=str(one(graph, condition_node, SDO.factProperty)),
+            fact_property=str(one(graph, condition_node, SDO.factProperty, report_field="fact_property")),
             input_json_pointer=pointer,
             expected_boolean=_boolean_value(
-                one(graph, condition_node, SDO.expectedBoolean),
+                one(graph, condition_node, SDO.expectedBoolean, report_field="expected_boolean"),
                 f"Decision Condition {condition_node} expectedBoolean",
             ),
             question=FactQuestion(
                 identifier=question_id,
                 text=_required_text(
                     graph, question_node, SDO.questionText,
-                    f"Fact Question {question_node} text",
+                    f"Fact Question {question_node} text", report_field="text",
                 ),
                 priority=priority,
             ),
@@ -1070,6 +1457,7 @@ def read_decision_model(
         condition_cache[condition_id] = condition
         return condition
 
+    @interpreted("evidence-condition-v1", ("Evidence Evaluation Conventions v1",), "condition", graph=graph)
     def read_evidence_condition(condition_node) -> EvidenceApplicabilityCondition:
         condition_id = str(condition_node)
         if condition_id in evidence_condition_cache:
@@ -1084,16 +1472,16 @@ def read_decision_model(
                 f"Evidence applicability member {condition_node} must be an "
                 "sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer, report_field="input_json_pointer")))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
         condition = EvidenceApplicabilityCondition(
             identifier=condition_id,
-            fact_property=str(one(graph, condition_node, SDO.factProperty)),
+            fact_property=str(one(graph, condition_node, SDO.factProperty, report_field="fact_property")),
             input_json_pointer=pointer,
             expected_boolean=_boolean_value(
-                one(graph, condition_node, SDO.expectedBoolean),
+                one(graph, condition_node, SDO.expectedBoolean, report_field="expected_boolean"),
                 f"Evidence applicability Condition {condition_node} expectedBoolean",
             ),
         )
@@ -1106,7 +1494,7 @@ def read_decision_model(
                 f"Decision Contract {contract} member {version_node} must be an "
                 "sdo:RuleSetVersion"
             )
-        rule_set = one(graph, version_node, DCTERMS.isVersionOf)
+        rule_set = one(graph, version_node, DCTERMS.isVersionOf, report_field="/rule_set/id")
         if (rule_set, RDF.type, SDO.RuleSet) not in graph:
             raise ValueError(f"Rule Set Version {version_node} must identify an sdo:RuleSet")
         if stable_rule_set is None:
@@ -1117,10 +1505,10 @@ def read_decision_model(
             )
         version_label = _required_text(
             graph, version_node, OWL.versionInfo,
-            f"Rule Set Version {version_node} version label",
+            f"Rule Set Version {version_node} version label", report_field="version",
         )
         valid_from = _date_value(
-            one(graph, version_node, SDO.validFrom),
+            one(graph, version_node, SDO.validFrom, report_field="valid_from"),
             f"Rule Set Version {version_node} validFrom",
         )
         until_values = list(graph.objects(version_node, SDO.validUntil))
@@ -1132,12 +1520,14 @@ def read_decision_model(
             )
             if until_values else None
         )
+        if until_values and isinstance(graph, ProcessingGraph):
+            graph.field_value(version_node, SDO.validUntil, until_values[0], "valid_until", valid_until)
         if valid_until is not None and valid_until <= valid_from:
             raise ValueError(
                 f"Rule Set Version {version_node} validUntil must be after validFrom"
             )
         version_source = _read_decision_source(
-            graph, one(graph, version_node, SDO.versionSourceCitation)
+            graph, one(graph, version_node, SDO.versionSourceCitation, report_field="source/citation")
         )
         if version_source.valid_from != valid_from:
             raise ValueError(
@@ -1147,14 +1537,14 @@ def read_decision_model(
 
         rules = []
         version_conditions = set()
-        for rule_node in sorted(graph.objects(version_node, SDO.hasRule), key=str):
+        for rule_node in sorted(projected_objects(graph, version_node, SDO.hasRule, "rules/*/id"), key=str):
             if (rule_node, RDF.type, SDO.Rule) not in graph:
                 raise ValueError(f"Rule Set member {rule_node} must be an sdo:Rule")
             rule_id = str(rule_node)
             if rule_id in rule_ids:
                 raise ValueError(f"Decision Rule {rule_node} belongs to more than one version")
             rule_ids.add(rule_id)
-            condition = read_rule_condition(one(graph, rule_node, SDO.condition))
+            condition = read_rule_condition(one(graph, rule_node, SDO.condition, report_field="condition/id"))
             if condition.identifier in version_conditions:
                 raise ValueError(
                     f"Decision Condition {condition.identifier} is used by more "
@@ -1162,11 +1552,11 @@ def read_decision_model(
                 )
             version_conditions.add(condition.identifier)
             source = _read_decision_source(
-                graph, one(graph, rule_node, SDO.sourceCitation)
+                graph, one(graph, rule_node, SDO.sourceCitation, report_field="source/citation")
             )
             obligations = []
             for obligation_node in sorted(
-                graph.objects(rule_node, SDO.imposesObligation), key=str
+                projected_objects(graph, rule_node, SDO.imposesObligation, "obligations/*/id"), key=str
             ):
                 if (obligation_node, RDF.type, SDO.Obligation) not in graph:
                     raise ValueError(
@@ -1185,7 +1575,7 @@ def read_decision_model(
                             graph,
                             obligation_node,
                             SDO.obligationText,
-                            f"Obligation {obligation_node} text",
+                            f"Obligation {obligation_node} text", report_field="text",
                         ),
                     )
                 )
@@ -1195,7 +1585,7 @@ def read_decision_model(
 
         requirements = []
         for requirement_node in sorted(
-            graph.objects(version_node, SDO.hasEvidenceRequirement), key=str
+            projected_objects(graph, version_node, SDO.hasEvidenceRequirement, "evidence_requirements/*/id"), key=str
         ):
             if (requirement_node, RDF.type, SDO.EvidenceRequirement) not in graph:
                 raise ValueError(
@@ -1208,17 +1598,17 @@ def read_decision_model(
                     f"Evidence Requirement {requirement_node} belongs to more than one version"
                 )
             requirement_ids.add(requirement_id)
-            supports = str(one(graph, requirement_node, SDO.supportsCondition))
+            supports = str(one(graph, requirement_node, SDO.supportsCondition, report_field="supports_condition"))
             if supports not in version_conditions:
                 raise ValueError(
                     f"Evidence Requirement {requirement_node} must support a "
                     "Condition used by its Rule Set Version"
                 )
-            evidence_type = one(graph, requirement_node, SDO.requiredEvidenceType)
+            evidence_type = one(graph, requirement_node, SDO.requiredEvidenceType, report_field="required_evidence_type")
             if not isinstance(evidence_type, URIRef):
                 raise ValueError(f"Required Evidence type {evidence_type} must be an IRI")
             applicability_nodes = sorted(
-                graph.objects(requirement_node, SDO.applicabilityCondition), key=str
+                projected_objects(graph, requirement_node, SDO.applicabilityCondition, "applicability_conditions/*/id"), key=str
             )
             if not applicability_nodes:
                 raise ValueError(
@@ -1226,7 +1616,7 @@ def read_decision_model(
                     "least one applicability Condition"
                 )
             source = _read_decision_source(
-                graph, one(graph, requirement_node, SDO.evidenceSourceCitation)
+                graph, one(graph, requirement_node, SDO.evidenceSourceCitation, report_field="source/citation")
             )
             requirements.append(
                 EvidenceRequirement(
@@ -1285,10 +1675,10 @@ def read_decision_model(
     cases = []
     question_flow_case_ids = []
     version_selection_case_ids = []
-    for case_node in sorted(graph.objects(contract, SDO.hasConformanceCase), key=str):
+    for case_node in sorted(projected_objects(graph, contract, SDO.hasConformanceCase, "/conformance_cases/*/id"), key=str):
         if (case_node, RDF.type, SDO.ConformanceCase) not in graph:
             raise ValueError(f"Decision conformance case {case_node} must be an sdo:ConformanceCase")
-        if one(graph, case_node, SDO.forDecisionContract) != contract:
+        if one(graph, case_node, SDO.forDecisionContract, report_field="/decision_contract") != contract:
             raise ValueError(f"Conformance case {case_node} must reference its Decision Contract")
         date_values = list(graph.objects(case_node, SDO.decisionDate))
         if len(date_values) != 1:
@@ -1299,24 +1689,26 @@ def read_decision_model(
         decision_date = _date_value(
             date_values[0], f"Conformance case {case_node} decisionDate"
         )
+        if isinstance(graph, ProcessingGraph):
+            graph.field_value(case_node, SDO.decisionDate, date_values[0], "decision_date", decision_date)
         selected_version = version_for_date(decision_date, f"Conformance Case {case_node}")
-        expected_version = one(graph, case_node, SDO.expectsRuleSetVersion)
+        expected_version = one(graph, case_node, SDO.expectsRuleSetVersion, report_field="expected_rule_set_version")
         if str(expected_version) != selected_version.identifier:
             raise ValueError(
                 f"Conformance Case {case_node} expects Rule Set Version "
                 f"{expected_version}, but Version Selection Conventions v1 select "
                 f"{selected_version.identifier} from its Decision Date"
             )
-        expected_outcome = str(one(graph, case_node, SDO.expectsOutcome))
+        expected_outcome = str(one(graph, case_node, SDO.expectsOutcome, report_field="expected_outcome"))
         if expected_outcome not in outcomes:
             raise ValueError(f"Conformance case {case_node} uses an undeclared outcome")
 
         facts = []
         fact_conditions = set()
-        for fact in graph.objects(case_node, SDO.hasFact):
+        for fact in projected_objects(graph, case_node, SDO.hasFact, "@resource"):
             if (fact, RDF.type, SDO.CaseFact) not in graph:
                 raise ValueError(f"Conformance case fact {fact} must be an sdo:CaseFact")
-            condition = str(one(graph, fact, SDO.forCondition))
+            condition = str(one(graph, fact, SDO.forCondition, report_field="condition"))
             if condition not in all_conditions:
                 raise ValueError(
                     f"Conformance case {case_node} references unknown Condition {condition}"
@@ -1328,34 +1720,36 @@ def read_decision_model(
             fact_conditions.add(condition)
             facts.append(
                 (condition, _boolean_value(
-                    one(graph, fact, SDO.booleanValue),
+                    one(graph, fact, SDO.booleanValue, report_field="value"),
                     f"Conformance case {case_node} Fact value",
                 ))
             )
+            if isinstance(graph, ProcessingGraph):
+                graph.bind_projection(fact, case_node, "facts", "condition", condition)
         immutable_facts = tuple(sorted(facts))
 
         evidence = []
         evidence_ids = set()
-        for evidence_node in sorted(graph.objects(case_node, SDO.hasEvidence), key=str):
+        for evidence_node in sorted(projected_objects(graph, case_node, SDO.hasEvidence, "evidence/*/id"), key=str):
             if (evidence_node, RDF.type, SDO.Evidence) not in graph:
                 raise ValueError(f"Supplied Evidence {evidence_node} must be an sdo:Evidence")
             evidence_id = str(evidence_node)
             if evidence_id in evidence_ids:
                 raise ValueError(f"Conformance case {case_node} supplies duplicate Evidence {evidence_node}")
             evidence_ids.add(evidence_id)
-            evidence_type = one(graph, evidence_node, SDO.evidenceType)
+            evidence_type = one(graph, evidence_node, SDO.evidenceType, report_field="evidence_type")
             if not isinstance(evidence_type, URIRef):
                 raise ValueError(f"Supplied Evidence type {evidence_type} must be an IRI")
             assessments = []
             assessed_requirements = set()
             for assessment_node in sorted(
-                graph.objects(evidence_node, SDO.hasEvidenceAssessment), key=str
+                projected_objects(graph, evidence_node, SDO.hasEvidenceAssessment, "@resource"), key=str
             ):
                 if (assessment_node, RDF.type, SDO.EvidenceAssessment) not in graph:
                     raise ValueError(
                         f"Evidence assessment {assessment_node} must be an sdo:EvidenceAssessment"
                     )
-                assessed = str(one(graph, assessment_node, SDO.assessesEvidenceRequirement))
+                assessed = str(one(graph, assessment_node, SDO.assessesEvidenceRequirement, report_field="evidence_requirement"))
                 if assessed not in all_requirement_ids:
                     raise ValueError(
                         f"Evidence assessment {assessment_node} references an unknown Evidence Requirement"
@@ -1368,10 +1762,12 @@ def read_decision_model(
                 assessments.append(EvidenceAssessment(
                     evidence_requirement=assessed,
                     accepted=_boolean_value(
-                        one(graph, assessment_node, SDO.accepted),
+                        one(graph, assessment_node, SDO.accepted, report_field="accepted"),
                         f"Evidence assessment {assessment_node} accepted",
                     ),
                 ))
+                if isinstance(graph, ProcessingGraph):
+                    graph.bind_projection(assessment_node, evidence_node, "assessments", "evidence_requirement", assessed)
             evidence.append(SuppliedEvidence(
                 identifier=evidence_id,
                 evidence_type=str(evidence_type),
@@ -1390,13 +1786,13 @@ def read_decision_model(
             str(SDO.EvidenceRequirementMissing): "missing",
             str(SDO.EvidenceRequirementNotApplicable): "not_applicable",
         }
-        for expectation_node in graph.objects(case_node, SDO.hasEvidenceExpectation):
+        for expectation_node in projected_objects(graph, case_node, SDO.hasEvidenceExpectation, "@resource"):
             if (expectation_node, RDF.type, SDO.EvidenceExpectation) not in graph:
                 raise ValueError(
                     f"Evidence expectation {expectation_node} must be an sdo:EvidenceExpectation"
                 )
             requirement_id = str(one(
-                graph, expectation_node, SDO.expectsEvidenceRequirement
+                graph, expectation_node, SDO.expectsEvidenceRequirement, report_field="evidence_requirement"
             ))
             if requirement_id not in selected_requirement_ids:
                 raise ValueError(
@@ -1409,12 +1805,16 @@ def read_decision_model(
                     f"Expectations for {requirement_id}"
                 )
             seen_expectations.add(requirement_id)
-            status_node = str(one(graph, expectation_node, SDO.expectedEvidenceStatus))
+            status_term = one(graph, expectation_node, SDO.expectedEvidenceStatus)
+            status_node = str(status_term)
             if status_node not in status_by_node:
                 raise ValueError(
                     f"Evidence expectation {expectation_node} uses an unsupported status"
                 )
             statuses.append((requirement_id, status_by_node[status_node]))
+            if isinstance(graph, ProcessingGraph):
+                graph.bind_projection(expectation_node, case_node, "expected_evidence_statuses", "evidence_requirement", requirement_id)
+                graph.field_value(expectation_node, SDO.expectedEvidenceStatus, status_term, "status", status_by_node[status_node])
         if seen_expectations != selected_requirement_ids:
             missing = sorted(selected_requirement_ids - seen_expectations)
             raise ValueError(
@@ -1445,8 +1845,8 @@ def read_decision_model(
             str(SDO.ObligationViolated): "violated",
             str(SDO.ObligationUnknown): "unknown",
         }
-        for expectation_node in graph.objects(
-            case_node, SDO.hasObligationExpectation
+        for expectation_node in projected_objects(
+            graph, case_node, SDO.hasObligationExpectation, "@resource"
         ):
             if (expectation_node, RDF.type, SDO.ObligationExpectation) not in graph:
                 raise ValueError(
@@ -1454,7 +1854,7 @@ def read_decision_model(
                     "sdo:ObligationExpectation"
                 )
             obligation_id = str(
-                one(graph, expectation_node, SDO.expectsObligation)
+                one(graph, expectation_node, SDO.expectsObligation, report_field="obligation")
             )
             if obligation_id not in selected_obligations:
                 raise ValueError(
@@ -1467,9 +1867,8 @@ def read_decision_model(
                     f"Expectations for {obligation_id}"
                 )
             seen_obligation_expectations.add(obligation_id)
-            status_node = str(
-                one(graph, expectation_node, SDO.expectedObligationStatus)
-            )
+            status_term = one(graph, expectation_node, SDO.expectedObligationStatus)
+            status_node = str(status_term)
             if status_node not in obligation_status_by_node:
                 raise ValueError(
                     f"Obligation expectation {expectation_node} uses an "
@@ -1478,6 +1877,9 @@ def read_decision_model(
             obligation_statuses.append(
                 (obligation_id, obligation_status_by_node[status_node])
             )
+            if isinstance(graph, ProcessingGraph):
+                graph.bind_projection(expectation_node, case_node, "expected_obligation_statuses", "obligation", obligation_id)
+                graph.field_value(expectation_node, SDO.expectedObligationStatus, status_term, "status", obligation_status_by_node[status_node])
         if seen_obligation_expectations != set(selected_obligations):
             missing = sorted(
                 set(selected_obligations) - seen_obligation_expectations
@@ -1519,8 +1921,12 @@ def read_decision_model(
         ))
         if (case_node, RDF.type, SDO.QuestionFlowCase) in graph:
             question_flow_case_ids.append(str(case_node))
+            if isinstance(graph, ProcessingGraph):
+                graph.field_value(case_node, RDF.type, SDO.QuestionFlowCase, "/question_flow_case", str(case_node))
         if (case_node, RDF.type, SDO.VersionSelectionCase) in graph:
             version_selection_case_ids.append(str(case_node))
+            if isinstance(graph, ProcessingGraph):
+                graph.field_value(case_node, RDF.type, SDO.VersionSelectionCase, "/version_selection_cases/*", str(case_node))
 
     immutable_cases = tuple(cases)
     if not immutable_cases:
@@ -1619,7 +2025,7 @@ def read_decision_model(
         unknown_outcome=unknown_outcome,
         unknown_outcome_code=outcome_codes[unknown_outcome],
         scope_note=_required_text(
-            graph, contract, SDO.scopeNote, "Decision Contract scope note"
+            graph, contract, SDO.scopeNote, "Decision Contract scope note", report_field="/scope_note"
         ),
         conformance_cases=immutable_cases,
         question_flow_case=question_flow_case.identifier,
@@ -3705,6 +4111,7 @@ def plan_decision_contract(
     product_path: str,
     model: ExplicitDecisionAndObligationModel,
     http_endpoint: HttpEndpoint | None = None,
+    processing_graph: ProcessingGraph | None = None,
 ) -> ArtifactPlan:
     """Compose Decision and optional HTTP results without changing product files."""
     validate_decision_http_binding(model, http_endpoint)
@@ -3780,7 +4187,17 @@ def plan_decision_contract(
     for item in work_items:
         outputs.append((Path("generated/issues") / f"{item['id']}.md",
                         render_issue(item, product_path)))
-    return ArtifactPlan(tuple(outputs), tuple(obsolete))
+    if processing_graph is None:
+        obsolete.extend((Path("generated/processing-report.json"), Path("generated/processing-report.html")))
+    plan = ArtifactPlan(tuple(outputs), tuple(obsolete))
+    if processing_graph is not None:
+        report = build_processing_report(processing_graph, plan, http_endpoint)
+        outputs.extend([
+            (Path("generated/processing-report.json"), json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"),
+            (Path("generated/processing-report.html"), render_processing_report(report)),
+        ])
+        plan = ArtifactPlan(tuple(outputs), tuple(obsolete))
+    return plan
 
 
 def generate_decision_contract(
@@ -3788,9 +4205,19 @@ def generate_decision_contract(
     product_path: str,
     model: ExplicitDecisionAndObligationModel,
     http_endpoint: HttpEndpoint | None = None,
+    processing_graph: ProcessingGraph | None = None,
 ) -> list[Path]:
-    plan = plan_decision_contract(product_root, product_path, model, http_endpoint)
+    plan = plan_decision_contract(product_root, product_path, model, http_endpoint, processing_graph)
     return plan.write(product_root)
+
+
+def clear_uncovered_processing_report(product_root: Path, profile: str) -> None:
+    """Only after successful compilation, remove reports from an earlier profile."""
+    for name in ("processing-report.json", "processing-report.html"):
+        path = product_root / "generated" / name
+        if path.exists():
+            path.unlink()
+    print(f"Processing report: profile {profile} is not covered by Processing Report Conventions v1")
 
 
 def parse_args() -> argparse.Namespace:
@@ -3853,13 +4280,15 @@ def main() -> None:
     if compiler_products:
         contract = read_compiler_contract(product_root, graph)
         outputs = generate_compiler_contract(product_root, product_path, contract)
+        clear_uncovered_processing_report(product_root, "compiler")
         for generated_output in outputs:
             print(f"Generated {generated_output.relative_to(product_root)}")
         return
     if decision_products:
+        graph = load_contract_graph(product_root, processing_report=True)
         model = read_decision_model(product_root, graph)
         http_endpoint = read_http_endpoint(graph)
-        outputs = generate_decision_contract(product_root, product_path, model, http_endpoint)
+        outputs = generate_decision_contract(product_root, product_path, model, http_endpoint, graph)
         for generated_output in outputs:
             print(f"Generated {generated_output.relative_to(product_root)}")
         return
@@ -3921,6 +4350,7 @@ def main() -> None:
         graph_output,
         *(issues / f"{item['id']}.md" for item in work_items),
     ]
+    clear_uncovered_processing_report(product_root, "http-sql")
     for generated_output in outputs:
         display_path = (
             generated_output.relative_to(ROOT)

@@ -6,13 +6,18 @@ import argparse
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from functools import wraps
+import hashlib
+import html
+from importlib.metadata import version as package_version
 import json
 from pathlib import Path
 from pprint import pformat
 import re
 
 from jsonschema import Draft202012Validator, SchemaError
-from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib.compare import to_canonical_graph
 from rdflib.namespace import DCTERMS, OWL, RDFS, SH, VANN, XSD
 
 ROOT = Path(__file__).parents[1]
@@ -27,6 +32,7 @@ VERSION_SELECTION_CONVENTIONS_VERSION = 1
 OBLIGATION_EVALUATION_CONVENTIONS_VERSION = 1
 HTTP_CONTRACT_CONVENTIONS_VERSION = 1
 ONTOLOGY_MODULE_CONVENTIONS_VERSION = 1
+PROCESSING_REPORT_CONVENTIONS_VERSION = 1
 # G1 receives an exact local RDF catalog snapshot, not a network resolver.
 PACKAGED_ONTOLOGIES = None
 SCO = Namespace("https://arturmiller.github.io/spec-compiler/ontology/#")
@@ -230,11 +236,371 @@ class ArtifactPlan:
         return [product_root / path for path, _ in self.outputs]
 
 
-def one(graph: Graph, subject, predicate):
+class ProcessingGraph(Graph):
+    """Authored statements with provenance and successful interpretation records.
+
+    Query results are only candidates. An interpretation is retained when its
+    reader succeeds, and becomes a contract use only when its normalized result
+    is projected to an existing artifact by build_processing_report().
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.origins = {}
+        self.frames = []
+        self.interpretations = []
+        self.checking = False
+        self.module_validated = False
+
+    @classmethod
+    def load(cls, product_root, files):
+        result = cls()
+        occurrences = {}
+        for path in files:
+            canonical = to_canonical_graph(Graph().parse(path, format="turtle"))
+            serialized = sorted(json.dumps([_report_term(term) for term in triple],
+                                           sort_keys=True, ensure_ascii=False) for triple in canonical)
+            digest = hashlib.sha256("\n".join(serialized).encode()).hexdigest()
+            occurrence = occurrences.get(digest, 0)
+            occurrences[digest] = occurrence + 1
+            for triple in canonical:
+                # Files have separate blank-node scopes. Identical files must
+                # not accidentally merge their independently authored bnodes.
+                triple = tuple(BNode(f"{digest}-{occurrence}-{term}")
+                               if isinstance(term, BNode) else term for term in triple)
+                result.add(triple)
+                result.origins.setdefault(triple, set()).add(path.relative_to(product_root).as_posix())
+        return result
+
+    def triples(self, triple):
+        for found in super().triples(triple):
+            if self.frames and self.checking:
+                self.frames[-1]["checks"].add(found)
+            yield found
+
+    def __contains__(self, triple):
+        previous = self.checking
+        self.checking = True
+        try:
+            return super().__contains__(triple)
+        finally:
+            self.checking = previous
+
+    def context_value(self, subject, predicate, value, field, normalized):
+        if self.frames:
+            self.frames[-1]["contexts"][subject, predicate, value] = (field, normalized)
+
+    def field_value(self, subject, predicate, value, field, normalized):
+        if self.frames:
+            self.frames[-1]["fields"].setdefault((subject, predicate, value), []).append((field, normalized))
+
+    def bind_projection(self, resource, owner, collection, selector, value):
+        if self.frames:
+            self.frames[-1]["aliases"].append((str(resource), str(owner), collection, selector, value))
+
+
+def interpreted(rule, conventions, kind, *, graph=None):
+    """Record one successful normalizer; graph access alone is not a use claim."""
+    def decorate(function):
+        @wraps(function)
+        def call(*args, **kwargs):
+            active_graph = graph if isinstance(graph, ProcessingGraph) else next(
+                (value for value in (*args, *kwargs.values()) if isinstance(value, ProcessingGraph)), None)
+            if active_graph is None:
+                return function(*args, **kwargs)
+            frame = {"rule": rule, "conventions": conventions, "kind": kind,
+                     "checks": set(), "contexts": {}, "fields": {}, "aliases": []}
+            start = len(active_graph.interpretations)
+            active_graph.frames.append(frame)
+            try:
+                result = function(*args, **kwargs)
+            except BaseException:
+                del active_graph.interpretations[start:]
+                raise
+            finally:
+                active_graph.frames.pop()
+            if result is not None:
+                frame["result"] = result
+                active_graph.interpretations.append(frame)
+            return result
+        return call
+    return decorate
+
+
+def _pointer_segment(value):
+    return str(value).replace("~", "~0").replace("/", "~1")
+
+
+def _artifact_nodes(value, pointer=""):
+    yield pointer, value
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield from _artifact_nodes(child, pointer + "/" + _pointer_segment(key))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from _artifact_nodes(child, pointer + f"/{index}")
+
+
+def _report_term(term):
+    if isinstance(term, URIRef):
+        return {"kind": "iri", "value": str(term)}
+    if isinstance(term, BNode):
+        return {"kind": "blank", "value": str(term)}
+    return {"kind": "literal", "value": str(term),
+            "datatype": str(term.datatype) if term.datatype else None,
+            "language": term.language}
+
+
+def _same_json_value(left, right):
+    """Preserve JSON types: Python otherwise considers True == 1 and False == 0."""
+    return json.dumps(left, sort_keys=True, ensure_ascii=False) == json.dumps(right, sort_keys=True, ensure_ascii=False)
+
+
+def build_processing_report(graph, plan, endpoint):
+    """Project successful interpretations onto already rendered artifact data."""
+    if set(graph) != set(graph.origins):
+        raise ValueError("Processing report input was changed after loading its authored provenance")
+    artifacts = {path.as_posix(): text for path, text in plan.outputs}
+    decision_path = "generated/decision-contract.json"
+    http_path = "generated/expected-openapi.json"
+    decision = json.loads(artifacts[decision_path])
+    decision_nodes = list(_artifact_nodes(decision))
+    work = json.loads(artifacts["generated/work-graph.json"])["work_items"]
+    uses = {triple: {} for triple in graph.origins}
+    aliases = [alias for frame in graph.interpretations for alias in frame["aliases"]]
+
+    def projected_resources(resource, nodes, owner=None):
+        matches = []
+        for source, parent, collection, selector, expected in aliases:
+            if source != resource or (owner is not None and parent != owner):
+                continue
+            for pointer, value in nodes.items():
+                if not isinstance(value, dict) or value.get("id") != parent:
+                    continue
+                for index, child in enumerate(value.get(collection, [])):
+                    if child.get(selector) == expected:
+                        matches.append(pointer + "/" + collection + f"/{index}")
+        return matches
+
+    def record(triple, usage):
+        if triple not in uses:
+            raise ValueError("Processing report refers to a statement outside the authored graph")
+        key = json.dumps(usage, sort_keys=True, ensure_ascii=False)
+        uses[triple][key] = usage
+
+    def links(suffixes):
+        return [{"id": item["id"], "artifact": "generated/work-graph.json",
+                 "jsonPointer": f"/work_items/{index}", "proof": item["test"]}
+                for index, item in enumerate(work)
+                if any(item["id"].endswith(suffix) for suffix in suffixes)]
+
+    if not graph.module_validated:
+        raise ValueError("A processing report requires successful ontology module validation")
+    for triple in uses:
+        record(triple, {"kind": "structural", "rule": "ontology-module-validation-v1",
+                        "conventions": ["Ontology Module Conventions v1"],
+                        "meaning": "Local identity, ownership and import boundary only; no product behavior proof."})
+    for frame in graph.interpretations:
+        result, kind = frame["result"], frame["kind"]
+        path, document, targets, work_links = decision_path, decision, [""], []
+        if kind == "condition":
+            targets = [pointer for pointer, value in decision_nodes
+                       if isinstance(value, dict) and value.get("id") == result.identifier]
+            work_links = links((".evidence-evaluation",)) if isinstance(result, EvidenceApplicabilityCondition) else links((".decision-evaluation", ".question-flow"))
+        elif kind == "source":
+            targets = [pointer for pointer, value in decision_nodes if isinstance(value, dict)
+                       and (value.get("id") == result.source_revision or value.get("citation") == result.citation)]
+            work_links = links((".result-provenance",))
+        elif kind.startswith("http"):
+            if endpoint is None:
+                raise ValueError("HTTP processing records require an authored HTTP contract")
+            if (kind == "http-endpoint" and result != endpoint) or (
+                kind == "http-message" and result not in
+                (endpoint.request, endpoint.success_response, endpoint.invalid_request_response)
+            ):
+                raise ValueError("HTTP interpretation is not part of the selected normalized endpoint")
+            path, document = http_path, json.loads(artifacts[http_path])
+            base = "/paths/" + _pointer_segment(endpoint.path) + "/post"
+            target = base
+            if kind == "http-message":
+                target += (f"/responses/{result.status_code}" if isinstance(result, HttpResponse)
+                           else "/requestBody")
+            targets = [target]
+            work_links = links((".http-api",))
+        node_map = dict(_artifact_nodes(document))
+        if not targets or any(target not in node_map for target in targets):
+            raise ValueError(f"Processing interpretation has no rendered target: {frame['rule']}")
+        base_use = {"rule": frame["rule"], "conventions": list(frame["conventions"])}
+        for triple in frame["checks"]:
+            record(triple, {**base_use, "kind": "structural"})
+        for triple, fields in frame["fields"].items():
+            projected = []
+            for field, normalized in fields:
+                parents = set(targets) | {pointer for pointer, value in node_map.items()
+                                          if isinstance(value, dict) and value.get("id") == str(triple[0])}
+                parents.update(projected_resources(str(triple[0]), node_map))
+                if field == "@schema":
+                    candidates = [target + "/content/" + _pointer_segment(result.media_type) + "/schema" for target in targets]
+                elif field == "@media-type":
+                    candidates = [target + "/content/" + _pointer_segment(normalized) for target in targets]
+                elif field == "@http-path":
+                    candidates = ["/paths/" + _pointer_segment(normalized) + "/post"]
+                elif field == "@response-status":
+                    candidates = [base + "/responses/" + str(normalized)]
+                elif field == "@body-pointer":
+                    key = ("request_pointer" if isinstance(result, HttpRequest) else
+                           "result_pointer" if result.status_code == endpoint.success_response.status_code else "error_pointer")
+                    candidates = [base + "/x-spec-compiler-binding/" + key]
+                elif field == "@resource":
+                    candidates = projected_resources(normalized, node_map, str(triple[0]))
+                elif field in {"@http-request", "@http-success", "@http-invalid"}:
+                    message = {"@http-request": result.request, "@http-success": result.success_response,
+                               "@http-invalid": result.invalid_request_response}[field]
+                    if message.identifier != normalized:
+                        raise ValueError("HTTP message projection does not match its normalized resource")
+                    candidates = [base + ("/requestBody" if field == "@http-request" else f"/responses/{message.status_code}")]
+                elif field == "@question-binding":
+                    candidates = [pointer + "/question/id" for pointer, value in node_map.items()
+                                  if isinstance(value, dict) and value.get("id") == normalized
+                                  and value.get("question", {}).get("id") == str(triple[0])]
+                else:
+                    candidates = [field] if field.startswith("/") else [parent + "/" + field for parent in parents]
+                expanded = []
+                for candidate in candidates:
+                    if "*" in candidate.split("/"):
+                        pattern = "/".join("[^/]+" if part == "*" else re.escape(part) for part in candidate.split("/"))
+                        expanded.extend(pointer for pointer in node_map if re.fullmatch(pattern, pointer))
+                    else:
+                        expanded.append(candidate)
+                candidates = expanded
+                presence = field in {"@media-type", "@http-path", "@response-status", "@resource",
+                                     "@http-request", "@http-success", "@http-invalid", "@question-binding"}
+                candidates = [pointer for pointer in candidates
+                              if pointer in node_map and (presence or _same_json_value(node_map[pointer], normalized))]
+                if not candidates:
+                    raise ValueError(f"Normalized field has no matching rendered destination: {frame['rule']}/{field}")
+                projected.extend(candidates)
+            record(triple, {**base_use, "kind": "contract",
+                            "artifacts": [{"path": path, "jsonPointer": pointer} for pointer in sorted(set(projected))],
+                            "workItems": work_links})
+        for triple, (field, normalized) in frame["contexts"].items():
+            candidates = [field] if field.startswith("/") else [target + "/" + field for target in targets]
+            candidates = [pointer for pointer in candidates if pointer in node_map and _same_json_value(node_map[pointer], normalized)]
+            if not candidates:
+                raise ValueError(f"Context value has no matching rendered destination: {frame['rule']}")
+            record(triple, {**base_use, "kind": "context",
+                            "artifacts": [{"path": path, "jsonPointer": pointer} for pointer in candidates]})
+    if endpoint is not None:
+        binding = (URIRef(endpoint.identifier), SCO.invokesContract, URIRef(endpoint.invokes_contract))
+        record(binding, {"kind": "structural", "rule": "decision-http-binding-v1",
+                         "conventions": ["HTTP Contract Conventions v1"],
+                         "meaning": "Explicit invoked contract equals the selected Decision Contract."})
+    statements = []
+    for triple, entries in uses.items():
+        terms = [_report_term(term) for term in triple]
+        identifier = hashlib.sha256(json.dumps(terms, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        entries = [entries[key] for key in sorted(entries)]
+        kinds = {entry["kind"] for entry in entries}
+        semantic_status = "contract" if "contract" in kinds else "context" if "context" in kinds else "unassigned"
+        processing_status = semantic_status
+        if semantic_status == "unassigned" and any(entry["rule"] != "ontology-module-validation-v1" for entry in entries):
+            processing_status = "structural-only"
+        statements.append({"id": "statement-" + identifier,
+                           "subject": terms[0], "predicate": terms[1], "object": terms[2],
+                           "origins": sorted(graph.origins[triple]),
+                           "semanticStatus": semantic_status, "processingStatus": processing_status,
+                           "uses": entries})
+    catalog = ontology_sources()
+    conventions = {
+        "Ontology Module Conventions v1": "ontology-module-conventions-v1",
+        "Decision Protocol v1": "decision-protocol-v1",
+        "Decision Conventions v1": "decision-conventions-v1",
+        "Question Selection Conventions v1": "question-selection-conventions-v1",
+        "Evidence Evaluation Conventions v1": "evidence-evaluation-conventions-v1",
+        "Version Selection Conventions v1": "version-selection-conventions-v1",
+        "Obligation Evaluation Conventions v1": "obligation-evaluation-conventions-v1",
+        "HTTP Contract Conventions v1": "http-contract-conventions-v1",
+    }
+    convention_root = "https://arturmiller.github.io/spec-compiler/reference/conventions.html#"
+    return {"schemaVersion": 1, "reportConvention": "Processing Report Conventions v1",
+            "reportConventionVersion": PROCESSING_REPORT_CONVENTIONS_VERSION,
+            "reportConventionReference": convention_root + "processing-report-conventions-v1",
+            "conventionReferences": {name: convention_root + anchor for name, anchor in sorted(conventions.items())},
+            "profile": "decision-http" if endpoint else "decision",
+            "scope": {"input": "authored-product-statements", "notCoveredProfiles": ["http-sql", "compiler"],
+                      "contractCompleteness": "not-assessed", "delegation": "not-assessed",
+                      "unknownStatements": "No semantic use proven; this does not establish harmlessness or lack of compiler support."},
+            "compiler": {"sourceSha256": hashlib.sha256(Path(__file__).read_text(encoding="utf-8").encode()).hexdigest(),
+                         "bootstrapGeneration": BOOTSTRAP_GENERATION,
+                         "conventionsVersion": COMPILER_CONVENTIONS_VERSION,
+                         "dependencies": {name: package_version(name) for name in ("rdflib", "jsonschema")}},
+            "catalog": {"sha256": hashlib.sha256(json.dumps(catalog, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+                        "modules": sorted(catalog)},
+            "summary": {"statements": len(statements),
+                        "structuralOnly": sum(item["processingStatus"] == "structural-only" for item in statements),
+                        **{status: sum(item["semanticStatus"] == status for item in statements)
+                           for status in ("contract", "context", "unassigned")}},
+            "statements": sorted(statements, key=lambda item: item["id"])}
+
+
+def render_processing_report(report):
+    """Render the analytical report as portable HTML without product dependencies."""
+    esc = html.escape
+    labels = {"contract": "Vertragsverarbeitung", "context": "Kontextübernahme",
+              "unassigned": "Semantisch nicht zugeordnet", "structural": "Strukturprüfung",
+              "structural-only": "Nur strukturell geprüft; semantisch nicht zugeordnet"}
+    parts = ['<!doctype html><html lang="de"><head><meta charset="utf-8">',
+             '<meta name="viewport" content="width=device-width,initial-scale=1"><title>Spec-Verarbeitungsbericht</title>',
+             '<style>body{font:16px/1.55 system-ui;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#182c3d;background:#f8fafb}details{background:white;border:1px solid #ccd7df;border-radius:6px;margin:.6rem 0;padding:.8rem}summary{cursor:pointer;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#006873}input,select{font:inherit;padding:.4rem;max-width:100%}[hidden]{display:none}</style></head><body>',
+             '<h1>Spec-Verarbeitungsbericht</h1><p>Generiert nach Processing Report Conventions v1. <a href="processing-report.json">JSON herunterladen</a></p>',
+             '<p>Dieser Bericht beschreibt die tatsächliche Verwendung verfasster Produktaussagen. Strukturprüfung ist kein Verhaltenstest. Nicht zugeordnet bedeutet: keine semantische Verwendung belegt. Daraus folgen weder fachliche Harmlosigkeit noch Delegation oder ein vollständiger Produktvertrag.</p>',
+             f'<p>Profil: {esc(report["profile"])}. Aussagen: {report["summary"]["statements"]}. '
+             + ' · '.join(f'{labels[key]}: {report["summary"][key]}' for key in ("contract", "context", "unassigned"))
+             + f'. Davon mit konkreter Strukturprüfung: {report["summary"]["structuralOnly"]}.</p>',
+             '<p>Noch nicht erfasst: HTTP/SQL- und Compilerprofil. Vertragsverwendungen benennen Abhängigkeiten eines normalisierten Vertragsbestandteils; sie behaupten keinen eigenen Verhaltenstest für jede einzelne Aussage.</p>',
+             '<label>Suche <input id="search" type="search"></label> <label>Semantische Zuordnung <select id="status"><option value="">Alle</option>'
+             + ''.join(f'<option value="{key}">{value}</option>' for key, value in labels.items() if key != "structural") + '</select></label>',
+             '<p id="count" aria-live="polite"></p>']
+    for statement in report["statements"]:
+        terms = [statement[key]["value"] for key in ("subject", "predicate", "object")]
+        title = ' · '.join(value if len(value) <= 180 else value[:177] + '...' for value in terms)
+        parts.append(f'<details id="{statement["id"]}" data-status="{statement["semanticStatus"]}" data-processing="{statement["processingStatus"]}"><summary>{esc(labels[statement["processingStatus"]])}: {esc(title)}</summary>')
+        parts.append('<pre>' + esc(json.dumps({key: statement[key] for key in ("subject", "predicate", "object", "origins")}, ensure_ascii=False, indent=2)) + '</pre>')
+        for usage in statement["uses"]:
+            parts.append(f'<p><strong>{esc(labels[usage["kind"]])}</strong>: {esc(usage["rule"])} · {esc(", ".join(usage["conventions"]))}</p>')
+            for target in usage.get("artifacts", []):
+                # All targets originate from the fixed artifact plan, never spec-authored URLs.
+                relative = "../" + target["path"]
+                parts.append(f'<p>Artefakt: <a href="{esc(relative, quote=True)}">{esc(target["path"])}</a> · JSON Pointer <code>{esc(target["jsonPointer"] or "/")}</code></p>')
+            for item in usage.get("workItems", []):
+                parts.append(f'<p>Arbeitsauftrag: {esc(item["id"])} · Nachweisreferenz: <code>{esc(item["proof"])}</code>. Keine Vollständigkeitszusage.</p>')
+        parts.append('</details>')
+    parts.append('<details><summary>Compiler- und Katalogidentität</summary><pre>' + esc(json.dumps({key: report[key] for key in ("compiler", "catalog", "scope")}, indent=2, ensure_ascii=False)) + '</pre></details>')
+    parts.append('''<script>const search=document.querySelector('#search'),status=document.querySelector('#status'),rows=[...document.querySelectorAll('[data-status]')];function filter(){let visible=0;for(const row of rows){const selected=status.value==='structural-only'?row.dataset.processing:row.dataset.status;row.hidden=Boolean(status.value&&selected!==status.value)||!row.textContent.toLowerCase().includes(search.value.toLowerCase());if(!row.hidden)visible++;}document.querySelector('#count').textContent=visible+' Aussagen sichtbar';}search.addEventListener('input',filter);status.addEventListener('change',filter);filter();</script></body></html>''')
+    return "\n".join(parts) + "\n"
+
+
+def one(graph: Graph, subject, predicate, *, report_field=None):
     values = list(graph.objects(subject, predicate))
     if len(values) != 1:
         raise ValueError(f"Expected exactly one {predicate} on {subject}, got {len(values)}")
-    return values[0]
+    value = values[0]
+    if isinstance(graph, ProcessingGraph) and graph.frames:
+        graph.frames[-1]["checks"].add((subject, predicate, value))
+        if report_field is not None:
+            normalized = value.toPython()
+            if isinstance(normalized, date):
+                normalized = normalized.isoformat()
+            graph.field_value(subject, predicate, value, report_field, normalized)
+    return value
+
+
+def projected_objects(graph, subject, predicate, field):
+    """Read a collection explicitly projected by its successful normalizer."""
+    for value in graph.objects(subject, predicate):
+        if isinstance(graph, ProcessingGraph):
+            graph.field_value(subject, predicate, value, field, str(value))
+        yield value
 
 
 def optional(graph: Graph, subject, predicate, default=None):
@@ -365,15 +731,20 @@ def validate_product_ontology(graph: Graph, source: str = "product specs") -> No
     validate_ontology_modules(modules)
 
 
-def load_contract_graph(product_root: Path) -> Graph:
+def load_contract_graph(product_root: Path, *, processing_report: bool = False) -> Graph:
     specs_root = product_root / "specs"
     spec_files = sorted(specs_root.glob("*.ttl"))
     if not spec_files:
         raise ValueError(f"No Turtle specs found in {specs_root}")
-    contract_graph = Graph()
-    for spec_file in spec_files:
-        contract_graph.parse(spec_file, format="turtle")
+    if processing_report:
+        contract_graph = ProcessingGraph.load(product_root, spec_files)
+    else:
+        contract_graph = Graph()
+        for spec_file in spec_files:
+            contract_graph.parse(spec_file, format="turtle")
     validate_product_ontology(contract_graph, str(specs_root))
+    if isinstance(contract_graph, ProcessingGraph):
+        contract_graph.module_validated = True
     return contract_graph
 
 
@@ -665,10 +1036,15 @@ def _date_value(value, description: str) -> str:
     return converted.isoformat()
 
 
-def _required_text(graph: Graph, subject, predicate, description: str) -> str:
-    value = str(one(graph, subject, predicate)).strip()
+def _required_text(graph: Graph, subject, predicate, description: str, *, context_field=None, report_field=None) -> str:
+    term = one(graph, subject, predicate)
+    value = str(term).strip()
     if not value:
         raise ValueError(f"{description} must not be empty")
+    if context_field is not None and isinstance(graph, ProcessingGraph):
+        graph.context_value(subject, predicate, term, context_field, value)
+    if report_field is not None and isinstance(graph, ProcessingGraph):
+        graph.field_value(subject, predicate, term, report_field, value)
     return value
 
 
@@ -695,27 +1071,28 @@ def _json_pointer(value: str) -> str:
     return value
 
 
+@interpreted("decision-source-v1", ("Decision Conventions v1",), "source")
 def _read_decision_source(graph: Graph, citation) -> DecisionSource:
     if (citation, RDF.type, SDO.SourceCitation) not in graph:
         raise ValueError(
             f"Decision Rule source {citation} must be an sdo:SourceCitation"
         )
-    revision = one(graph, citation, SDO.citesSourceRevision)
+    revision = one(graph, citation, SDO.citesSourceRevision, report_field="source_revision")
     if (revision, RDF.type, SDO.SourceRevision) not in graph:
         raise ValueError(
             f"Source Citation {citation} must cite an sdo:SourceRevision"
         )
-    source = one(graph, revision, DCTERMS.isVersionOf)
+    source = one(graph, revision, DCTERMS.isVersionOf, report_field="source")
     if (source, RDF.type, SDO.Source) not in graph:
         raise ValueError(
             f"Source Revision {revision} must identify an sdo:Source"
         )
-    sha256 = str(one(graph, revision, SDO.contentSha256))
+    sha256 = str(one(graph, revision, SDO.contentSha256, report_field="content_sha256"))
     if not SHA256.fullmatch(sha256):
         raise ValueError(
             f"Source Revision {revision} must declare a lowercase SHA-256 digest"
         )
-    byte_size = int(one(graph, revision, SDO.byteSize))
+    byte_size = int(one(graph, revision, SDO.byteSize, report_field="byte_size"))
     if byte_size <= 0:
         raise ValueError(f"Source Revision {revision} byte size must be positive")
     return DecisionSource(
@@ -723,29 +1100,29 @@ def _read_decision_source(graph: Graph, citation) -> DecisionSource:
         source_revision=str(revision),
         source=str(source),
         locator=_required_text(
-            graph, citation, SDO.sourceLocator, "Source Citation locator"
+            graph, citation, SDO.sourceLocator, "Source Citation locator", report_field="locator"
         ),
         statement=_required_text(
-            graph, citation, SDO.sourceStatement, "Source Citation statement"
+            graph, citation, SDO.sourceStatement, "Source Citation statement", report_field="statement"
         ),
         title=_required_text(
-            graph, revision, DCTERMS.title, "Source Revision title"
+            graph, revision, DCTERMS.title, "Source Revision title", context_field="title"
         ),
         identifier=_required_text(
             graph,
             revision,
             DCTERMS.identifier,
-            "Source Revision identifier",
+            "Source Revision identifier", report_field="identifier",
         ),
         version=_required_text(
-            graph, revision, OWL.versionInfo, "Source Revision version"
+            graph, revision, OWL.versionInfo, "Source Revision version", report_field="version"
         ),
         valid_from=_date_value(
-            one(graph, revision, SDO.validFrom),
+            one(graph, revision, SDO.validFrom, report_field="valid_from"),
             f"Source Revision {revision} validFrom",
         ),
         content_url=_required_text(
-            graph, revision, SCHEMA.contentUrl, "Source Revision content URL"
+            graph, revision, SCHEMA.contentUrl, "Source Revision content URL", report_field="content_url"
         ),
         content_sha256=sha256,
         byte_size=byte_size,
@@ -857,13 +1234,14 @@ def _check_http_schema_keywords(schema) -> None:
             _check_http_schema_keywords(child)
 
 
+@interpreted("http-message-v1", ("HTTP Contract Conventions v1",), "http-message")
 def _read_http_message(graph: Graph, node, response: bool) -> HttpMessage:
     if not isinstance(node, URIRef):
         raise ValueError("HTTP messages must be named resources for deterministic provenance")
     expected_type = SCO.HttpResponse if response else SCO.HttpRequest
     if (node, RDF.type, expected_type) not in graph:
         raise ValueError(f"HTTP message {node} must be a {expected_type}")
-    media_type = _required_text(graph, node, SCO.mediaType, "HTTP media type")
+    media_type = _required_text(graph, node, SCO.mediaType, "HTTP media type", report_field="@media-type")
     if not re.fullmatch(r"application/(?:[a-z0-9!#$&^_.+-]+\+)?json", media_type):
         raise ValueError(f"HTTP body requires a JSON media type: {media_type}")
     value = one(graph, node, SCO.bodySchema)
@@ -878,7 +1256,9 @@ def _read_http_message(graph: Graph, node, response: bool) -> HttpMessage:
     except (ValueError, SchemaError) as error:
         raise ValueError(f"Invalid HTTP body schema on {node}: {error}") from error
     _check_http_schema_keywords(body_schema)
-    pointer = one(graph, node, SCO.bodyPointer)
+    if isinstance(graph, ProcessingGraph):
+        graph.field_value(node, SCO.bodySchema, value, "@schema", body_schema)
+    pointer = one(graph, node, SCO.bodyPointer, report_field="@body-pointer")
     if not isinstance(pointer, Literal) or not isinstance(pointer.toPython(), str):
         raise ValueError("HTTP body pointer must be an explicit string")
     pointer = str(pointer)
@@ -903,15 +1283,16 @@ def _read_http_message(graph: Graph, node, response: bool) -> HttpMessage:
     if response:
         return HttpResponse(
             **fields,
-            status_code=_positive_integer_value(one(graph, node, SCO.statusCode), "HTTP status"),
-            description=_required_text(graph, node, DCTERMS.description, "HTTP response description"),
+            status_code=_positive_integer_value(one(graph, node, SCO.statusCode, report_field="@response-status"), "HTTP status"),
+            description=_required_text(graph, node, DCTERMS.description, "HTTP response description", context_field="description"),
         )
-    body_required = _boolean_value(one(graph, node, SCO.bodyRequired), "HTTP body required")
+    body_required = _boolean_value(one(graph, node, SCO.bodyRequired, report_field="required"), "HTTP body required")
     if not body_required:
         raise ValueError("The supported HTTP contract profile requires a request body")
     return HttpRequest(**fields, body_required=body_required)
 
 
+@interpreted("http-endpoint-v1", ("HTTP Contract Conventions v1",), "http-endpoint")
 def read_http_endpoint(graph: Graph) -> HttpEndpoint | None:
     """Read explicit HTTP messages and bindings without product-specific mapping IRIs."""
     endpoints = set(graph.subjects(RDF.type, SCO.PostEndpoint)) | set(
@@ -926,28 +1307,29 @@ def read_http_endpoint(graph: Graph) -> HttpEndpoint | None:
         raise ValueError("HTTP endpoints must be named resources for deterministic provenance")
     if (endpoint, RDF.type, SCO.PostEndpoint) not in graph:
         raise ValueError(f"HTTP endpoint {endpoint} must be a sco:PostEndpoint")
-    path = _required_text(graph, endpoint, SCO.path, "HTTP POST path")
+    path = _required_text(graph, endpoint, SCO.path, "HTTP POST path", report_field="@http-path")
     if not re.fullmatch(r"/[A-Za-z0-9/_.~-]*", path) or "//" in path:
         raise ValueError(f"HTTP POST path must be a fixed, safe path: {path}")
-    contract = one(graph, endpoint, SCO.invokesContract)
+    contract = one(graph, endpoint, SCO.invokesContract, report_field="x-spec-compiler-binding/invokes_contract")
     if not isinstance(contract, URIRef):
         raise ValueError("HTTP endpoint must invoke an explicit contract IRI")
-    request = _read_http_message(graph, one(graph, endpoint, SCO.request), response=False)
-    success = _read_http_message(graph, one(graph, endpoint, SCO.successResponse), response=True)
-    invalid = _read_http_message(graph, one(graph, endpoint, SCO.invalidRequestResponse), response=True)
+    request = _read_http_message(graph, one(graph, endpoint, SCO.request, report_field="@http-request"), response=False)
+    success = _read_http_message(graph, one(graph, endpoint, SCO.successResponse, report_field="@http-success"), response=True)
+    invalid = _read_http_message(graph, one(graph, endpoint, SCO.invalidRequestResponse, report_field="@http-invalid"), response=True)
     if not 200 <= success.status_code < 300 or success.status_code in (204, 205):
         raise ValueError("HTTP success response must have a body-bearing 2xx status")
     if not 400 <= invalid.status_code < 500:
         raise ValueError("HTTP invalid-request response must have a 4xx status")
     return HttpEndpoint(
         identifier=str(endpoint), path=path,
-        title=_required_text(graph, endpoint, DCTERMS.title, "HTTP API title"),
-        version=_required_text(graph, endpoint, SCHEMA.version, "HTTP API version"),
+        title=_required_text(graph, endpoint, DCTERMS.title, "HTTP API title", context_field="/info/title"),
+        version=_required_text(graph, endpoint, SCHEMA.version, "HTTP API version", context_field="/info/version"),
         invokes_contract=str(contract), request=request,
         success_response=success, invalid_request_response=invalid,
     )
 
 
+@interpreted("decision-contract-v1", ("Decision Protocol v1", "Decision Conventions v1", "Version Selection Conventions v1", "Question Selection Conventions v1", "Evidence Evaluation Conventions v1", "Obligation Evaluation Conventions v1", "Ontology Module Conventions v1"), "decision")
 def read_decision_model(
     product_root: Path, graph: Graph | None = None
 ) -> ExplicitDecisionAndObligationModel:
@@ -963,11 +1345,13 @@ def read_decision_model(
     product = products[0]
     if (product, RDF.type, SCHEMA.SoftwareApplication) not in graph:
         raise ValueError("Decision Protocol product must be a schema:SoftwareApplication")
-    contract = one(graph, product, DPO.implementsDecisionContract)
+    if isinstance(graph, ProcessingGraph):
+        graph.field_value(product, DCTERMS.conformsTo, DPO.DecisionProtocolV1, "/product", str(product))
+    contract = one(graph, product, DPO.implementsDecisionContract, report_field="/decision_contract")
     if (contract, RDF.type, SDO.DecisionContract) not in graph:
         raise ValueError("Decision product contract must be an sdo:DecisionContract")
     if not _boolean_value(
-        one(graph, contract, SDO.requiresAllRules),
+        one(graph, contract, SDO.requiresAllRules, report_field="/rule_set/versions/*/requires_all_rules"),
         f"Decision Contract {contract} requiresAllRules",
     ):
         raise ValueError(
@@ -976,9 +1360,9 @@ def read_decision_model(
         )
 
     outcome_nodes = {
-        "positive": one(graph, contract, SDO.positiveOutcome),
-        "negative": one(graph, contract, SDO.negativeOutcome),
-        "unknown": one(graph, contract, SDO.unknownOutcome),
+        "positive": one(graph, contract, SDO.positiveOutcome, report_field="/outcomes/positive/id"),
+        "negative": one(graph, contract, SDO.negativeOutcome, report_field="/outcomes/negative/id"),
+        "unknown": one(graph, contract, SDO.unknownOutcome, report_field="/outcomes/unknown/id"),
     }
     outcomes = {str(node) for node in outcome_nodes.values()}
     if len(outcomes) != 3:
@@ -987,8 +1371,8 @@ def read_decision_model(
         if (node, RDF.type, SDO.DecisionOutcome) not in graph:
             raise ValueError(f"Decision outcome {node} must be an sdo:DecisionOutcome")
     outcome_codes = {
-        str(node): str(one(graph, node, SDO.outcomeCode))
-        for node in outcome_nodes.values()
+        str(node): str(one(graph, node, SDO.outcomeCode, report_field=f"/outcomes/{role}/code"))
+        for role, node in outcome_nodes.items()
     }
     if len(set(outcome_codes.values())) != 3 or any(
         not SQL_IDENTIFIER.fullmatch(code) for code in outcome_codes.values()
@@ -998,7 +1382,7 @@ def read_decision_model(
     negative_outcome = str(outcome_nodes["negative"])
     unknown_outcome = str(outcome_nodes["unknown"])
 
-    version_nodes = sorted(graph.objects(contract, SDO.usesRuleSetVersion), key=str)
+    version_nodes = sorted(projected_objects(graph, contract, SDO.usesRuleSetVersion, "/rule_set/versions/*/id"), key=str)
     if not version_nodes:
         raise ValueError(
             f"Decision Contract {contract} must declare at least one "
@@ -1015,6 +1399,7 @@ def read_decision_model(
     parsed_versions = []
     stable_rule_set = None
 
+    @interpreted("decision-condition-v1", ("Decision Conventions v1", "Question Selection Conventions v1"), "condition", graph=graph)
     def read_rule_condition(condition_node) -> DecisionCondition:
         condition_id = str(condition_node)
         if condition_id in condition_cache:
@@ -1023,7 +1408,7 @@ def read_decision_model(
             raise ValueError(
                 f"Decision Rule Condition {condition_node} must be an sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer, report_field="input_json_pointer")))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Decision Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
@@ -1034,6 +1419,8 @@ def read_decision_model(
                 f"sdo:FactQuestion, got {len(question_nodes)}"
             )
         question_node = question_nodes[0]
+        if isinstance(graph, ProcessingGraph):
+            graph.field_value(question_node, SDO.elicitsCondition, condition_node, "@question-binding", condition_id)
         if (question_node, RDF.type, SDO.FactQuestion) not in graph:
             raise ValueError(f"Question {question_node} must be an sdo:FactQuestion")
         question_id = str(question_node)
@@ -1041,7 +1428,7 @@ def read_decision_model(
             raise ValueError(f"Fact Question {question_node} elicits more than one Condition")
         question_owners[question_id] = condition_id
         priority = _positive_integer_value(
-            one(graph, question_node, SDO.questionPriority),
+            one(graph, question_node, SDO.questionPriority, report_field="priority"),
             f"Fact Question {question_node} priority",
         )
         if priority in priority_owners and priority_owners[priority] != condition_id:
@@ -1052,17 +1439,17 @@ def read_decision_model(
         priority_owners[priority] = condition_id
         condition = DecisionCondition(
             identifier=condition_id,
-            fact_property=str(one(graph, condition_node, SDO.factProperty)),
+            fact_property=str(one(graph, condition_node, SDO.factProperty, report_field="fact_property")),
             input_json_pointer=pointer,
             expected_boolean=_boolean_value(
-                one(graph, condition_node, SDO.expectedBoolean),
+                one(graph, condition_node, SDO.expectedBoolean, report_field="expected_boolean"),
                 f"Decision Condition {condition_node} expectedBoolean",
             ),
             question=FactQuestion(
                 identifier=question_id,
                 text=_required_text(
                     graph, question_node, SDO.questionText,
-                    f"Fact Question {question_node} text",
+                    f"Fact Question {question_node} text", report_field="text",
                 ),
                 priority=priority,
             ),
@@ -1070,6 +1457,7 @@ def read_decision_model(
         condition_cache[condition_id] = condition
         return condition
 
+    @interpreted("evidence-condition-v1", ("Evidence Evaluation Conventions v1",), "condition", graph=graph)
     def read_evidence_condition(condition_node) -> EvidenceApplicabilityCondition:
         condition_id = str(condition_node)
         if condition_id in evidence_condition_cache:
@@ -1084,16 +1472,16 @@ def read_decision_model(
                 f"Evidence applicability member {condition_node} must be an "
                 "sdo:Condition"
             )
-        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer)))
+        pointer = _json_pointer(str(one(graph, condition_node, DPO.inputJsonPointer, report_field="input_json_pointer")))
         if pointer in pointer_owners and pointer_owners[pointer] != condition_id:
             raise ValueError(f"Conditions must not share input pointer {pointer}")
         pointer_owners[pointer] = condition_id
         condition = EvidenceApplicabilityCondition(
             identifier=condition_id,
-            fact_property=str(one(graph, condition_node, SDO.factProperty)),
+            fact_property=str(one(graph, condition_node, SDO.factProperty, report_field="fact_property")),
             input_json_pointer=pointer,
             expected_boolean=_boolean_value(
-                one(graph, condition_node, SDO.expectedBoolean),
+                one(graph, condition_node, SDO.expectedBoolean, report_field="expected_boolean"),
                 f"Evidence applicability Condition {condition_node} expectedBoolean",
             ),
         )
@@ -1106,7 +1494,7 @@ def read_decision_model(
                 f"Decision Contract {contract} member {version_node} must be an "
                 "sdo:RuleSetVersion"
             )
-        rule_set = one(graph, version_node, DCTERMS.isVersionOf)
+        rule_set = one(graph, version_node, DCTERMS.isVersionOf, report_field="/rule_set/id")
         if (rule_set, RDF.type, SDO.RuleSet) not in graph:
             raise ValueError(f"Rule Set Version {version_node} must identify an sdo:RuleSet")
         if stable_rule_set is None:
@@ -1117,10 +1505,10 @@ def read_decision_model(
             )
         version_label = _required_text(
             graph, version_node, OWL.versionInfo,
-            f"Rule Set Version {version_node} version label",
+            f"Rule Set Version {version_node} version label", report_field="version",
         )
         valid_from = _date_value(
-            one(graph, version_node, SDO.validFrom),
+            one(graph, version_node, SDO.validFrom, report_field="valid_from"),
             f"Rule Set Version {version_node} validFrom",
         )
         until_values = list(graph.objects(version_node, SDO.validUntil))
@@ -1132,12 +1520,14 @@ def read_decision_model(
             )
             if until_values else None
         )
+        if until_values and isinstance(graph, ProcessingGraph):
+            graph.field_value(version_node, SDO.validUntil, until_values[0], "valid_until", valid_until)
         if valid_until is not None and valid_until <= valid_from:
             raise ValueError(
                 f"Rule Set Version {version_node} validUntil must be after validFrom"
             )
         version_source = _read_decision_source(
-            graph, one(graph, version_node, SDO.versionSourceCitation)
+            graph, one(graph, version_node, SDO.versionSourceCitation, report_field="source/citation")
         )
         if version_source.valid_from != valid_from:
             raise ValueError(
@@ -1147,14 +1537,14 @@ def read_decision_model(
 
         rules = []
         version_conditions = set()
-        for rule_node in sorted(graph.objects(version_node, SDO.hasRule), key=str):
+        for rule_node in sorted(projected_objects(graph, version_node, SDO.hasRule, "rules/*/id"), key=str):
             if (rule_node, RDF.type, SDO.Rule) not in graph:
                 raise ValueError(f"Rule Set member {rule_node} must be an sdo:Rule")
             rule_id = str(rule_node)
             if rule_id in rule_ids:
                 raise ValueError(f"Decision Rule {rule_node} belongs to more than one version")
             rule_ids.add(rule_id)
-            condition = read_rule_condition(one(graph, rule_node, SDO.condition))
+            condition = read_rule_condition(one(graph, rule_node, SDO.condition, report_field="condition/id"))
             if condition.identifier in version_conditions:
                 raise ValueError(
                     f"Decision Condition {condition.identifier} is used by more "
@@ -1162,11 +1552,11 @@ def read_decision_model(
                 )
             version_conditions.add(condition.identifier)
             source = _read_decision_source(
-                graph, one(graph, rule_node, SDO.sourceCitation)
+                graph, one(graph, rule_node, SDO.sourceCitation, report_field="source/citation")
             )
             obligations = []
             for obligation_node in sorted(
-                graph.objects(rule_node, SDO.imposesObligation), key=str
+                projected_objects(graph, rule_node, SDO.imposesObligation, "obligations/*/id"), key=str
             ):
                 if (obligation_node, RDF.type, SDO.Obligation) not in graph:
                     raise ValueError(
@@ -1185,7 +1575,7 @@ def read_decision_model(
                             graph,
                             obligation_node,
                             SDO.obligationText,
-                            f"Obligation {obligation_node} text",
+                            f"Obligation {obligation_node} text", report_field="text",
                         ),
                     )
                 )
@@ -1195,7 +1585,7 @@ def read_decision_model(
 
         requirements = []
         for requirement_node in sorted(
-            graph.objects(version_node, SDO.hasEvidenceRequirement), key=str
+            projected_objects(graph, version_node, SDO.hasEvidenceRequirement, "evidence_requirements/*/id"), key=str
         ):
             if (requirement_node, RDF.type, SDO.EvidenceRequirement) not in graph:
                 raise ValueError(
@@ -1208,17 +1598,17 @@ def read_decision_model(
                     f"Evidence Requirement {requirement_node} belongs to more than one version"
                 )
             requirement_ids.add(requirement_id)
-            supports = str(one(graph, requirement_node, SDO.supportsCondition))
+            supports = str(one(graph, requirement_node, SDO.supportsCondition, report_field="supports_condition"))
             if supports not in version_conditions:
                 raise ValueError(
                     f"Evidence Requirement {requirement_node} must support a "
                     "Condition used by its Rule Set Version"
                 )
-            evidence_type = one(graph, requirement_node, SDO.requiredEvidenceType)
+            evidence_type = one(graph, requirement_node, SDO.requiredEvidenceType, report_field="required_evidence_type")
             if not isinstance(evidence_type, URIRef):
                 raise ValueError(f"Required Evidence type {evidence_type} must be an IRI")
             applicability_nodes = sorted(
-                graph.objects(requirement_node, SDO.applicabilityCondition), key=str
+                projected_objects(graph, requirement_node, SDO.applicabilityCondition, "applicability_conditions/*/id"), key=str
             )
             if not applicability_nodes:
                 raise ValueError(
@@ -1226,7 +1616,7 @@ def read_decision_model(
                     "least one applicability Condition"
                 )
             source = _read_decision_source(
-                graph, one(graph, requirement_node, SDO.evidenceSourceCitation)
+                graph, one(graph, requirement_node, SDO.evidenceSourceCitation, report_field="source/citation")
             )
             requirements.append(
                 EvidenceRequirement(
@@ -1285,10 +1675,10 @@ def read_decision_model(
     cases = []
     question_flow_case_ids = []
     version_selection_case_ids = []
-    for case_node in sorted(graph.objects(contract, SDO.hasConformanceCase), key=str):
+    for case_node in sorted(projected_objects(graph, contract, SDO.hasConformanceCase, "/conformance_cases/*/id"), key=str):
         if (case_node, RDF.type, SDO.ConformanceCase) not in graph:
             raise ValueError(f"Decision conformance case {case_node} must be an sdo:ConformanceCase")
-        if one(graph, case_node, SDO.forDecisionContract) != contract:
+        if one(graph, case_node, SDO.forDecisionContract, report_field="/decision_contract") != contract:
             raise ValueError(f"Conformance case {case_node} must reference its Decision Contract")
         date_values = list(graph.objects(case_node, SDO.decisionDate))
         if len(date_values) != 1:
@@ -1299,24 +1689,26 @@ def read_decision_model(
         decision_date = _date_value(
             date_values[0], f"Conformance case {case_node} decisionDate"
         )
+        if isinstance(graph, ProcessingGraph):
+            graph.field_value(case_node, SDO.decisionDate, date_values[0], "decision_date", decision_date)
         selected_version = version_for_date(decision_date, f"Conformance Case {case_node}")
-        expected_version = one(graph, case_node, SDO.expectsRuleSetVersion)
+        expected_version = one(graph, case_node, SDO.expectsRuleSetVersion, report_field="expected_rule_set_version")
         if str(expected_version) != selected_version.identifier:
             raise ValueError(
                 f"Conformance Case {case_node} expects Rule Set Version "
                 f"{expected_version}, but Version Selection Conventions v1 select "
                 f"{selected_version.identifier} from its Decision Date"
             )
-        expected_outcome = str(one(graph, case_node, SDO.expectsOutcome))
+        expected_outcome = str(one(graph, case_node, SDO.expectsOutcome, report_field="expected_outcome"))
         if expected_outcome not in outcomes:
             raise ValueError(f"Conformance case {case_node} uses an undeclared outcome")
 
         facts = []
         fact_conditions = set()
-        for fact in graph.objects(case_node, SDO.hasFact):
+        for fact in projected_objects(graph, case_node, SDO.hasFact, "@resource"):
             if (fact, RDF.type, SDO.CaseFact) not in graph:
                 raise ValueError(f"Conformance case fact {fact} must be an sdo:CaseFact")
-            condition = str(one(graph, fact, SDO.forCondition))
+            condition = str(one(graph, fact, SDO.forCondition, report_field="condition"))
             if condition not in all_conditions:
                 raise ValueError(
                     f"Conformance case {case_node} references unknown Condition {condition}"
@@ -1328,34 +1720,36 @@ def read_decision_model(
             fact_conditions.add(condition)
             facts.append(
                 (condition, _boolean_value(
-                    one(graph, fact, SDO.booleanValue),
+                    one(graph, fact, SDO.booleanValue, report_field="value"),
                     f"Conformance case {case_node} Fact value",
                 ))
             )
+            if isinstance(graph, ProcessingGraph):
+                graph.bind_projection(fact, case_node, "facts", "condition", condition)
         immutable_facts = tuple(sorted(facts))
 
         evidence = []
         evidence_ids = set()
-        for evidence_node in sorted(graph.objects(case_node, SDO.hasEvidence), key=str):
+        for evidence_node in sorted(projected_objects(graph, case_node, SDO.hasEvidence, "evidence/*/id"), key=str):
             if (evidence_node, RDF.type, SDO.Evidence) not in graph:
                 raise ValueError(f"Supplied Evidence {evidence_node} must be an sdo:Evidence")
             evidence_id = str(evidence_node)
             if evidence_id in evidence_ids:
                 raise ValueError(f"Conformance case {case_node} supplies duplicate Evidence {evidence_node}")
             evidence_ids.add(evidence_id)
-            evidence_type = one(graph, evidence_node, SDO.evidenceType)
+            evidence_type = one(graph, evidence_node, SDO.evidenceType, report_field="evidence_type")
             if not isinstance(evidence_type, URIRef):
                 raise ValueError(f"Supplied Evidence type {evidence_type} must be an IRI")
             assessments = []
             assessed_requirements = set()
             for assessment_node in sorted(
-                graph.objects(evidence_node, SDO.hasEvidenceAssessment), key=str
+                projected_objects(graph, evidence_node, SDO.hasEvidenceAssessment, "@resource"), key=str
             ):
                 if (assessment_node, RDF.type, SDO.EvidenceAssessment) not in graph:
                     raise ValueError(
                         f"Evidence assessment {assessment_node} must be an sdo:EvidenceAssessment"
                     )
-                assessed = str(one(graph, assessment_node, SDO.assessesEvidenceRequirement))
+                assessed = str(one(graph, assessment_node, SDO.assessesEvidenceRequirement, report_field="evidence_requirement"))
                 if assessed not in all_requirement_ids:
                     raise ValueError(
                         f"Evidence assessment {assessment_node} references an unknown Evidence Requirement"
@@ -1368,10 +1762,12 @@ def read_decision_model(
                 assessments.append(EvidenceAssessment(
                     evidence_requirement=assessed,
                     accepted=_boolean_value(
-                        one(graph, assessment_node, SDO.accepted),
+                        one(graph, assessment_node, SDO.accepted, report_field="accepted"),
                         f"Evidence assessment {assessment_node} accepted",
                     ),
                 ))
+                if isinstance(graph, ProcessingGraph):
+                    graph.bind_projection(assessment_node, evidence_node, "assessments", "evidence_requirement", assessed)
             evidence.append(SuppliedEvidence(
                 identifier=evidence_id,
                 evidence_type=str(evidence_type),
@@ -1390,13 +1786,13 @@ def read_decision_model(
             str(SDO.EvidenceRequirementMissing): "missing",
             str(SDO.EvidenceRequirementNotApplicable): "not_applicable",
         }
-        for expectation_node in graph.objects(case_node, SDO.hasEvidenceExpectation):
+        for expectation_node in projected_objects(graph, case_node, SDO.hasEvidenceExpectation, "@resource"):
             if (expectation_node, RDF.type, SDO.EvidenceExpectation) not in graph:
                 raise ValueError(
                     f"Evidence expectation {expectation_node} must be an sdo:EvidenceExpectation"
                 )
             requirement_id = str(one(
-                graph, expectation_node, SDO.expectsEvidenceRequirement
+                graph, expectation_node, SDO.expectsEvidenceRequirement, report_field="evidence_requirement"
             ))
             if requirement_id not in selected_requirement_ids:
                 raise ValueError(
@@ -1409,12 +1805,16 @@ def read_decision_model(
                     f"Expectations for {requirement_id}"
                 )
             seen_expectations.add(requirement_id)
-            status_node = str(one(graph, expectation_node, SDO.expectedEvidenceStatus))
+            status_term = one(graph, expectation_node, SDO.expectedEvidenceStatus)
+            status_node = str(status_term)
             if status_node not in status_by_node:
                 raise ValueError(
                     f"Evidence expectation {expectation_node} uses an unsupported status"
                 )
             statuses.append((requirement_id, status_by_node[status_node]))
+            if isinstance(graph, ProcessingGraph):
+                graph.bind_projection(expectation_node, case_node, "expected_evidence_statuses", "evidence_requirement", requirement_id)
+                graph.field_value(expectation_node, SDO.expectedEvidenceStatus, status_term, "status", status_by_node[status_node])
         if seen_expectations != selected_requirement_ids:
             missing = sorted(selected_requirement_ids - seen_expectations)
             raise ValueError(
@@ -1445,8 +1845,8 @@ def read_decision_model(
             str(SDO.ObligationViolated): "violated",
             str(SDO.ObligationUnknown): "unknown",
         }
-        for expectation_node in graph.objects(
-            case_node, SDO.hasObligationExpectation
+        for expectation_node in projected_objects(
+            graph, case_node, SDO.hasObligationExpectation, "@resource"
         ):
             if (expectation_node, RDF.type, SDO.ObligationExpectation) not in graph:
                 raise ValueError(
@@ -1454,7 +1854,7 @@ def read_decision_model(
                     "sdo:ObligationExpectation"
                 )
             obligation_id = str(
-                one(graph, expectation_node, SDO.expectsObligation)
+                one(graph, expectation_node, SDO.expectsObligation, report_field="obligation")
             )
             if obligation_id not in selected_obligations:
                 raise ValueError(
@@ -1467,9 +1867,8 @@ def read_decision_model(
                     f"Expectations for {obligation_id}"
                 )
             seen_obligation_expectations.add(obligation_id)
-            status_node = str(
-                one(graph, expectation_node, SDO.expectedObligationStatus)
-            )
+            status_term = one(graph, expectation_node, SDO.expectedObligationStatus)
+            status_node = str(status_term)
             if status_node not in obligation_status_by_node:
                 raise ValueError(
                     f"Obligation expectation {expectation_node} uses an "
@@ -1478,6 +1877,9 @@ def read_decision_model(
             obligation_statuses.append(
                 (obligation_id, obligation_status_by_node[status_node])
             )
+            if isinstance(graph, ProcessingGraph):
+                graph.bind_projection(expectation_node, case_node, "expected_obligation_statuses", "obligation", obligation_id)
+                graph.field_value(expectation_node, SDO.expectedObligationStatus, status_term, "status", obligation_status_by_node[status_node])
         if seen_obligation_expectations != set(selected_obligations):
             missing = sorted(
                 set(selected_obligations) - seen_obligation_expectations
@@ -1519,8 +1921,12 @@ def read_decision_model(
         ))
         if (case_node, RDF.type, SDO.QuestionFlowCase) in graph:
             question_flow_case_ids.append(str(case_node))
+            if isinstance(graph, ProcessingGraph):
+                graph.field_value(case_node, RDF.type, SDO.QuestionFlowCase, "/question_flow_case", str(case_node))
         if (case_node, RDF.type, SDO.VersionSelectionCase) in graph:
             version_selection_case_ids.append(str(case_node))
+            if isinstance(graph, ProcessingGraph):
+                graph.field_value(case_node, RDF.type, SDO.VersionSelectionCase, "/version_selection_cases/*", str(case_node))
 
     immutable_cases = tuple(cases)
     if not immutable_cases:
@@ -1619,7 +2025,7 @@ def read_decision_model(
         unknown_outcome=unknown_outcome,
         unknown_outcome_code=outcome_codes[unknown_outcome],
         scope_note=_required_text(
-            graph, contract, SDO.scopeNote, "Decision Contract scope note"
+            graph, contract, SDO.scopeNote, "Decision Contract scope note", report_field="/scope_note"
         ),
         conformance_cases=immutable_cases,
         question_flow_case=question_flow_case.identifier,
@@ -3705,6 +4111,7 @@ def plan_decision_contract(
     product_path: str,
     model: ExplicitDecisionAndObligationModel,
     http_endpoint: HttpEndpoint | None = None,
+    processing_graph: ProcessingGraph | None = None,
 ) -> ArtifactPlan:
     """Compose Decision and optional HTTP results without changing product files."""
     validate_decision_http_binding(model, http_endpoint)
@@ -3780,7 +4187,17 @@ def plan_decision_contract(
     for item in work_items:
         outputs.append((Path("generated/issues") / f"{item['id']}.md",
                         render_issue(item, product_path)))
-    return ArtifactPlan(tuple(outputs), tuple(obsolete))
+    if processing_graph is None:
+        obsolete.extend((Path("generated/processing-report.json"), Path("generated/processing-report.html")))
+    plan = ArtifactPlan(tuple(outputs), tuple(obsolete))
+    if processing_graph is not None:
+        report = build_processing_report(processing_graph, plan, http_endpoint)
+        outputs.extend([
+            (Path("generated/processing-report.json"), json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n"),
+            (Path("generated/processing-report.html"), render_processing_report(report)),
+        ])
+        plan = ArtifactPlan(tuple(outputs), tuple(obsolete))
+    return plan
 
 
 def generate_decision_contract(
@@ -3788,9 +4205,19 @@ def generate_decision_contract(
     product_path: str,
     model: ExplicitDecisionAndObligationModel,
     http_endpoint: HttpEndpoint | None = None,
+    processing_graph: ProcessingGraph | None = None,
 ) -> list[Path]:
-    plan = plan_decision_contract(product_root, product_path, model, http_endpoint)
+    plan = plan_decision_contract(product_root, product_path, model, http_endpoint, processing_graph)
     return plan.write(product_root)
+
+
+def clear_uncovered_processing_report(product_root: Path, profile: str) -> None:
+    """Only after successful compilation, remove reports from an earlier profile."""
+    for name in ("processing-report.json", "processing-report.html"):
+        path = product_root / "generated" / name
+        if path.exists():
+            path.unlink()
+    print(f"Processing report: profile {profile} is not covered by Processing Report Conventions v1")
 
 
 def parse_args() -> argparse.Namespace:
@@ -3853,13 +4280,15 @@ def main() -> None:
     if compiler_products:
         contract = read_compiler_contract(product_root, graph)
         outputs = generate_compiler_contract(product_root, product_path, contract)
+        clear_uncovered_processing_report(product_root, "compiler")
         for generated_output in outputs:
             print(f"Generated {generated_output.relative_to(product_root)}")
         return
     if decision_products:
+        graph = load_contract_graph(product_root, processing_report=True)
         model = read_decision_model(product_root, graph)
         http_endpoint = read_http_endpoint(graph)
-        outputs = generate_decision_contract(product_root, product_path, model, http_endpoint)
+        outputs = generate_decision_contract(product_root, product_path, model, http_endpoint, graph)
         for generated_output in outputs:
             print(f"Generated {generated_output.relative_to(product_root)}")
         return
@@ -3921,6 +4350,7 @@ def main() -> None:
         graph_output,
         *(issues / f"{item['id']}.md" for item in work_items),
     ]
+    clear_uncovered_processing_report(product_root, "http-sql")
     for generated_output in outputs:
         display_path = (
             generated_output.relative_to(ROOT)

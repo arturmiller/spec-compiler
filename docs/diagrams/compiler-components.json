@@ -23,11 +23,15 @@
       "label": "CLI and Output Coordinator",
       "sublabel": "Component · argparse / pathlib · steuert Profile",
       "summary": "Koordiniert Reader. Prüft Bindung und Ausgabeplan.",
-      "description": "CLI and Output Coordinator erhält den Produktpfad und prüft das erklärte Profil. Für Decision ruft er Decision Contract Reader und HTTP Contract Reader unabhängig auf, prüft sco:invokesContract gegen den gelesenen Decision Contract und lässt einen vollständigen Artifact Plan rendern. Erst danach schreibt er Artefakte und entfernt veraltete eigene Ausgaben. Lesefehler, ungültige Bindungen, Renderfehler und Pfadkonflikte ändern keine bisherigen Dateien. HTTP/SQL und Compilerprofil behalten ihre bisherigen Ausgabeabläufe; zusätzliche Profilkombinationen bleiben ausgeschlossen.",
+      "description": "CLI and Output Coordinator erhält den Produktpfad und prüft das erklärte Profil. Für Decision ruft er Decision Contract Reader und HTTP Contract Reader unabhängig auf, prüft sco:invokesContract gegen den gelesenen Decision Contract und lässt einen vollständigen Artifact Plan rendern. Erst danach schreibt er Artefakte und entfernt veraltete eigene Ausgaben. Lesefehler, ungültige Bindungen, Renderfehler und Pfadkonflikte ändern keine bisherigen Dateien. HTTP/SQL und Compilerprofil behalten ihre bisherigen Ausgabeabläufe; zusätzliche Profilkombinationen bleiben ausgeschlossen. Für diesen Decision-Schnitt prüft er außerdem ausdrücklich aufgezeichnete Feld- und Ressourcenprojektionen gegen die gerenderten Artefakte und ergänzt den Artifact Plan um Processing Report JSON und eigenständiges HTML. Die Aufzeichnungen stammen aus erfolgreichen Normalisierungen; bloße Abfragen sind keine Vertragsverwendung. Ungeklärte Aussagen und fehlende Berichtserfassung anderer Profile bleiben sichtbar.",
       "links": [
         {
           "label": "Zum Glossar: Spec Compiler",
           "href": "../reference/glossary.html#spec-compiler"
+        },
+        {
+          "label": "Zum Verarbeitungsbericht",
+          "href": "../reference/processing-report.html#meaning"
         }
       ],
       "pos": [
