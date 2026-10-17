@@ -52,9 +52,30 @@ class SupportParser(HTMLParser):
         self.current = None
         self.field = None
         self.field_tag = None
+        self.core = None
+        self.core_item = None
+        self.core_open = False
 
     def handle_starttag(self, tag, attrs):
         data = dict(attrs)
+        if "data-core-definition" in data:
+            if self.core is not None or tag != "section":
+                raise ValueError("Duplicate compiler core definition")
+            self.core_open = True
+            self.core = {
+                "version": data["data-core-definition"],
+                "decision": data.get("data-core-decision"),
+                "modulePolicy": data.get("data-core-module-policy"),
+                "reference": {"kind": "convention", "href": data.get("data-core-reference", ""), "symbol": ""},
+                "responsibilities": [],
+            }
+        if "data-core-responsibility" in data:
+            if not self.core_open or tag != "li" or self.core_item is not None:
+                raise ValueError("Core responsibilities must be separate list items within a definition")
+            self.core_item = {"id": data["data-core-responsibility"],
+                              "implementationStatus": data.get("data-core-status"),
+                              "description": ""}
+            self.core["responsibilities"].append(self.core_item)
         if "data-support-module" in data:
             prefix = data["data-support-module"]
             if prefix in self.modules:
@@ -69,7 +90,7 @@ class SupportParser(HTMLParser):
                 "roles": data.get("data-roles", "").split(),
                 "status": data.get("data-status"),
                 "evidenceStatus": data.get("data-evidence"),
-                "coreStatus": data.get("data-core", "undecided"),
+                "coreStatus": data.get("data-core", "specialized"),
                 "terms": data.get("data-terms", "").split(),
                 "standards": data.get("data-standards", "").split(),
                 "references": [],
@@ -90,10 +111,17 @@ class SupportParser(HTMLParser):
             })
 
     def handle_data(self, data):
+        if self.core_item is not None:
+            self.core_item["description"] += data + " "
         if self.current and self.field:
             self.current[self.field] += data + " "
 
     def handle_endtag(self, tag):
+        if tag == "section":
+            self.core_open = False
+        if tag == "li" and self.core_item is not None:
+            self.core_item["description"] = " ".join(self.core_item["description"].split())
+            self.core_item = None
         if tag == self.field_tag:
             self.current[self.field] = " ".join(self.current[self.field].split())
             self.field = self.field_tag = None
@@ -115,7 +143,7 @@ def _catalog(root):
         module = {"prefix": prefix, "iri": str(identity), "namespace": namespace,
                   "title": titles[0] if titles else str(identity),
                   "source": path.relative_to(root).as_posix(), "role": "reusable",
-                  "coreStatus": "undecided", "version": str(graph.value(identity, OWL.versionInfo))}
+                  "coreStatus": "not-selected-as-whole", "version": str(graph.value(identity, OWL.versionInfo))}
         modules.append(module)
         for term in sorted(set(graph.subjects()), key=str):
             if not isinstance(term, URIRef) or not str(term).startswith(namespace):
@@ -214,6 +242,18 @@ def build_inventory(root=ROOT, *, markup=None):
         if not module["purpose"]:
             raise ValueError(f"Missing support module purpose: {module['prefix']}")
     cache, parsed = {source: markup}, {}
+    core = parser.core
+    if (core is None or core["version"] != "Compiler Core Definition v1"
+            or core["decision"] != "accepted" or core["modulePolicy"] != "no-whole-ontology"):
+        raise ValueError("Missing or invalid accepted compiler core definition")
+    responsibilities = core["responsibilities"]
+    expected = {"module-validation", "processing-coordination", "traceable-outputs"}
+    if len(responsibilities) != len(expected) or {item["id"] for item in responsibilities} != expected:
+        raise ValueError("Core definition must explicitly describe all three agreed responsibilities")
+    for item in responsibilities:
+        if not item["description"] or item["implementationStatus"] not in {"shared", "partial"}:
+            raise ValueError(f"Missing core responsibility description or implementation status: {item['id']}")
+    core["reference"] = _reference(core["reference"], root, source, cache, parsed)
     ids, standards = set(), {}
     for pattern in parser.patterns:
         identifier = pattern["id"]
@@ -228,8 +268,8 @@ def build_inventory(root=ROOT, *, markup=None):
                 raise ValueError(f"Invalid support {field}: {identifier}")
         if pattern["status"] not in STATUSES or pattern["evidenceStatus"] not in {"referenced", "missing"}:
             raise ValueError(f"Invalid support/evidence status: {identifier}")
-        if pattern["coreStatus"] not in {"candidate", "undecided"}:
-            raise ValueError(f"Core membership is not decided by this inventory: {identifier}")
+        if pattern["coreStatus"] not in {"shared-core", "specialized", "compatibility-limit"}:
+            raise ValueError(f"Invalid support core classification: {identifier}")
         if len(pattern["terms"]) != len(set(pattern["terms"])):
             raise ValueError(f"Duplicate support term assignment: {identifier}")
         for name in pattern["terms"]:
@@ -268,8 +308,9 @@ def build_inventory(root=ROOT, *, markup=None):
                for path, text in cache.items()}
     sources.update({module["source"]: hashlib.sha256((root / module["source"]).read_bytes()).hexdigest()
                     for module in modules})
-    return {"schemaVersion": 1, "inventoryConvention": "Compiler Support Inventory v1",
-            "scope": "catalog-and-declared-patterns", "coreDecision": "pending-review",
+    return {"schemaVersion": 2, "inventoryConvention": "Compiler Support Inventory v2",
+            "scope": "catalog-and-declared-patterns", "coreDecision": core["decision"],
+            "coreDefinition": core,
             "evidenceMeaning": "References locate existing checks; they do not establish complete semantic coverage.",
             "sources": dict(sorted(sources.items())), "modules": sorted(modules, key=lambda m: m["prefix"]),
             "patterns": sorted(parser.patterns, key=lambda p: p["id"]),
@@ -292,8 +333,10 @@ def pattern_annotation(pattern):
             + " · Rollen: " + ", ".join(ROLE_LABELS[role] for role in pattern["roles"]))
     evidence = "Prüffunktionen referenziert; fachliche Vollständigkeit nicht bewiesen" if pattern["evidenceStatus"] == "referenced" else "Nachweis fehlt"
     result = f'<p class="support-status">{esc(text)} · {evidence}'
-    if pattern["coreStatus"] == "candidate":
-        result += " · Kernkandidat, Entscheidung offen"
+    labels = {"shared-core": "Gemeinsame Kernverantwortung",
+              "specialized": "Spezialisiertes Verwendungsmuster",
+              "compatibility-limit": "Heutige Kompatibilitätsgrenze, kein dauerhaftes Kernprinzip"}
+    result += " · " + labels[pattern["coreStatus"]]
     result += '</p>'
     if pattern["terms"]:
         result += '<p>Begriffe: ' + ', '.join(
@@ -312,10 +355,11 @@ def render_inventory(inventory):
     patterns = {p["id"]: p for p in inventory["patterns"]}
     parts = ['<p><a href="compiler-support.json">Maschinenlesbares Inventar (JSON)</a></p>',
              '<p>Vollständige Einordnung ist kein Nachweis vollständiger Unterstützung. '
-             'Die Kernentscheidung bleibt offen. Testreferenzen belegen ihre Existenz, nicht ihre fachliche Vollständigkeit.</p>']
+             'Der kleine Anfangskern ist beschlossen; sein Umsetzungsstand wird getrennt ausgewiesen. '
+             'Testreferenzen belegen ihre Existenz, nicht ihre fachliche Vollständigkeit.</p>']
     for module in inventory["modules"]:
         parts.append(f'<h3 id="module-{esc(module["prefix"])}">{esc(module["title"])}</h3>'
-                     f'<p>Rolle: wiederverwendbar · Zweck: {esc(module["purpose"])} · Kernzuordnung: offen</p>'
+                     f'<p>Rolle: wiederverwendbar · Zweck: {esc(module["purpose"])} · Als gesamte Ontologie nicht zum gemeinsamen Kern erklärt</p>'
                      '<table><thead><tr><th>Begriff aus der Ontologie</th><th>Rollen</th><th>Verwendungsmuster und Grenzen</th></tr></thead><tbody>')
         for term in inventory["terms"]:
             if term["module"] != module["prefix"]:
@@ -342,7 +386,7 @@ def main():
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(inventory_json(inventory), encoding="utf-8", newline="\n")
     print(f"Support inventory valid: {len(inventory['modules'])} modules, "
-          f"{len(inventory['terms'])} terms, {len(inventory['patterns'])} patterns; core decision pending review.")
+          f"{len(inventory['terms'])} terms, {len(inventory['patterns'])} patterns; minimal core decision accepted.")
 
 
 if __name__ == "__main__":

@@ -35,8 +35,18 @@ def test_inventory_keeps_classification_support_and_evidence_distinct(baseline_i
     assert {module["prefix"] for module in inventory["modules"]} == {
         "sco", "sqlo", "dpo", "cco", "sdo", "funding", "cloud",
     }
-    assert inventory["coreDecision"] == "pending-review"
-    assert all(module["coreStatus"] == "undecided" for module in inventory["modules"])
+    assert inventory["schemaVersion"] == 2
+    assert inventory["coreDecision"] == "accepted"
+    assert inventory["coreDefinition"]["version"] == "Compiler Core Definition v1"
+    assert {item["id"]: item["implementationStatus"]
+            for item in inventory["coreDefinition"]["responsibilities"]} == {
+        "module-validation": "shared", "processing-coordination": "partial",
+        "traceable-outputs": "partial",
+    }
+    assert all(module["coreStatus"] == "not-selected-as-whole" for module in inventory["modules"])
+    assert patterns["module-boundaries"]["coreStatus"] == "shared-core"
+    assert patterns["profile-selection"]["coreStatus"] == "compatibility-limit"
+    assert patterns["decision-protocol"]["coreStatus"] == "specialized"
     assert patterns["compiler-contract"]["profiles"] == ["compiler"]
     assert patterns["decision-result-model"]["status"] == "descriptive"
     assert patterns["subclass-execution"]["evidenceStatus"] == "missing"
@@ -67,7 +77,11 @@ def test_orphaned_term_assignment_is_rejected(inventory_root):
 @pytest.mark.parametrize(("before", "after", "message"), [
     ('data-profiles="all"', 'data-profiles="imagined"', "Invalid support profiles"),
     ('data-roles="spec-constraint"', 'data-roles="fully-proven"', "Invalid support roles"),
-    ('data-core="candidate"', 'data-core="approved"', "Core membership is not decided"),
+    ('data-core="shared-core"', 'data-core="candidate"', "Invalid support core classification"),
+    ('data-core-decision="accepted"', 'data-core-decision="pending"', "Missing or invalid accepted compiler core definition"),
+    ('data-core-status="partial"', 'data-core-status="complete"', "Missing core responsibility description or implementation status"),
+    ('data-core-responsibility="traceable-outputs"', 'data-core-responsibility="module-validation"', "all three agreed responsibilities"),
+    ('0036-define-a-small-shared-compiler-core.html#decision', '0036-define-a-small-shared-compiler-core.html#missing', "Missing support reference anchor"),
     ('#ontology-module-conventions-v1', '#missing-convention', "Missing support reference anchor"),
     ('data-symbol="validate_ontology_modules"', 'data-symbol="not_a_function"', "Missing support implementation symbol"),
     ('data-symbol="test_term_ownership_and_definition_are_checked"', 'data-symbol="missing_test"', "Missing support test symbol"),
@@ -175,4 +189,5 @@ def test_cli_exports_identical_bytes_across_hash_seeds_and_working_directories(t
         assert result.returncode == 0, result.stderr
         outputs.append(target.read_bytes())
     assert outputs[0] == outputs[1]
-    assert b'"coreDecision": "pending-review"' in outputs[0]
+    assert b'"coreDecision": "accepted"' in outputs[0]
+    assert b'"schemaVersion": 2' in outputs[0]
