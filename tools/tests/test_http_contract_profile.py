@@ -9,8 +9,7 @@ from rdflib.namespace import DCTERMS
 import pytest
 
 from tools.generate import (
-    SCO, build_http_openapi, generate_decision_contract, read_decision_model,
-    read_http_endpoint,
+    SCO, build_http_openapi, read_http_endpoint,
 )
 from tools.http_contract_verification import assert_schema_matches
 
@@ -180,8 +179,11 @@ def test_altered_http_spec_passes_generated_black_box_proofs_with_same_backend(t
     for subject, predicate, obj in graph:
         replacement.add((renamed.get(subject, subject), predicate, renamed.get(obj, obj)))
     replacement.serialize(product / "specs" / "http_api.ttl", format="turtle")
-    model = read_decision_model(product)
-    generate_decision_contract(product, str(product), model)
+    compiled = subprocess.run(
+        [sys.executable, str(ROOT / "tools/generate.py"), "--product", str(product)],
+        cwd=ROOT, capture_output=True, text=True, timeout=30,
+    )
+    assert compiled.returncode == 0, compiled.stdout + compiled.stderr
 
     result = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", str(product / "tests" / "test_http_contract.py")],

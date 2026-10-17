@@ -109,4 +109,7 @@ summary { cursor: pointer; font-weight: 650; }
 .glossary-terms dt small { display: block; color: var(--muted); }
 .glossary-terms dd { margin: 8px 0 0; max-width: 88ch; }
 .glossary-link { text-decoration-style: dotted; }
+.support-status { padding: 12px 16px; border-left: 3px solid var(--line); background: var(--surface); font-size: .9rem; }
+[data-support-pattern] { padding-block: 12px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+[id^="term-"] { scroll-margin-top: 140px; }
 @media print { .site-header, .site-footer, .site-actions, .search-dialog { display: none; } body { background: white; color: black; } .doc-content { max-width: none; padding: 0; } }

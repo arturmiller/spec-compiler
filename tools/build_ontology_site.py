@@ -116,6 +116,11 @@ def dependency_analysis() -> dict:
 
 
 def validate_publication_sources() -> None:
+    if __package__:
+        from .compiler_support import build_inventory
+    else:
+        from compiler_support import build_inventory
+    build_inventory(ROOT)
     dependency_analysis()
     definitions = set()
     unlabeled = []

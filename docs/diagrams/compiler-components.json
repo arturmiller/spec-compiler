@@ -22,8 +22,8 @@
       "type": "backend",
       "label": "CLI and Output Coordinator",
       "sublabel": "Component · argparse / pathlib · steuert Profile",
-      "summary": "Wählt das erklärte Profil. Koordiniert Reader und Ausgaben.",
-      "description": "Der Coordinator erhält den Pfad zu einem Produktverzeichnis. Er validiert den Aufruf, koordiniert das aus den Specs gewählte Compilerprofil und stößt Reader und Renderer an. Das Ergebnis sind Vertragsartefakte und Diagnosen. Fehlende oder mehrdeutige Angaben werden nicht durch geratene Technologie ersetzt.",
+      "summary": "Koordiniert Reader. Prüft Bindung und Ausgabeplan.",
+      "description": "CLI and Output Coordinator erhält den Produktpfad und prüft das erklärte Profil. Für Decision ruft er Decision Contract Reader und HTTP Contract Reader unabhängig auf, prüft sco:invokesContract gegen den gelesenen Decision Contract und lässt einen vollständigen Artifact Plan rendern. Erst danach schreibt er Artefakte und entfernt veraltete eigene Ausgaben. Lesefehler, ungültige Bindungen, Renderfehler und Pfadkonflikte ändern keine bisherigen Dateien. HTTP/SQL und Compilerprofil behalten ihre bisherigen Ausgabeabläufe; zusätzliche Profilkombinationen bleiben ausgeschlossen.",
       "links": [
         {
           "label": "Zum Glossar: Spec Compiler",
@@ -168,10 +168,11 @@
     },
     {
       "id": "http-contract",
-      "from": "decision-reader",
+      "from": "coordinator",
       "to": "http-reader",
-      "label": "optionalen HTTP-Vertrag prüfen",
-      "labelDy": 86
+      "label": "optionalen HTTP-Vertrag lesen",
+      "fromSide": "right",
+      "toSide": "top"
     },
     {
       "id": "sql-normalize",
@@ -191,10 +192,10 @@
   "cards": [
     {
       "dot": "cyan",
-      "title": "Ein Modell pro Profil",
+      "title": "Getrennte Vertragsmodelle",
       "items": [
-        "Reader lesen sortierte Turtle-Specs aus dem Product Bundle.",
-        "Quellen und versionierte Konventionen begründen jede Obligation."
+        "Decision und HTTP werden unabhängig auf demselben validierten Produktgraphen gelesen.",
+        "Der Coordinator prüft die explizite Bindung und plant die gemeinsame Ausgabe."
       ]
     },
     {

@@ -195,7 +195,39 @@ class ExplicitDecisionAndObligationModel:
     conformance_cases: tuple[DecisionConformanceCase, ...]
     question_flow_case: str
     version_selection_cases: tuple[str, ...]
-    http_endpoint: HttpEndpoint | None
+
+
+@dataclass(frozen=True)
+class ArtifactPlan:
+    """Fully rendered product-relative outputs, checked before any file changes."""
+
+    outputs: tuple[tuple[Path, str], ...]
+    obsolete: tuple[Path, ...] = ()
+
+    def __post_init__(self) -> None:
+        paths = [path for path, _ in self.outputs]
+        all_paths = paths + list(self.obsolete)
+        for path in all_paths:
+            if path.anchor or not path.parts or ".." in path.parts:
+                raise ValueError(f"Artifact paths must be product-relative: {path}")
+        if len(set(all_paths)) != len(all_paths):
+            raise ValueError("Artifact plan contains conflicting output or cleanup paths")
+        owned_paths = set(all_paths)
+        for path in all_paths:
+            if any(parent in owned_paths for parent in path.parents):
+                raise ValueError(f"Artifact plan contains conflicting file paths: {path}")
+
+    def write(self, product_root: Path) -> list[Path]:
+        """Emit a validated plan; filesystem failures do not provide rollback."""
+        for path, content in self.outputs:
+            output = product_root / path
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(content, encoding="utf-8")
+        for path in self.obsolete:
+            output = product_root / path
+            if output.exists():
+                output.unlink()
+        return [product_root / path for path, _ in self.outputs]
 
 
 def one(graph: Graph, subject, predicate):
@@ -934,9 +966,6 @@ def read_decision_model(
     contract = one(graph, product, DPO.implementsDecisionContract)
     if (contract, RDF.type, SDO.DecisionContract) not in graph:
         raise ValueError("Decision product contract must be an sdo:DecisionContract")
-    http_endpoint = read_http_endpoint(graph)
-    if http_endpoint is not None and http_endpoint.invokes_contract != str(contract):
-        raise ValueError("HTTP endpoint must invoke the product's Decision Contract")
     if not _boolean_value(
         one(graph, contract, SDO.requiresAllRules),
         f"Decision Contract {contract} requiresAllRules",
@@ -1595,7 +1624,6 @@ def read_decision_model(
         conformance_cases=immutable_cases,
         question_flow_case=question_flow_case.identifier,
         version_selection_cases=tuple(version_selection_case_ids),
-        http_endpoint=http_endpoint,
     )
 
 
@@ -3663,13 +3691,25 @@ def generate_compiler_contract(product_root: Path, product_path: str, contract: 
     ]
 
 
-def generate_decision_contract(
+def validate_decision_http_binding(
+    model: ExplicitDecisionAndObligationModel,
+    http_endpoint: HttpEndpoint | None,
+) -> None:
+    """Connect separately read contracts using only the explicit invocation IRI."""
+    if http_endpoint is not None and http_endpoint.invokes_contract != model.decision_contract:
+        raise ValueError("HTTP endpoint must invoke the product's Decision Contract")
+
+
+def plan_decision_contract(
     product_root: Path,
     product_path: str,
     model: ExplicitDecisionAndObligationModel,
-) -> list[Path]:
-    tests_root = product_root / "tests"
-    test_output = tests_root / "test_contract.py"
+    http_endpoint: HttpEndpoint | None = None,
+) -> ArtifactPlan:
+    """Compose Decision and optional HTTP results without changing product files."""
+    validate_decision_http_binding(model, http_endpoint)
+    test_relative_path = Path("tests/test_contract.py")
+    test_output = product_root / test_relative_path
     test_path = (
         test_output.relative_to(ROOT).as_posix()
         if test_output.is_relative_to(ROOT)
@@ -3682,40 +3722,27 @@ def generate_decision_contract(
             f"Decision Product directory does not form a safe work prefix: {work_prefix}"
         )
     work_items = build_decision_work_items(
-        contract, test_path, work_prefix, model.http_endpoint
+        contract, test_path, work_prefix, http_endpoint
     )
-
-    test_output.parent.mkdir(parents=True, exist_ok=True)
-    test_output.write_text(DECISION_TEST_TEMPLATE, encoding="utf-8")
-    generated = product_root / "generated"
-    issues = generated / "issues"
-    issues.mkdir(parents=True, exist_ok=True)
-    contract_output = generated / "decision-contract.json"
-    contract_output.write_text(
-        json.dumps(contract, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    http_test_output = tests_root / "test_http_contract.py"
-    openapi_output = generated / "expected-openapi.json"
-    http_outputs = []
-    if model.http_endpoint is not None:
-        http_test_output.write_text(DECISION_HTTP_TEST_TEMPLATE, encoding="utf-8")
-        openapi_output.write_text(
-            json.dumps(
-                build_http_openapi(model.http_endpoint),
-                indent=2,
-                ensure_ascii=False,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        http_outputs = [http_test_output, openapi_output]
+    outputs = [
+        (test_relative_path, DECISION_TEST_TEMPLATE),
+        (Path("generated/decision-contract.json"),
+         json.dumps(contract, indent=2, ensure_ascii=False) + "\n"),
+    ]
+    http_test_path = Path("tests/test_http_contract.py")
+    openapi_path = Path("generated/expected-openapi.json")
+    obsolete = []
+    if http_endpoint is not None:
+        outputs.extend([
+            (http_test_path, DECISION_HTTP_TEST_TEMPLATE),
+            (openapi_path, json.dumps(
+                build_http_openapi(http_endpoint), indent=2, ensure_ascii=False,
+            ) + "\n"),
+        ])
     else:
-        for stale_http_output in (http_test_output, openapi_output):
-            if stale_http_output.exists():
-                stale_http_output.unlink()
-    graph_output = generated / "work-graph.json"
-    graph_output.write_text(
+        obsolete.extend((http_test_path, openapi_path))
+    outputs.append((
+        Path("generated/work-graph.json"),
         json.dumps(
             {
                 "generator": "spec-compiler",
@@ -3736,7 +3763,7 @@ def generate_decision_contract(
                 ),
                 **(
                     {"http_contract_conventions_version": HTTP_CONTRACT_CONVENTIONS_VERSION}
-                    if model.http_endpoint is not None
+                    if http_endpoint is not None
                     else {}
                 ),
                 "work_items": work_items,
@@ -3744,20 +3771,26 @@ def generate_decision_contract(
             indent=2,
         )
         + "\n",
-        encoding="utf-8",
-    )
+    ))
     expected_issue_names = {f"{item['id']}.md" for item in work_items}
+    issues = product_root / "generated/issues"
     for stale_issue in sorted(issues.glob("*.md")):
         if stale_issue.name not in expected_issue_names:
-            stale_issue.unlink()
-    issue_outputs = []
+            obsolete.append(stale_issue.relative_to(product_root))
     for item in work_items:
-        issue_output = issues / f"{item['id']}.md"
-        issue_output.write_text(render_issue(item, product_path), encoding="utf-8")
-        issue_outputs.append(issue_output)
-    return [
-        test_output, contract_output, *http_outputs, graph_output, *issue_outputs
-    ]
+        outputs.append((Path("generated/issues") / f"{item['id']}.md",
+                        render_issue(item, product_path)))
+    return ArtifactPlan(tuple(outputs), tuple(obsolete))
+
+
+def generate_decision_contract(
+    product_root: Path,
+    product_path: str,
+    model: ExplicitDecisionAndObligationModel,
+    http_endpoint: HttpEndpoint | None = None,
+) -> list[Path]:
+    plan = plan_decision_contract(product_root, product_path, model, http_endpoint)
+    return plan.write(product_root)
 
 
 def parse_args() -> argparse.Namespace:
@@ -3825,7 +3858,8 @@ def main() -> None:
         return
     if decision_products:
         model = read_decision_model(product_root, graph)
-        outputs = generate_decision_contract(product_root, product_path, model)
+        http_endpoint = read_http_endpoint(graph)
+        outputs = generate_decision_contract(product_root, product_path, model, http_endpoint)
         for generated_output in outputs:
             print(f"Generated {generated_output.relative_to(product_root)}")
         return

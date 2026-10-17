@@ -46,7 +46,7 @@
       "label": "Documentation Site Builder",
       "sublabel": "Python + Node",
       "summary": "Komponiert die Website. Prüft Links und Diagramme.",
-      "description": "Der unterstützende Builder verbindet redaktionelles HTML, Diagrammmodelle und RDF-Referenzen. Er ergänzt gemeinsame Navigation, Theme und Suchindex und veröffentlicht erst den geprüften Kandidaten. Archify, RDFLib und Graphviz sind Dokumentationswerkzeuge, keine Produktvertragsanforderungen. Canonical Sources werden nicht durch generiertes HTML ersetzt.",
+      "description": "Der unterstützende Builder verbindet redaktionelles HTML, Diagrammmodelle und RDF-Referenzen. Der Compiler Support Inventory Builder prüft verfasste Verwendungsmuster gegen den lokalen Katalog und Quellreferenzen; daraus entstehen Begriffsindex und JSON-Inventar. Der Documentation Site Builder ergänzt Navigation, Theme und Suchindex und veröffentlicht erst den geprüften Kandidaten. Archify, RDFLib und Graphviz sind Dokumentationswerkzeuge, keine Produktvertragsanforderungen. Canonical Sources werden nicht durch generiertes HTML ersetzt.",
       "links": [
         {
           "label": "Zum Glossar: Documentation Site Builder",

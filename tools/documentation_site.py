@@ -381,6 +381,12 @@ def source_target(source: Path, value: str, document_map: dict[Path, Document]) 
 
 def validate_sources(*, render_diagrams: bool = True) -> None:
     documents = read_documents()
+    if any('data-support-inventory' in document.markup for document in documents):
+        if __package__:
+            from .compiler_support import build_inventory
+        else:
+            from compiler_support import build_inventory
+        build_inventory(ROOT)
     lookup = {document.source.resolve(): document for document in documents}
     models = diagram_sources()
     errors = []
@@ -563,6 +569,21 @@ def compile_documents(stage: Path) -> list[dict]:
             target.write_text(redirect_page(document.route, document.parsed.redirect), encoding="utf-8")
             continue
         markup = document.markup
+        if 'data-support-inventory' in markup:
+            if __package__:
+                from .compiler_support import build_inventory, inventory_json, pattern_annotation, render_inventory, term_anchor
+            else:
+                from compiler_support import build_inventory, inventory_json, pattern_annotation, render_inventory, term_anchor
+            inventory = build_inventory(ROOT)
+            (target.parent / "compiler-support.json").write_text(inventory_json(inventory), encoding="utf-8", newline="\n")
+            markup = re.sub(r'<div\b[^>]*data-support-inventory[^>]*></div>', lambda _: render_inventory(inventory), markup)
+            for pattern in inventory["patterns"]:
+                expression = r'(<article\b[^>]*data-support-pattern="' + re.escape(pattern["id"]) + r'"[^>]*>)'
+                markup = re.sub(expression, lambda match: match[1] + pattern_annotation(pattern), markup)
+            for term in inventory["terms"]:
+                entries.append({"category": "Compilerunterstützung", "title": term["name"] + " · " + term["label"],
+                                "text": " ".join(term["patterns"] + term["roles"]),
+                                "url": document.route + "#" + term_anchor(term["name"])})
         if 'data-ontology-dependencies' in markup:
             _analysis, tables = ontology_dependency_views()
             markup = re.sub(r'<div\b[^>]*data-ontology-dependencies[^>]*></div>', lambda _: tables, markup)
